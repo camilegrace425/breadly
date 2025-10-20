@@ -1,0 +1,349 @@
+/* ===================================================================
+   Global & Login/Forgot Password Styles
+   =================================================================== */
+
+   body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .container-fluid {
+    height: 100vh;
+  }
+  
+  /* Page split layout for login/forgot */
+  .login-left {
+    background: linear-gradient(to bottom right, #6a381f, #a0522d);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+  }
+  .login-left h1 {
+    font-size: 3rem;
+    font-weight: bold;
+  }
+  .login-left p {
+    font-size: 1.2rem;
+    max-width: 400px;
+    text-align: center;
+  }
+  
+  .login-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background-color: #fdfaf6;
+  }
+  
+  /* Form container for login/forgot */
+  .form-box {
+    background: #ffffff;
+    padding: 2.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+  }
+  .form-box h2 {
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    color: #6a381f;
+  }
+  .form-box .form-control {
+    border-radius: 0.5rem;
+  }
+  .form-box .btn-primary {
+    width: 100%;
+    border-radius: 0.5rem;
+    background-color: #8B4513;
+    border-color: #8B4513;
+    transition: 0.3s ease;
+  }
+  .form-box .btn-primary:hover {
+    background-color: #6a381f;
+    border-color: #6a381f;
+  }
+  .form-box .alert {
+    font-size: 0.9rem;
+  }
+  
+  
+  /* ===================================================================
+     Dashboard Panel Styles
+     =================================================================== */
+  
+  /* Define color palette from the image */
+  :root {
+      --bg-light-cream: #FFFBF5;
+      --sidebar-bg: #FDEEDC;
+      --card-bg-1: #FEE8D0; /* Sales card */
+      --card-bg-2: #FBF3D5; /* Orders card */
+      --card-bg-3: #FBF3D5; /* Best Selling card */
+      --card-bg-4: #F8DFAA; /* Inventory/Low stock card */
+      --text-dark: #6a381f;
+      --text-secondary: #7a7a7a;
+      --bar-color-1: #E5A26A;
+      --bar-color-2: #F5C6A5;
+      --bar-color-3: #D3D3D3; /* Light gray for Choco German bar */
+      --pie-color-1: #C67C4E; /* Darkest orange */
+      --pie-color-2: #E5A26A;
+      --pie-color-3: #F5C6A5;
+      --pie-color-4: #FDEEDC; /* Lightest cream */
+  }
+  
+  /* Apply main background and font to dashboard body */
+  body.dashboard {
+      background-color: var(--bg-light-cream);
+      color: var(--text-dark);
+      height: auto; /* Override 100% height for dashboard */
+  }
+  
+  .sidebar {
+      background-color: var(--sidebar-bg);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+  }
+  .sidebar-brand {
+      text-align: center;
+      margin-bottom: 2rem;
+  }
+  .sidebar-brand img {
+      max-width: 50px;
+      margin-bottom: 0.5rem;
+  }
+  .sidebar-brand h5 {
+      font-weight: bold;
+      color: var(--text-dark);
+  }
+  .sidebar-brand p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+  }
+  .sidebar-nav .nav-link {
+      padding: 0.75rem 1.5rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0.5rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+  }
+  .sidebar-nav .nav-link.active {
+      background-color: var(--text-dark);
+      color: #fff;
+  }
+  .sidebar-nav .nav-link:hover {
+      background-color: #f8e5d0;
+  }
+  
+  .main-content {
+      padding: 2rem;
+  }
+  
+  .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+  }
+  .header h1 {
+      font-weight: bold;
+      color: var(--text-dark);
+  }
+  
+  .stat-card {
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: none;
+      margin-bottom: 1.5rem;
+  }
+  .stat-card h1 {
+      font-weight: 700;
+      color: var(--text-dark);
+  }
+  .stat-card p {
+      margin: 0;
+      color: var(--text-secondary);
+  }
+  .stat-card .percent-change {
+      font-size: 0.9rem;
+      color: #6c757d;
+  }
+  
+  .chart-container, .low-stock-card {
+      background-color: #fff;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+  }
+  
+  h3.chart-title {
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+  }
+  
+  /* Horizontal Bar Chart Simulation */
+  .bar-chart-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+  }
+  .bar-label {
+      width: 100px; /* Fixed width for labels */
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      flex-shrink: 0; /* Prevents label from shrinking */
+  }
+  .bar-wrapper {
+      flex-grow: 1;
+      background-color: #f3f3f3;
+      border-radius: 4px;
+  }
+  .bar {
+      height: 18px;
+      border-radius: 4px;
+  }
+  
+  /* Low Stock / Best Seller Card */
+  .low-stock-card {
+      background-color: var(--card-bg-4);
+  }
+  .low-stock-card h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+  }
+  .low-stock-card .best-seller-name {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 1.5rem;
+  }
+  .low-stock-card .low-stock-warning {
+      color: #d9534f; /* Red warning color */
+      font-weight: bold;
+      font-size: 1.1rem;
+  }
+  .low-stock-card .low-stock-details {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+  }
+  .low-stock-card a {
+      color: var(--text-dark);
+      font-weight: 500;
+      text-decoration: none;
+  }
+  .low-stock-card a:hover {
+      text-decoration: underline;
+  }
+  
+  /* Pie Chart Simulation */
+  .pie-chart-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+  }
+  .pie-chart {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      /* CSS conic-gradient simulates the pie chart */
+      background: conic-gradient(
+          var(--pie-color-1) 0% 40%,    /* Pandesal */
+          var(--pie-color-2) 40% 65%,   /* Mini Donuts */
+          var(--pie-color-3) 65% 85%,   /* Chicken Floss */
+          var(--pie-color-4) 85% 100%  /* Choco German */
+      );
+  }
+  
+  .pie-legend {
+      list-style: none;
+      padding-left: 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+  }
+  .pie-legend li {
+      display: flex;
+      align-items: center;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+  }
+  .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+  }
+  
+  /* ===================================================================
+     POS System Styles
+     =================================================================== */
+  
+  body.pos-page {
+      background-color: var(--bg-light-cream);
+      height: 100vh;
+      overflow: hidden; /* Prevent scrolling of the whole page */
+  }
+  .pos-container {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      height: 100vh;
+      gap: 1rem;
+      padding: 1rem;
+  }
+  .product-grid {
+      background-color: #fff;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      overflow-y: auto; /* Allow product grid to scroll */
+  }
+  .order-panel {
+      background-color: #fff;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+  }
+  .product-card {
+      border: 1px solid #eee;
+      border-radius: 0.5rem;
+      text-align: center;
+      padding: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .product-name { font-weight: 600; }
+  .product-price { color: var(--text-secondary); }
+  
+  .order-items {
+      flex-grow: 1;
+      overflow-y: auto; /* Allow order items to scroll */
+  }
+  .order-total {
+      border-top: 2px dashed #ddd;
+      padding-top: 1rem;
+      margin-top: 1rem;
+  }
+  .cart-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+  }
+  .cart-item-details { flex-grow: 1; }
+  .cart-item-controls { display: flex; align-items: center; }
+  .cart-item-controls .btn { padding: 0.1rem 0.4rem; font-size: 0.8rem; }
+  .cart-item-controls span { padding: 0 0.5rem; }

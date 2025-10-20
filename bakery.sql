@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 20, 2025 at 02:13 PM
+-- Generation Time: Oct 20, 2025 at 04:13 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -199,6 +199,16 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesByCashier` (IN `date_
     ORDER BY total_revenue DESC;
 END$$
 
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesSummaryToday` ()   BEGIN
+    SELECT 
+        COUNT(sale_id) AS totalSales,
+        SUM(total_price) AS totalRevenue
+    FROM 
+        sales
+    WHERE 
+        date = CURDATE();
+END$$
+
 CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleRecordTransaction` (IN `user_id` INT, IN `product_id` INT, IN `qty_sold` INT, OUT `status` VARCHAR(100), OUT `sale_id` INT)   BEGIN
     DECLARE current_stock INT;
     DECLARE product_price DECIMAL(10,2);
@@ -307,10 +317,21 @@ CREATE TABLE `ingredients` (
 CREATE TABLE `password_resets` (
   `reset_id` int(11) NOT NULL,
   `user_id` int(11) DEFAULT NULL,
+  `reset_method` enum('email_token','phone_otp') NOT NULL DEFAULT 'email_token',
   `reset_token` varchar(255) DEFAULT NULL,
+  `otp_code` varchar(10) DEFAULT NULL,
   `expiration` datetime DEFAULT NULL,
   `used` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `password_resets`
+--
+
+INSERT INTO `password_resets` (`reset_id`, `user_id`, `reset_method`, `reset_token`, `otp_code`, `expiration`, `used`) VALUES
+(1, 1, 'email_token', '6ee4f224-adbb-11f0-b2b8-c01850aa0dfb', NULL, '2025-10-20 22:48:17', 0),
+(2, 3, 'email_token', 'd1540930-adbb-11f0-b2b8-c01850aa0dfb', NULL, '2025-10-20 22:51:03', 0),
+(3, 3, 'email_token', 'dfecc026-adbb-11f0-b2b8-c01850aa0dfb', NULL, '2025-10-20 22:51:27', 0);
 
 -- --------------------------------------------------------
 
@@ -408,11 +429,21 @@ CREATE TABLE `sales` (
 CREATE TABLE `users` (
   `user_id` int(11) NOT NULL,
   `username` varchar(100) NOT NULL,
-  `password` varchar(255) NOT NULL,
+  `password` varchar(255) DEFAULT NULL,
   `role` enum('manager','cashier') NOT NULL,
   `email` varchar(150) DEFAULT NULL,
+  `phone_number` varchar(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`user_id`, `username`, `password`, `role`, `email`, `phone_number`, `created_at`) VALUES
+(1, 'camile123', '$2y$10$Dfv1I9ZXClQUsKS5SOTRP.UrjdaHjcRHLT7lzV0JrZbvxbVkehmKy', 'manager', 'camile@gmail.com', '09123456789', '2025-10-20 12:44:55'),
+(2, 'klain123', '$2y$10$WnuNoGX/HOAm2ykTqzKWPONBVYztP5XwWkXbsJGiy29PMWtHKPJSe', 'cashier', 'klain@gmail.com', '09987654321', '2025-10-20 12:44:55'),
+(3, 'gian123', '$2y$10$Dfv1I9ZXClQUsKS5SOTRP.UrjdaHjcRHLT7lzV0JrZbvxbVkehmKy', 'manager', 'givano550@gmail.com', NULL, '2025-10-20 13:50:57');
 
 -- --------------------------------------------------------
 
@@ -655,7 +686,8 @@ ALTER TABLE `sales`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`user_id`),
-  ADD UNIQUE KEY `username` (`username`);
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `phone_number` (`phone_number`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -677,7 +709,7 @@ ALTER TABLE `ingredients`
 -- AUTO_INCREMENT for table `password_resets`
 --
 ALTER TABLE `password_resets`
-  MODIFY `reset_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `reset_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `production`
@@ -719,7 +751,7 @@ ALTER TABLE `sales`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Constraints for dumped tables
