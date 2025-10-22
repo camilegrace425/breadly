@@ -1,13 +1,18 @@
 <?php
 // --- 1. SECURE LOGIN LOGIC ---
 session_start();
-require_once 'UserManager.php'; // Include your secure user manager class
+require_once 'src/UserManager.php'; // Include your secure user manager class
 
-// (PHP logic remains the same as before)
+// UPDATED: Redirect to correct page if already logged in
 if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard_panel.php');
+    if ($_SESSION['role'] === 'manager') {
+         header('Location: dashboard_panel.php');
+    } else {
+         header('Location: index.php');
+    }
     exit();
 }
+
 $error_message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
@@ -20,8 +25,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['user_id'] = $user['user_id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
-        header('Location: dashboard_panel.php');
+
+        // UPDATED: Redirect to correct page based on role
+        if ($user['role']) {
+            header('Location: index.php');
+        }
         exit();
+        
     } else {
         $error_message = "Invalid username or password. Please try again.";
     }

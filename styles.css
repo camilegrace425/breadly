@@ -91,10 +91,6 @@
       --bar-color-1: #E5A26A;
       --bar-color-2: #F5C6A5;
       --bar-color-3: #D3D3D3; /* Light gray for Choco German bar */
-      --pie-color-1: #C67C4E; /* Darkest orange */
-      --pie-color-2: #E5A26A;
-      --pie-color-3: #F5C6A5;
-      --pie-color-4: #FDEEDC; /* Lightest cream */
   }
   
   /* Apply main background and font to dashboard body */
@@ -102,12 +98,15 @@
       background-color: var(--bg-light-cream);
       color: var(--text-dark);
       height: auto; /* Override 100% height for dashboard */
+      min-height: 100vh;
   }
   
   .sidebar {
       background-color: var(--sidebar-bg);
       min-height: 100vh;
       padding: 2rem 1rem;
+      display: flex; /* ADDED: For sticky footer */
+      flex-direction: column; /* ADDED: For sticky footer */
   }
   .sidebar-brand {
       text-align: center;
@@ -124,6 +123,9 @@
   .sidebar-brand p {
       font-size: 0.8rem;
       color: var(--text-secondary);
+  }
+  .sidebar-nav {
+      flex-grow: 1; /* ADDED: Pushes user menu down */
   }
   .sidebar-nav .nav-link {
       padding: 0.75rem 1.5rem;
@@ -242,77 +244,53 @@
       text-decoration: underline;
   }
   
-  /* Pie Chart Simulation */
-  .pie-chart-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 1rem;
-  }
-  .pie-chart {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      /* CSS conic-gradient simulates the pie chart */
-      background: conic-gradient(
-          var(--pie-color-1) 0% 40%,    /* Pandesal */
-          var(--pie-color-2) 40% 65%,   /* Mini Donuts */
-          var(--pie-color-3) 65% 85%,   /* Chicken Floss */
-          var(--pie-color-4) 85% 100%  /* Choco German */
-      );
-  }
-  
-  .pie-legend {
-      list-style: none;
-      padding-left: 0;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-top: 1.5rem;
-  }
-  .pie-legend li {
-      display: flex;
-      align-items: center;
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-  }
-  .legend-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 0.5rem;
-  }
-  
   /* ===================================================================
      POS System Styles
      =================================================================== */
   
   body.pos-page {
-      background-color: var(--bg-light-cream);
+      background-color: var(--bg-light-cream, #fdfaf6);
       height: 100vh;
       overflow: hidden; /* Prevent scrolling of the whole page */
   }
   .pos-container {
       display: grid;
-      grid-template-columns: 2fr 1fr;
-      height: 100vh;
+      /* Responsive grid: 1 column on small screens, 2 on medium+ */
+      grid-template-columns: 1fr;
+      /* We use 100vh (viewport height) minus padding */
+      height: calc(100vh - 2rem); 
       gap: 1rem;
       padding: 1rem;
   }
+
+  /* Apply 2-column layout on screens 768px and wider */
+  @media (min-width: 768px) {
+    .pos-container {
+        grid-template-columns: 2fr 1fr;
+    }
+  }
+
   .product-grid {
       background-color: #fff;
       border-radius: 0.75rem;
-      padding: 1rem;
+      padding: 1.5rem;
       overflow-y: auto; /* Allow product grid to scroll */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      /* Ensure it doesn't collapse and has a scrollbar */
+      height: 100%;
   }
   .order-panel {
       background-color: #fff;
       border-radius: 0.75rem;
-      padding: 1rem;
+      padding: 1.5rem;
       display: flex;
       flex-direction: column;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      /* Allow panel to scroll if content overflows */
+      height: 100%;
+      overflow-y: auto; 
   }
+
   .product-card {
       border: 1px solid #eee;
       border-radius: 0.5rem;
@@ -320,30 +298,83 @@
       padding: 1rem;
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
+      height: 100%; /* Make cards in a row same height */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background-color: #fff;
   }
   .product-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
-  .product-name { font-weight: 600; }
-  .product-price { color: var(--text-secondary); }
+  .product-name { 
+      font-weight: 600; 
+      color: var(--text-dark, #6a381f);
+      font-size: 1rem;
+  }
+  .product-price { 
+      color: var(--text-secondary, #7a7a7a); 
+      font-size: 0.9rem;
+  }
   
   .order-items {
-      flex-grow: 1;
-      overflow-y: auto; /* Allow order items to scroll */
+      flex-grow: 1; /* This makes the item list take up available space */
+      overflow-y: auto; /* Allows just this section to scroll */
+      min-height: 200px; /* Ensures it has some height even when empty */
+      padding: 0.5rem;
+      background-color: #fafafa;
+      border-radius: 0.5rem;
   }
   .order-total {
       border-top: 2px dashed #ddd;
       padding-top: 1rem;
       margin-top: 1rem;
+      flex-shrink: 0; /* Prevent this from shrinking */
   }
   .cart-item {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem;
       margin-bottom: 0.5rem;
+      background-color: #fff;
+      border: 1px solid #eee;
+      border-radius: 0.5rem;
+  }
+  .cart-item-details { 
+      flex-grow: 1;
       font-size: 0.9rem;
   }
-  .cart-item-details { flex-grow: 1; }
-  .cart-item-controls { display: flex; align-items: center; }
-  .cart-item-controls .btn { padding: 0.1rem 0.4rem; font-size: 0.8rem; }
-  .cart-item-controls span { padding: 0 0.5rem; }
+  .cart-item-controls { 
+      display: flex; 
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 1rem;
+   }
+  .cart-item-controls .btn { 
+      padding: 0.1rem 0.5rem; 
+      font-size: 0.9rem; 
+  }
+  .cart-item-controls span { 
+      padding: 0 0.75rem;
+      font-weight: 500;
+  }
+
+/* ADDED: Styles for new inventory page */
+.sidebar-user {
+    margin-top: 1rem;
+}
+.main-content .nav-tabs .nav-link {
+    color: var(--text-secondary);
+}
+.main-content .nav-tabs .nav-link.active {
+    color: var(--text-dark);
+    font-weight: 500;
+    background-color: #fff;
+    border-bottom-color: #fff;
+}
+.table-responsive {
+    max-height: 60vh;
+    overflow-y: auto;
+}

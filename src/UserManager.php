@@ -1,5 +1,5 @@
 <?php
-require_once 'db.php';
+require_once 'db_connection.php';
 
 class UserManager {
     private $conn;
@@ -50,10 +50,6 @@ class UserManager {
         $stmt->execute([$user_id]);
         return $stmt->fetch();
     }
-
-    // =============================================
-    // Password Reset Functions
-    // =============================================
 
     // Calls the 'UserRequestPasswordReset' stored procedure for email.
     public function requestEmailReset($email) {

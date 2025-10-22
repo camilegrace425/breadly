@@ -1,13 +1,11 @@
 <?php
-session_start();  // Start the session
+session_start();
 
-// Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');  // Redirect to login if not logged in
+    header('Location: login.php');
     exit();
 }
 
-// Get user info from session
 $username = $_SESSION['username'];
 $role = $_SESSION['role'];
 ?>
@@ -21,14 +19,14 @@ $role = $_SESSION['role'];
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
   <style>
     body {
-      background-color: #fdfaf6; /* Light cream background */
+      background-color: #fdfaf6;
     }
     .system-name {
       text-align: center;
       font-size: 2rem;
       margin: 2rem 0;
       font-weight: bold;
-      color: #6a381f; /* Main brown color */
+      color: #6a381f;
     }
     .welcome-user {
       text-align: center;
@@ -66,12 +64,6 @@ $role = $_SESSION['role'];
       <?php if ($role == 'cashier' || $role == 'manager'): ?>
         <form action="pos.php" method="get">
           <button type="submit" class="btn btn-success">Go to Point of Sale (POS)</button>
-        </form>
-      <?php endif; ?>
-
-      <?php if ($role == 'baker' || $role == 'manager'): ?>
-        <form action="production.php" method="get">
-          <button type="submit" class="btn btn-info">Record Production</button>
         </form>
       <?php endif; ?>
       

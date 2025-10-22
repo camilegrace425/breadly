@@ -1,8 +1,7 @@
 <?php
 session_start();
-require_once 'UserManager.php'; // Include your user manager
+require_once 'src/UserManager.php';
 
-// (PHP logic remains the same as before)
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard_panel.php');
     exit();
