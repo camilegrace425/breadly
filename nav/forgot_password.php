@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'src/UserManager.php';
+require_once '../src/UserManager.php';
 
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard_panel.php');
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
   <title>Reset Password</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
   
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="../styles.css" />
   
 </head>
 <body>

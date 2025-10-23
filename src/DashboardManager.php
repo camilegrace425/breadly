@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connection.php';
+require_once '../db_connection.php';
 
 // Manages all data fetching for the manager dashboard.
 class DashboardManager {

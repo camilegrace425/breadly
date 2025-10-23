@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connection.php';
+require_once '../db_connection.php';
 
 // Manages fetching sales history data.
 class SalesManager {

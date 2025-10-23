@@ -10,8 +10,8 @@ if ($_SESSION['role'] !== 'manager' && $_SESSION['role'] !== 'cashier') {
     exit();
 }
 
-require_once 'src/POSManager.php';
-require_once 'src/BakeryManager.php';
+require_once '../src/POSManager.php';
+require_once '../src/BakeryManager.php';
 
 $posFunctions = new PosFunctions();
 $products = $posFunctions->getAvailableProducts();
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     
-    <link rel="stylesheet" href="styles.css"> 
+    <link rel="stylesheet" href="../styles.css"> 
     
 </head>
 <body class="pos-page"> <div class="pos-container">
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="js/script_pos.js"></script>
+<script src="../js/script_pos.js"></script>
 
 </body>
 </html>

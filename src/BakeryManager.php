@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connection.php';
+require_once '../db_connection.php';
 
 // Manages all core bakery operations (CRUD, production, sales) by calling stored procedures.
 class BakeryManager {

@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once 'src/InventoryManager.php';
-require_once 'src/BakeryManager.php';
+require_once '../src/InventoryManager.php';
+require_once '../src/BakeryManager.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -130,7 +130,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
     <title>Inventory Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="../styles.css" />
 </head>
 <body class="dashboard">
 <div class="container-fluid">
@@ -658,6 +658,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="js/script_inventory.js"></script>
+<script src="../js/script_inventory.js"></script>
 </body>
 </html>

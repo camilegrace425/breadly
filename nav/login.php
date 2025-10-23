@@ -1,7 +1,7 @@
 <?php
 // --- 1. SECURE LOGIN LOGIC ---
 session_start();
-require_once 'src/UserManager.php'; // Include your secure user manager class
+require_once '../src/UserManager.php'; // Include your secure user manager class
 
 // UPDATED: Redirect to correct page if already logged in
 if (isset($_SESSION['user_id'])) {
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
   <title>Bakery Admin Login</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
   
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="../styles.css" />
   
 </head>
 <body>
