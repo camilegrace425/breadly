@@ -12,7 +12,8 @@ class PosFunctions {
     // Fetches all products that are marked as 'available' for sale.
     public function getAvailableProducts() {
         try {
-            $stmt = $this->conn->query("SELECT product_id, name, price, stock_qty FROM view_ProductInventory WHERE status = 'available' AND stock_qty > 0 ORDER BY name");
+            // UPDATED: Changed from SELECT query to stored procedure
+            $stmt = $this->conn->query("CALL PosGetAvailableProducts()");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];

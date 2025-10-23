@@ -1,7 +1,7 @@
 <?php
 require_once '../db_connection.php';
 
-// Handles fetching data for the inventory management page.
+// Handles fetching data specifically for the inventory management page.
 class InventoryManager {
     private $conn;
 
@@ -10,44 +10,53 @@ class InventoryManager {
         $this->conn = $db->getConnection();
     }
 
-    // Gets all products from the inventory view (excluding discontinued).
     public function getProductsInventory() {
         try {
             $stmt = $this->conn->query("CALL InventoryGetProducts()");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
+            error_log("Error fetching product inventory: " . $e->getMessage());
             return [];
         }
     }
 
-    // Gets a single product's details.
     public function getProductById($product_id) {
          try {
             $stmt = $this->conn->prepare("CALL ProductGetById(?)");
             $stmt->execute([$product_id]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null; // Return null if fetch fails
         } catch (PDOException $e) {
+            error_log("Error fetching product by ID {$product_id}: " . $e->getMessage());
             return null;
         }
     }
 
-
-    // Gets all ingredients from the stock level view.
     public function getIngredientsInventory() {
         try {
             $stmt = $this->conn->query("CALL InventoryGetIngredients()");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
+            error_log("Error fetching ingredient inventory: " . $e->getMessage());
             return [];
         }
     }
 
-    // Gets only discontinued products.
     public function getDiscontinuedProducts() {
         try {
             $stmt = $this->conn->query("CALL InventoryGetDiscontinued()");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
+            error_log("Error fetching discontinued products: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getAdjustmentHistory() {
+        try {
+            $stmt = $this->conn->query("CALL ReportGetStockAdjustmentHistory()");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error fetching adjustment history: " . $e->getMessage());
             return [];
         }
     }

@@ -11,12 +11,47 @@ if ($_SESSION['role'] !== 'manager') {
     exit();
 }
 
-// Handle date filtering, default to today
+// Handle date filtering
 $date_start = $_GET['date_start'] ?? date('Y-m-d');
 $date_end = $_GET['date_end'] ?? date('Y-m-d');
 
+// --- Handle Sorting ---
+$sort_column = $_GET['sort'] ?? 'date'; // Default sort column
+$sort_direction = $_GET['order'] ?? 'DESC'; // Default sort direction
+
+// --- Helper function to build sort links ---
+function getSortLink($column, $currentSort, $currentOrder, $dateStart, $dateEnd) {
+    // Determine the *next* order direction for this column
+    $newOrder = ($currentSort == $column && $currentOrder == 'ASC') ? 'DESC' : 'ASC';
+    
+    $params = http_build_query([
+        'date_start' => $dateStart,
+        'date_end' => $dateEnd,
+        'sort' => $column,
+        'order' => $newOrder
+    ]);
+    return 'sales_history.php?' . $params;
+}
+
+// --- Helper function to get readable sort text ---
+function getCurrentSortText($sort_column, $sort_direction) {
+    $column_map = [
+        'date' => 'Date',
+        'product' => 'Product Name',
+        'qty' => 'Quantity',
+        'price' => 'Total Price',
+        'cashier' => 'Cashier'
+    ];
+    $direction_text = ($sort_direction == 'ASC') ? 'Ascending' : 'Descending';
+    $column_text = $column_map[$sort_column] ?? 'Date'; // Default to Date if unknown
+    return "{$column_text} ({$direction_text})";
+}
+
+// --- End: Sort Logic ---
+
 $salesManager = new SalesManager();
-$sales = $salesManager->getSalesHistory($date_start, $date_end);
+// Pass sort params to the manager
+$sales = $salesManager->getSalesHistory($date_start, $date_end, $sort_column, $sort_direction);
 
 ?>
 
@@ -29,12 +64,13 @@ $sales = $salesManager->getSalesHistory($date_start, $date_end);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../styles.css" />
+    <!-- Sortable header CSS might not be needed anymore, but keep for now -->
 </head>
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
         <aside class="col-lg-2 col-md-3 sidebar">
-            <div class="sidebar-brand">
+             <div class="sidebar-brand">
                 <img src="https://via.placeholder.com/50/6a381f/FFFFFF?Text=B" alt="BREADLY Logo">
                 <h5>BREADLY</h5>
                 <p>Kz & Rhyne's Bakery</p>
@@ -82,17 +118,32 @@ $sales = $salesManager->getSalesHistory($date_start, $date_end);
 
             <div class="card shadow-sm">
                 <div class="card-header">
-                    <form method="GET" action="sales_history.php" class="row g-3 align-items-center">
-                        <div class="col-md-4">
+                     <form method="GET" action="sales_history.php" class="row g-3 align-items-end">
+                        <div class="col-md-3">
                             <label for="date_start" class="form-label">Start Date</label>
                             <input type="date" class="form-control" name="date_start" id="date_start" value="<?php echo htmlspecialchars($date_start); ?>">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="date_end" class="form-label">End Date</label>
                             <input type="date" class="form-control" name="date_end" id="date_end" value="<?php echo htmlspecialchars($date_end); ?>">
                         </div>
-                        <div class="col-md-4" style="margin-top: 38px;">
-                            <button type="submit" class="btn btn-primary">Filter</button>
+                        <div class="col-md-2">
+                             <button type="submit" class="btn btn-primary w-100">Filter</button>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end justify-content-end">
+                            <!-- Sort By Dropdown -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Sort By: <?php echo getCurrentSortText($sort_column, $sort_direction); ?>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="sortDropdown">
+                                    <li><a class="dropdown-item <?php if($sort_column == 'date') echo 'active'; ?>" href="<?php echo getSortLink('date', $sort_column, $sort_direction, $date_start, $date_end); ?>">Date <?php if($sort_column == 'date') echo ($sort_direction == 'ASC' ? '(Asc)' : '(Desc)'); ?></a></li>
+                                    <li><a class="dropdown-item <?php if($sort_column == 'product') echo 'active'; ?>" href="<?php echo getSortLink('product', $sort_column, $sort_direction, $date_start, $date_end); ?>">Product <?php if($sort_column == 'product') echo ($sort_direction == 'ASC' ? '(Asc)' : '(Desc)'); ?></a></li>
+                                    <li><a class="dropdown-item <?php if($sort_column == 'qty') echo 'active'; ?>" href="<?php echo getSortLink('qty', $sort_column, $sort_direction, $date_start, $date_end); ?>">Quantity <?php if($sort_column == 'qty') echo ($sort_direction == 'ASC' ? '(Asc)' : '(Desc)'); ?></a></li>
+                                    <li><a class="dropdown-item <?php if($sort_column == 'price') echo 'active'; ?>" href="<?php echo getSortLink('price', $sort_column, $sort_direction, $date_start, $date_end); ?>">Total Price <?php if($sort_column == 'price') echo ($sort_direction == 'ASC' ? '(Asc)' : '(Desc)'); ?></a></li>
+                                    <li><a class="dropdown-item <?php if($sort_column == 'cashier') echo 'active'; ?>" href="<?php echo getSortLink('cashier', $sort_column, $sort_direction, $date_start, $date_end); ?>">Cashier <?php if($sort_column == 'cashier') echo ($sort_direction == 'ASC' ? '(Asc)' : '(Desc)'); ?></a></li>
+                                </ul>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -101,6 +152,7 @@ $sales = $salesManager->getSalesHistory($date_start, $date_end);
                         <table class="table table-striped table-hover align-middle">
                             <thead>
                                 <tr>
+                                    <!-- Simple headers now -->
                                     <th>Date</th>
                                     <th>Product</th>
                                     <th>Quantity</th>
@@ -137,3 +189,4 @@ $sales = $salesManager->getSalesHistory($date_start, $date_end);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+

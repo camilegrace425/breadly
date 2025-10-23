@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 22, 2025 at 10:03 PM
+-- Generation Time: Oct 23, 2025 at 03:38 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -29,6 +29,16 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `AlertMarkResolved` (IN `alert_id` I
     UPDATE alerts
     SET status = 'resolved'
     WHERE alerts.alert_id = alert_id;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetActiveLowStockAlerts` (IN `p_limit` INT)   BEGIN
+    SELECT * FROM view_ActiveLowStockAlerts 
+    ORDER BY current_stock ASC 
+    LIMIT p_limit;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetLowStockAlertsCount` ()   BEGIN
+    SELECT COUNT(*) AS alertCount FROM view_ActiveLowStockAlerts;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientAdd` (IN `name` VARCHAR(100), IN `unit` VARCHAR(50), IN `stock_qty` FLOAT, IN `reorder_level` FLOAT)   BEGIN
@@ -72,15 +82,20 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientDelete` (IN `p_ingredient
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientRestock` (IN `ingredient_id` INT, IN `added_qty` FLOAT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientRestock` (IN `p_ingredient_id` INT, IN `p_user_id` INT, IN `p_added_qty` FLOAT)   BEGIN
+    -- 1. Update the stock
     UPDATE ingredients
-    SET ingredients.stock_qty = ingredients.stock_qty + added_qty
-    WHERE ingredients.ingredient_id = ingredient_id;
+    SET stock_qty = stock_qty + p_added_qty
+    WHERE ingredient_id = p_ingredient_id;
+    
+    -- 2. Log the adjustment
+    INSERT INTO stock_adjustments (item_id, item_type, user_id, adjustment_qty, reason)
+    VALUES (p_ingredient_id, 'ingredient', p_user_id, p_added_qty, 'Restock');
 
-    -- Optional: If it was out of stock, resolve the alert
+    -- 3. Resolve alert (keep existing logic)
     UPDATE alerts
-    SET alerts.status = 'resolved'
-    WHERE alerts.ingredient_id = ingredient_id AND alerts.status = 'unread';
+    SET status = 'resolved'
+    WHERE ingredient_id = p_ingredient_id AND status = 'unread';
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientUpdate` (IN `p_ingredient_id` INT, IN `p_name` VARCHAR(100), IN `p_unit` VARCHAR(50), IN `p_reorder_level` FLOAT)   BEGIN
@@ -114,6 +129,13 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `InventoryGetProducts` ()   BEGIN
     SELECT * FROM view_ProductInventory ORDER BY name;
 END$$
 
+CREATE DEFINER=`root`@`localhost` PROCEDURE `PosGetAvailableProducts` ()   BEGIN
+    SELECT product_id, name, price, stock_qty 
+    FROM view_ProductInventory 
+    WHERE status = 'available' AND stock_qty > 0 
+    ORDER BY name;
+END$$
+
 CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdd` (IN `name` VARCHAR(100), IN `price` DECIMAL(10,2))   BEGIN
     INSERT INTO products(name, price, stock_qty, status)
     VALUES (name, price, 0, 'available');
@@ -121,13 +143,15 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdd` (IN `name` VARCHAR(100)
     SELECT LAST_INSERT_ID() AS new_product_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdjustStock` (IN `product_id` INT, IN `adjustment_qty` INT, IN `reason` VARCHAR(255))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdjustStock` (IN `p_product_id` INT, IN `p_user_id` INT, IN `p_adjustment_qty` INT, IN `p_reason` VARCHAR(255))   BEGIN
+    -- 1. Update the stock
     UPDATE products
-    SET stock_qty = stock_qty + adjustment_qty
-    WHERE products.product_id = product_id;
+    SET stock_qty = stock_qty + p_adjustment_qty
+    WHERE product_id = p_product_id;
     
-    -- NOTE: You might want a separate 'stock_adjustments' log table
-    -- to record reason and who made the change.
+    -- 2. Log the adjustment
+    INSERT INTO stock_adjustments (item_id, item_type, user_id, adjustment_qty, reason)
+    VALUES (p_product_id, 'product', p_user_id, p_adjustment_qty, p_reason);
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductDelete` (IN `p_product_id` INT, OUT `p_status` VARCHAR(255))   BEGIN
@@ -298,9 +322,9 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `RecallLogRemoval` (IN `recall_id` I
     COMMIT;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeAddIngredient` (IN `product_id` INT, IN `ingredient_id` INT, IN `qty_needed` FLOAT)   BEGIN
-    INSERT INTO recipes(product_id, ingredient_id, qty_needed)
-    VALUES (product_id, ingredient_id, qty_needed);
+CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeAddIngredient` (IN `p_product_id` INT, IN `p_ingredient_id` INT, IN `p_qty_needed` FLOAT, IN `p_unit` VARCHAR(20))   BEGIN
+    INSERT INTO recipes(product_id, ingredient_id, qty_needed, unit) -- Add the column
+    VALUES (p_product_id, p_ingredient_id, p_qty_needed, p_unit); -- Add the value
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeGetForProduct` (IN `product_id` INT)   BEGIN
@@ -327,9 +351,12 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetBestSellers` (IN `date_sta
     ORDER BY total_units_sold DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesHistory` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesHistory` (IN `p_date_start` DATE, IN `p_date_end` DATE, IN `p_sort_column` VARCHAR(50), IN `p_sort_direction` VARCHAR(4))   BEGIN
+    -- Whitelist direction
+    SET @order_dir_asc = (UPPER(p_sort_direction) = 'ASC');
+    
     SELECT 
-        s.date, -- This was the main error (was s.sale_timestamp)
+        s.date,
         p.name AS product_name,
         s.qty_sold,
         (s.qty_sold * p.price) AS total_price,
@@ -341,9 +368,26 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesHistory` (IN `p_date_
     LEFT JOIN 
         users u ON s.user_id = u.user_id
     WHERE 
-        s.date BETWEEN p_date_start AND p_date_end -- Simplified this
-    ORDER BY 
-        s.date DESC; -- Also changed this
+        s.date BETWEEN p_date_start AND p_date_end
+    ORDER BY
+        -- Text Columns
+        CASE WHEN p_sort_column = 'product' AND @order_dir_asc THEN p.name END ASC,
+        CASE WHEN p_sort_column = 'product' AND NOT @order_dir_asc THEN p.name END DESC,
+        CASE WHEN p_sort_column = 'cashier' AND @order_dir_asc THEN u.username END ASC,
+        CASE WHEN p_sort_column = 'cashier' AND NOT @order_dir_asc THEN u.username END DESC,
+        
+        -- Numeric Columns
+        CASE WHEN p_sort_column = 'qty' AND @order_dir_asc THEN s.qty_sold END ASC,
+        CASE WHEN p_sort_column = 'qty' AND NOT @order_dir_asc THEN s.qty_sold END DESC,
+        CASE WHEN p_sort_column = 'price' AND @order_dir_asc THEN total_price END ASC,
+        CASE WHEN p_sort_column = 'price' AND NOT @order_dir_asc THEN total_price END DESC,
+
+        -- Date Column (Default)
+        CASE WHEN p_sort_column = 'date' AND @order_dir_asc THEN s.date END ASC,
+        CASE WHEN p_sort_column = 'date' AND NOT @order_dir_asc THEN s.date END DESC,
+
+        -- Default fallback sort
+        s.date DESC;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesSummaryToday` ()   BEGIN
@@ -354,6 +398,28 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesSummaryToday` ()   BE
         sales
     WHERE 
         date = CURDATE();
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetStockAdjustmentHistory` ()   BEGIN
+    SELECT 
+        sa.timestamp,
+        u.username,
+        sa.item_type,
+        -- Use COALESCE to get the name from the correct table
+        COALESCE(p.name, i.name) AS item_name,
+        sa.adjustment_qty,
+        sa.reason
+    FROM 
+        stock_adjustments sa
+    LEFT JOIN 
+        users u ON sa.user_id = u.user_id
+    LEFT JOIN 
+        products p ON sa.item_id = p.product_id AND sa.item_type = 'product'
+    LEFT JOIN 
+        ingredients i ON sa.item_id = i.ingredient_id AND sa.item_type = 'ingredient'
+    ORDER BY 
+        sa.timestamp DESC
+    LIMIT 200; -- Add a limit for performance
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleRecordTransaction` (IN `user_id` INT, IN `product_id` INT, IN `qty_sold` INT, OUT `status` VARCHAR(100), OUT `sale_id` INT)   BEGIN
@@ -398,6 +464,19 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleRecordTransaction` (IN `user_id
         COMMIT;
     END IF;
     
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCreateAccount` (IN `p_username` VARCHAR(100), IN `p_hashed_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier'), IN `p_email` VARCHAR(150), IN `p_phone_number` VARCHAR(11))   BEGIN
+    INSERT INTO users (username, password, role, email, phone_number) 
+    VALUES (p_username, p_hashed_password, p_role, p_email, p_phone_number);
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `UserFindById` (IN `p_user_id` INT)   BEGIN
+    SELECT user_id, username, role, email, phone_number FROM users WHERE user_id = p_user_id;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `UserLogin` (IN `p_username` VARCHAR(100))   BEGIN
+    SELECT * FROM users WHERE username = p_username;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `UserRequestPasswordReset` (IN `email` VARCHAR(150), OUT `token` VARCHAR(255))   BEGIN
@@ -456,7 +535,6 @@ INSERT INTO `ingredients` (`ingredient_id`, `name`, `unit`, `stock_qty`, `reorde
 (18, 'All-purpose flour', 'kg', 15, 3),
 (19, 'Bisugo', 'kg', 10, 2),
 (20, 'Manalo', 'kg', 10, 2),
-(21, 'Washington', 'kg', 10, 2),
 (22, 'Lulista', 'kg', 20, 4),
 (23, 'Washed sugar', 'kg', 10, 2),
 (24, 'White Sugar', 'kg', 19.8667, 4),
@@ -540,9 +618,9 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`product_id`, `name`, `price`, `status`, `stock_qty`, `batch_size`, `stock_unit`, `is_sellable`) VALUES
-(4, 'Jumbo Pandesal', 5.00, 'available', 0, 150, 'pcs', 1),
-(6, 'Ham & Cheese', 25.00, 'available', 0, 1, 'pcs', 1),
-(7, 'Garlic Cheese', 25.00, 'available', 0, 1, 'pcs', 1);
+(4, 'Jumbo Pandesal', 5.00, 'available', 30, 150, 'pcs', 1),
+(6, 'Ham & Cheese', 25.00, 'available', 10, 1, 'pcs', 1),
+(7, 'Garlic Cheese', 25.00, 'available', 15, 1, 'pcs', 1);
 
 -- --------------------------------------------------------
 
@@ -611,9 +689,49 @@ CREATE TABLE `sales` (
 --
 
 INSERT INTO `sales` (`sale_id`, `product_id`, `user_id`, `qty_sold`, `total_price`, `date`) VALUES
-(0, 4, 3, 10, 50.00, '2025-10-22'),
-(0, 7, 3, 1, 25.00, '2025-10-23'),
-(0, 7, 3, 12, 300.00, '2025-10-23');
+(1, 7, 3, 2, 50.00, '2025-10-23'),
+(2, 4, 3, 10, 50.00, '2025-10-23'),
+(3, 4, 3, 5, 25.00, '2025-10-23'),
+(4, 6, 3, 3, 75.00, '2025-10-23'),
+(5, 4, 3, 5, 25.00, '2025-10-23'),
+(6, 6, 3, 4, 100.00, '2025-10-23'),
+(7, 7, 3, 5, 125.00, '2025-10-23'),
+(8, 7, 3, 2, 50.00, '2025-10-23'),
+(9, 6, 3, 1, 25.00, '2025-10-23'),
+(10, 4, 3, 5, 25.00, '2025-10-23'),
+(11, 7, 3, 4, 100.00, '2025-10-23'),
+(12, 4, 3, 10, 50.00, '2025-10-23'),
+(13, 6, 3, 2, 50.00, '2025-10-23'),
+(14, 7, 3, 2, 50.00, '2025-10-23');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `stock_adjustments`
+--
+
+CREATE TABLE `stock_adjustments` (
+  `adjustment_id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `item_type` enum('product','ingredient') NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `adjustment_qty` float NOT NULL COMMENT 'Can be positive (add) or negative (remove)',
+  `reason` varchar(255) DEFAULT NULL,
+  `timestamp` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `stock_adjustments`
+--
+
+INSERT INTO `stock_adjustments` (`adjustment_id`, `item_id`, `item_type`, `user_id`, `adjustment_qty`, `reason`, `timestamp`) VALUES
+(1, 4, 'product', 3, 5, 'New', '2025-10-23 20:45:44'),
+(2, 4, 'product', 3, 30, 'Newly Baked', '2025-10-23 20:47:09'),
+(3, 6, 'product', 3, 10, 'Newly Baked', '2025-10-23 20:47:23'),
+(4, 7, 'product', 3, 15, 'Newly Baked', '2025-10-23 20:47:30'),
+(5, 7, 'product', 3, 15, 'Newly Baked', '2025-10-23 21:33:31'),
+(6, 6, 'product', 3, 10, 'Newly Baked', '2025-10-23 21:33:37'),
+(7, 4, 'product', 3, 30, 'Newly Baked', '2025-10-23 21:33:46');
 
 -- --------------------------------------------------------
 
@@ -782,6 +900,55 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 DROP TABLE IF EXISTS `view_productinventory`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_productinventory`  AS SELECT `products`.`product_id` AS `product_id`, `products`.`name` AS `name`, `products`.`price` AS `price`, `products`.`stock_qty` AS `stock_qty`, `products`.`status` AS `status`, `products`.`batch_size` AS `batch_size`, `products`.`stock_unit` AS `stock_unit`, `products`.`is_sellable` AS `is_sellable` FROM `products` WHERE `products`.`status` in ('available','recalled') ;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `sales`
+--
+ALTER TABLE `sales`
+  ADD PRIMARY KEY (`sale_id`);
+
+--
+-- Indexes for table `stock_adjustments`
+--
+ALTER TABLE `stock_adjustments`
+  ADD PRIMARY KEY (`adjustment_id`),
+  ADD KEY `user_id_idx` (`user_id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`user_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `sales`
+--
+ALTER TABLE `sales`
+  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT for table `stock_adjustments`
+--
+ALTER TABLE `stock_adjustments`
+  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `stock_adjustments`
+--
+ALTER TABLE `stock_adjustments`
+  ADD CONSTRAINT `fk_stock_adjustments_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

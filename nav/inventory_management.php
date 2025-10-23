@@ -3,6 +3,7 @@ session_start();
 require_once '../src/InventoryManager.php';
 require_once '../src/BakeryManager.php';
 
+// --- Security Checks ---
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
@@ -12,9 +13,11 @@ if ($_SESSION['role'] !== 'manager') {
     exit();
 }
 
+// --- Initialization ---
 $inventoryManager = new InventoryManager();
 $bakeryManager = new BakeryManager();
 
+// --- Message Handling ---
 $message = '';
 $message_type = '';
 if (isset($_SESSION['message'])) {
@@ -24,21 +27,24 @@ if (isset($_SESSION['message'])) {
     unset($_SESSION['message_type']);
 }
 
-$active_tab = 'products';
+// --- Active Tab Handling ---
+$active_tab = 'products'; // Default tab
 if (isset($_SESSION['active_tab'])) {
     $active_tab = $_SESSION['active_tab'];
     unset($_SESSION['active_tab']);
 }
 
-
+// --- POST Request Handling ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $form_active_tab = $_POST['active_tab'] ?? 'products';
+    $form_active_tab = $_POST['active_tab'] ?? 'products'; // Get tab from form submission
 
     try {
         $success_message = '';
         $error_message = '';
+        $current_user_id = $_SESSION['user_id']; // Get current user ID
 
+        // --- Action Switch ---
         switch ($action) {
              case 'add_ingredient':
                 $bakeryManager->addIngredient($_POST['name'], $_POST['unit'], $_POST['stock_qty'], $_POST['reorder_level']);
@@ -46,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
             case 'restock_ingredient':
-                $bakeryManager->restockIngredient($_POST['ingredient_id'], $_POST['added_qty']);
+                $user_id_to_pass = isset($current_user_id) ? $current_user_id : null; // Handle potential missing user ID
+                $bakeryManager->restockIngredient($_POST['ingredient_id'], $user_id_to_pass, $_POST['added_qty']);
                 $success_message = 'Successfully restocked ingredient!';
                 break;
 
@@ -56,12 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
                 case 'adjust_product':
-                    // Use the simplified boolean return value
-                    $result = $bakeryManager->adjustProductStock($_POST['product_id'], $_POST['adjustment_qty'], $_POST['reason']);
+                    $user_id_to_pass = isset($current_user_id) ? $current_user_id : null; // Handle potential missing user ID
+                    $result = $bakeryManager->adjustProductStock($_POST['product_id'], $user_id_to_pass, $_POST['adjustment_qty'], $_POST['reason']);
                     if ($result) {
                         $success_message = 'Successfully adjusted product stock!';
                     } else {
-                        $error_message = 'Failed to execute stock adjustment. Check logs or database connection.';
+                        // More specific error message if possible, otherwise generic
+                        $error_message = 'Failed to execute stock adjustment. Please check input or contact support.';
                     }
                     break;
 
@@ -80,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (strpos($status, 'Success') !== false) {
                     $success_message = $status;
                 } else {
-                    $error_message = $status;
+                    $error_message = $status; // Pass the error message from the procedure
                 }
                 break;
 
@@ -89,11 +97,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  if (strpos($status, 'Success') !== false) {
                     $success_message = $status;
                 } else {
-                    $error_message = $status;
+                    $error_message = $status; // Pass the error message from the procedure
                 }
                 break;
-        }
+        } // End Action Switch
 
+        // --- Set Session Message & Redirect ---
         if ($error_message) {
             $_SESSION['message'] = $error_message;
             $_SESSION['message_type'] = 'danger';
@@ -101,23 +110,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['message'] = $success_message;
             $_SESSION['message_type'] = 'success';
         }
-        $_SESSION['active_tab'] = $form_active_tab;
+        $_SESSION['active_tab'] = $form_active_tab; // Remember the tab where the action occurred
 
-        header('Location: inventory_management.php');
+        header('Location: inventory_management.php'); // Redirect to prevent form resubmission
         exit();
 
     } catch (PDOException $e) {
-        $message = 'An error occurred: ' . $e->getMessage();
+        // --- Database Error Handling ---
+        // Log detailed error for admin/debugging
+        error_log("Database Error in inventory_management.php: " . $e->getMessage());
+        // Set user-friendly message
+        $message = 'A database error occurred. Please try again later.';
         $message_type = 'danger';
-        $active_tab = $form_active_tab;
+        $active_tab = $form_active_tab; // Keep user on the current tab
     }
-}
+} // End POST Handling
 
-
+// --- Fetch Data for Display ---
 $products = $inventoryManager->getProductsInventory();
 $ingredients = $inventoryManager->getIngredientsInventory();
 $discontinued_products = $inventoryManager->getDiscontinuedProducts();
+// Check if class and method exist before calling (robustness)
+if (method_exists($inventoryManager, 'getAdjustmentHistory')) {
+    $adjustment_history = $inventoryManager->getAdjustmentHistory();
+} else {
+    $adjustment_history = []; // Default to empty array if function doesn't exist yet
+}
 
+
+// --- Static Options for Modals ---
 $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
 $product_status_options = ['available', 'recalled', 'discontinued'];
 ?>
@@ -135,6 +156,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
+        <!-- Sidebar -->
         <aside class="col-lg-2 col-md-3 sidebar">
             <div class="sidebar-brand">
                 <img src="https://via.placeholder.com/50/6a381f/FFFFFF?Text=B" alt="BREADLY Logo">
@@ -177,11 +199,13 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
             </div>
         </aside>
 
+        <!-- Main Content Area -->
         <main class="col-lg-10 col-md-9 main-content">
             <div class="header">
                 <h1>Inventory Management</h1>
             </div>
 
+            <!-- Display Session Messages -->
             <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">
                 <?php echo htmlspecialchars($message); ?>
@@ -189,6 +213,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
             </div>
             <?php endif; ?>
 
+            <!-- Inventory Tabs Navigation -->
             <ul class="nav nav-tabs" id="inventoryTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link <?php echo ($active_tab === 'products') ? 'active' : ''; ?>" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-pane" type="button" role="tab">
@@ -205,27 +230,52 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                         <i class="bi bi-slash-circle me-1"></i> Discontinued Products
                     </button>
                 </li>
+                 <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo ($active_tab === 'history') ? 'active' : ''; ?>" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab">
+                        <i class="bi bi-clock-history me-1"></i> Adjustment History
+                    </button>
+                </li>
             </ul>
 
+            <!-- Tab Content Panes -->
             <div class="tab-content" id="inventoryTabContent">
 
+                <!-- =============================================
+                     ACTIVE PRODUCTS TAB PANE
+                ============================================== -->
                 <div class="tab-pane fade <?php echo ($active_tab === 'products') ? 'show active' : ''; ?>" id="products-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Active & Recalled Products</span>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                                <i class="bi bi-plus-circle me-1"></i> Add New Product
-                            </button>
+                            <div>
+                                <!-- Product Sort Dropdown -->
+                                <div class="dropdown d-inline-block me-2">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Sort By: <span class="current-sort-text">Name (A-Z)</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="asc" data-sort-type="number" href="#">Price (Low-High)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="desc" data-sort-type="number" href="#">Price (High-Low)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Stock (Low-High)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Stock (High-Low)</a></li>
+                                    </ul>
+                                </div>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                                    <i class="bi bi-plus-circle me-1"></i> Add New Product
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
-                                            <th>Price</th>
-                                            <th>Status</th>
-                                            <th>Current Stock</th>
+                                            <th data-sort-by="name">Name</th>
+                                            <th data-sort-by="price" data-sort-type="number">Price</th>
+                                            <th data-sort-by="status">Status</th>
+                                            <th data-sort-by="stock" data-sort-type="number">Current Stock</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -236,13 +286,15 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                             <td>P<?php echo number_format($product['price'], 2); ?></td>
                                             <td>
                                                 <?php
-                                                    $status_color = 'success'; // available
+                                                    $status_color = 'success'; // default for 'available'
                                                     if ($product['status'] == 'recalled') $status_color = 'warning';
+                                                    // Add other statuses if needed
                                                 ?>
-                                                <span class="badge bg-<?php echo $status_color; ?>"><?php echo htmlspecialchars($product['status']); ?></span>
+                                                <span class="badge bg-<?php echo $status_color; ?>"><?php echo htmlspecialchars(ucfirst($product['status'])); ?></span>
                                             </td>
                                             <td><strong><?php echo $product['stock_qty']; ?></strong></td>
                                             <td>
+                                                <!-- Action Buttons -->
                                                 <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editProductModal"
                                                         data-product-id="<?php echo $product['product_id']; ?>"
@@ -276,34 +328,55 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </div>
                 </div>
 
+                <!-- =============================================
+                     INGREDIENTS TAB PANE
+                ============================================== -->
                 <div class="tab-pane fade <?php echo ($active_tab === 'ingredients') ? 'show active' : ''; ?>" id="ingredients-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>All Ingredients</span>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addIngredientModal">
-                                <i class="bi bi-plus-circle me-1"></i> Add New Ingredient
-                            </button>
+                            <div>
+                                <!-- Ingredient Sort Dropdown -->
+                                <div class="dropdown d-inline-block me-2">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Sort By: <span class="current-sort-text">Name (A-Z)</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Stock (Low-High)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Stock (High-Low)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="reorder" data-sort-dir="asc" data-sort-type="number" href="#">Reorder (Low-High)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="reorder" data-sort-dir="desc" data-sort-type="number" href="#">Reorder (High-Low)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="status" data-sort-dir="asc" data-sort-type="text" href="#">Status (Low Stock First)</a></li>
+                                         <li><a class="dropdown-item sort-trigger" data-sort-by="status" data-sort-dir="desc" data-sort-type="text" href="#">Status (In Stock First)</a></li>
+                                    </ul>
+                                </div>
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addIngredientModal">
+                                    <i class="bi bi-plus-circle me-1"></i> Add New Ingredient
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                              <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
-                                            <th>Unit</th>
-                                            <th>Current Stock</th>
-                                            <th>Reorder Level</th>
-                                            <th>Status</th>
+                                            <th data-sort-by="name">Name</th>
+                                            <th data-sort-by="unit">Unit</th>
+                                            <th data-sort-by="stock" data-sort-type="number">Current Stock</th>
+                                            <th data-sort-by="reorder" data-sort-type="number">Reorder Level</th>
+                                            <th data-sort-by="status">Status</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($ingredients as $ing): ?>
-                                        <tr class="<?php echo ($ing['stock_surplus'] <= 0) ? 'table-danger' : ''; ?>">
+                                        <tr class="<?php echo ($ing['stock_surplus'] <= 0) ? 'table-danger' : ''; // Highlight low stock rows ?>">
                                             <td><?php echo htmlspecialchars($ing['name']); ?></td>
                                             <td><?php echo htmlspecialchars($ing['unit']); ?></td>
-                                            <td><strong><?php echo $ing['stock_qty']; ?></strong></td>
-                                            <td><?php echo $ing['reorder_level']; ?></td>
+                                            <td><strong><?php echo number_format($ing['stock_qty'], 2); ?></strong></td>
+                                            <td><?php echo number_format($ing['reorder_level'], 2); ?></td>
                                             <td>
                                                 <?php if ($ing['stock_surplus'] <= 0): ?>
                                                     <span class="badge bg-danger">Low Stock</span>
@@ -312,7 +385,8 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <button class="btn btn-outline-primary btn-sm"
+                                                <!-- Action Buttons -->
+                                                 <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editIngredientModal"
                                                         data-ingredient-id="<?php echo $ing['ingredient_id']; ?>"
                                                         data-ingredient-name="<?php echo htmlspecialchars($ing['name']); ?>"
@@ -346,20 +420,37 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </div>
                 </div>
 
+                <!-- =============================================
+                     DISCONTINUED PRODUCTS TAB PANE
+                ============================================== -->
                 <div class="tab-pane fade <?php echo ($active_tab === 'discontinued') ? 'show active' : ''; ?>" id="discontinued-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
-                        <div class="card-header">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Discontinued Products (Archived)</span>
+                            <!-- Discontinued Sort Dropdown -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Sort By: <span class="current-sort-text">Name (A-Z)</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="asc" data-sort-type="number" href="#">Price (Low-High)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="desc" data-sort-type="number" href="#">Price (High-Low)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Last Stock (Low-High)</a></li>
+                                     <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Last Stock (High-Low)</a></li>
+                                </ul>
+                            </div>
                         </div>
-                        <div classV="card-body">
+                        <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
-                                            <th>Price</th>
-                                            <th>Status</th>
-                                            <th>Last Stock</th>
+                                            <th data-sort-by="name">Name</th>
+                                            <th data-sort-by="price" data-sort-type="number">Price</th>
+                                            <th data-sort-by="status">Status</th>
+                                            <th data-sort-by="stock" data-sort-type="number">Last Stock</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -368,9 +459,10 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                         <tr>
                                             <td><?php echo htmlspecialchars($product['name']); ?></td>
                                             <td>P<?php echo number_format($product['price'], 2); ?></td>
-                                            <td><span class="badge bg-secondary"><?php echo htmlspecialchars($product['status']); ?></span></td>
+                                            <td><span class="badge bg-secondary"><?php echo htmlspecialchars(ucfirst($product['status'])); ?></span></td>
                                             <td><?php echo $product['stock_qty']; ?></td>
                                             <td>
+                                                <!-- Action Buttons -->
                                                  <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editProductModal"
                                                         data-product-id="<?php echo $product['product_id']; ?>"
@@ -398,42 +490,117 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </div>
                 </div>
 
-            </div>
-        </main>
-    </div>
-</div>
+                <!-- =============================================
+                     ADJUSTMENT HISTORY TAB PANE
+                ============================================== -->
+                <div class="tab-pane fade <?php echo ($active_tab === 'history') ? 'show active' : ''; ?>" id="history-pane" role="tabpanel">
+                    <div class="card shadow-sm mt-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Stock Adjustment History (Last 200)</span>
+                            <!-- History Sort Dropdown -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Sort By: <span class="current-sort-text">Date (Newest First)</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="desc" data-sort-type="text" href="#">User (Z-A)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="asc" data-sort-type="text" href="#">Type (Ingredient First)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="desc" data-sort-type="text" href="#">Type (Product First)</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
+                                            <th data-sort-by="user">User</th>
+                                            <th data-sort-by="item">Item Name</th>
+                                            <th data-sort-by="type">Type</th>
+                                            <th data-sort-by="qty" data-sort-type="number">Quantity</th>
+                                            <th data-sort-by="reason">Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($adjustment_history)): ?>
+                                            <tr><td colspan="6" class="text-center text-muted">No adjustment history found.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($adjustment_history as $log): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($log['timestamp']))); ?></td>
+                                                <td><?php echo htmlspecialchars($log['username'] ?? 'N/A'); // Handle potentially null username ?></td>
+                                                <td><?php echo htmlspecialchars($log['item_name'] ?? 'Item Deleted'); // Handle potentially deleted items ?></td>
+                                                <td>
+                                                    <?php if ($log['item_type'] == 'product'): ?>
+                                                        <span class="badge bg-primary">Product</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-secondary">Ingredient</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php if ($log['adjustment_qty'] > 0): ?>
+                                                        <strong class="text-success">+<?php echo number_format($log['adjustment_qty'], 2); ?></strong>
+                                                    <?php elseif ($log['adjustment_qty'] < 0): ?>
+                                                        <strong class="text-danger"><?php echo number_format($log['adjustment_qty'], 2); ?></strong>
+                                                    <?php else: ?>
+                                                        <?php echo number_format($log['adjustment_qty'], 2); // Display 0 without color ?>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?php echo htmlspecialchars($log['reason']); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-<div class="modal fade" id="addIngredientModal" tabindex="-1">
+            </div> <!-- End Tab Content -->
+        </main> <!-- End Main Content -->
+    </div> <!-- End Row -->
+</div> <!-- End Container Fluid -->
+
+<!-- Modals Section (Keep all modals as they were) -->
+<!-- Add Ingredient Modal -->
+<div class="modal fade" id="addIngredientModal" tabindex="-1" aria-labelledby="addIngredientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Add New Ingredient</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="addIngredientModalLabel">Add New Ingredient</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="add_ingredient">
-                <input type="hidden" name="active_tab" value="ingredients">
+                <input type="hidden" name="active_tab" value="ingredients"> <!-- Set default active tab -->
                 <div class="mb-3">
-                    <label for="name" class="form-label">Ingredient Name</label>
-                    <input type="text" class="form-control" name="name" required>
+                    <label for="add_ing_name" class="form-label">Ingredient Name</label>
+                    <input type="text" class="form-control" id="add_ing_name" name="name" required>
                 </div>
                 <div class="mb-3">
-                    <label for="unit" class="form-label">Unit</label>
-                    <select class="form-select" name="unit" required>
+                    <label for="add_ing_unit" class="form-label">Unit</label>
+                    <select class="form-select" id="add_ing_unit" name="unit" required>
                         <option value="" selected disabled>Select a unit...</option>
                         <?php foreach ($unit_options as $unit): ?>
-                            <option value="<?php echo $unit; ?>"><?php echo $unit; ?></option>
+                            <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="stock_qty" class="form-label">Initial Stock Quantity</label>
-                    <input type="number" step="0.01" class="form-control" name="stock_qty" value="0" required>
+                    <label for="add_ing_stock" class="form-label">Initial Stock Quantity</label>
+                    <input type="number" step="0.01" class="form-control" id="add_ing_stock" name="stock_qty" value="0" required min="0">
                 </div>
                 <div class="mb-3">
-                    <label for="reorder_level" class="form-label">Reorder Level</label>
-                    <input type="number" step="0.01" class="form-control" name="reorder_level" value="0" required>
+                    <label for="add_ing_reorder" class="form-label">Reorder Level</label>
+                    <input type="number" step="0.01" class="form-control" id="add_ing_reorder" name="reorder_level" value="0" required min="0">
                 </div>
             </div>
             <div class="modal-footer">
@@ -444,12 +611,14 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
         </div>
       </div>
 </div>
-<div class="modal fade" id="restockModal" tabindex="-1">
+
+<!-- Restock Ingredient Modal -->
+<div class="modal fade" id="restockModal" tabindex="-1" aria-labelledby="restockModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="restockModalTitle">Restock Ingredient</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="restockModalLabel">Restock Ingredient</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
@@ -458,9 +627,9 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                 <input type="hidden" name="ingredient_id" id="restock_ingredient_id">
                 <p>Restocking: <strong id="restock_ingredient_name"></strong></p>
                 <div class="mb-3">
-                    <label for="added_qty" class="form-label">Quantity to Add</label>
+                    <label for="restock_added_qty" class="form-label">Quantity to Add</label>
                     <div class="input-group">
-                        <input type="number" step="0.01" class="form-control" name="added_qty" required>
+                        <input type="number" step="0.01" class="form-control" id="restock_added_qty" name="added_qty" required min="0.01">
                         <span class="input-group-text" id="restock_ingredient_unit"></span>
                     </div>
                 </div>
@@ -473,24 +642,26 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
         </div>
       </div>
 </div>
-<div class="modal fade" id="addProductModal" tabindex="-1">
+
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Add New Product</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="addProductModalLabel">Add New Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="add_product">
                 <input type="hidden" name="active_tab" value="products">
                 <div class="mb-3">
-                    <label for="name" class="form-label">Product Name</label>
-                    <input type="text" class="form-control" name="name" required>
+                    <label for="add_prod_name" class="form-label">Product Name</label>
+                    <input type="text" class="form-control" id="add_prod_name" name="name" required>
                 </div>
                 <div class="mb-3">
-                    <label for="price" class="form-label">Price (PHP)</label>
-                    <input type="number" step="0.01" class="form-control" name="price" required>
+                    <label for="add_prod_price" class="form-label">Price (PHP)</label>
+                    <input type="number" step="0.01" class="form-control" id="add_prod_price" name="price" required min="0">
                 </div>
                 <p class="text-muted small">Note: Initial stock is 0. You must record a production run or use "Adjust Stock" to add inventory.</p>
             </div>
@@ -502,27 +673,29 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
         </div>
       </div>
 </div>
-<div class="modal fade" id="adjustProductModal" tabindex="-1">
+
+<!-- Adjust Product Stock Modal -->
+<div class="modal fade" id="adjustProductModal" tabindex="-1" aria-labelledby="adjustProductModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="adjustProductModalTitle">Adjust Product Stock</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="adjustProductModalLabel">Adjust Product Stock</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="adjust_product">
-                <input type="hidden" name="active_tab" value="products">
+                <input type="hidden" name="active_tab" value="products"> <!-- Default, JS might override -->
                 <input type="hidden" name="product_id" id="adjust_product_id">
                 <p>Adjusting: <strong id="adjust_product_name"></strong></p>
                 <div class="mb-3">
-                    <label for="adjustment_qty" class="form-label">Adjustment Quantity</label>
-                    <input type="number" class="form-control" name="adjustment_qty" required>
+                    <label for="adjust_adjustment_qty" class="form-label">Adjustment Quantity</label>
+                    <input type="number" step="1" class="form-control" id="adjust_adjustment_qty" name="adjustment_qty" required placeholder="e.g., -5 or 10">
                     <div class="form-text">Use a negative number to remove stock (e.g., -5 for spoilage) or a positive number to add stock.</div>
                 </div>
                 <div class="mb-3">
-                    <label for="reason" class="form-label">Reason for Adjustment</label>
-                    <input type="text" class="form-control" name="reason" placeholder="e.g., Spoilage, Manual count correction" required>
+                    <label for="adjust_reason" class="form-label">Reason for Adjustment</label>
+                    <input type="text" class="form-control" id="adjust_reason" name="reason" placeholder="e.g., Spoilage, Manual count correction" required>
                 </div>
             </div>
             <div class="modal-footer">
@@ -533,12 +706,14 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
         </div>
       </div>
 </div>
-<div class="modal fade" id="editIngredientModal" tabindex="-1">
+
+<!-- Edit Ingredient Modal -->
+<div class="modal fade" id="editIngredientModal" tabindex="-1" aria-labelledby="editIngredientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="editIngredientModalTitle">Edit Ingredient</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="editIngredientModalLabel">Edit Ingredient</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
@@ -553,13 +728,13 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     <label for="edit_ingredient_unit" class="form-label">Unit</label>
                     <select class="form-select" name="unit" id="edit_ingredient_unit" required>
                         <?php foreach ($unit_options as $unit): ?>
-                            <option value="<?php echo $unit; ?>"><?php echo $unit; ?></option>
+                            <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="mb-3">
                     <label for="edit_ingredient_reorder" class="form-label">Reorder Level</label>
-                    <input type="number" step="0.01" class="form-control" name="reorder_level" id="edit_ingredient_reorder" required>
+                    <input type="number" step="0.01" class="form-control" name="reorder_level" id="edit_ingredient_reorder" required min="0">
                 </div>
             </div>
             <div class="modal-footer">
@@ -570,17 +745,19 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
         </div>
       </div>
 </div>
-<div class="modal fade" id="editProductModal" tabindex="-1">
+
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="editProductModalTitle">Edit Product</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="editProductModalLabel">Edit Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="edit_product">
-                <input type="hidden" name="active_tab" id="edit_product_active_tab" value="products">
+                <input type="hidden" name="active_tab" id="edit_product_active_tab" value="products"> <!-- Default, JS will set based on origin tab -->
                 <input type="hidden" name="product_id" id="edit_product_id">
                 <div class="mb-3">
                     <label for="edit_product_name" class="form-label">Product Name</label>
@@ -588,17 +765,17 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                 </div>
                 <div class="mb-3">
                     <label for="edit_product_price" class="form-label">Price (PHP)</label>
-                    <input type="number" step="0.01" class="form-control" name="price" id="edit_product_price" required>
+                    <input type="number" step="0.01" class="form-control" name="price" id="edit_product_price" required min="0">
                 </div>
                 <div class="mb-3">
                     <label for="edit_product_status" class="form-label">Status</label>
                     <select class="form-select" name="status" id="edit_product_status" required>
                         <option value="" disabled>Select status...</option>
                         <?php foreach ($product_status_options as $status): ?>
-                            <option value="<?php echo $status; ?>"><?php echo ucfirst($status); ?></option>
+                            <option value="<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars(ucfirst($status)); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="form-text">Setting to "Discontinued" will move it to the Discontinued tab.</div>
+                    <div class="form-text">Setting to "Discontinued" will move it to the Discontinued tab and remove it from POS.</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -609,12 +786,14 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
         </div>
       </div>
 </div>
-<div class="modal fade" id="deleteIngredientModal" tabindex="-1">
+
+<!-- Delete Ingredient Modal -->
+<div class="modal fade" id="deleteIngredientModal" tabindex="-1" aria-labelledby="deleteIngredientModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="deleteIngredientModalTitle">Delete Ingredient?</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="deleteIngredientModalLabel">Delete Ingredient?</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
@@ -622,7 +801,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                 <input type="hidden" name="active_tab" value="ingredients">
                 <input type="hidden" name="ingredient_id" id="delete_ingredient_id">
                 <p>Are you sure you want to permanently delete <strong id="delete_ingredient_name"></strong>?</p>
-                <p class="text-danger">This action cannot be undone and will fail if the ingredient is used in any recipes.</p>
+                <p class="text-danger small">This action cannot be undone. Deletion will fail if the ingredient is currently used in any product recipes.</p>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -632,20 +811,22 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
         </div>
       </div>
 </div>
-<div class="modal fade" id="deleteProductModal" tabindex="-1">
+
+<!-- Delete Product Modal -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="deleteProductModalTitle">Delete Product?</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title" id="deleteProductModalLabel">Delete Product?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="inventory_management.php" method="POST">
         <div class="modal-body">
             <input type="hidden" name="action" value="delete_product">
-            <input type="hidden" name="active_tab" id="delete_product_active_tab" value="products">
+            <input type="hidden" name="active_tab" id="delete_product_active_tab" value="products"> <!-- Default, JS will set -->
             <input type="hidden" name="product_id" id="delete_product_id">
             <p>Are you sure you want to permanently delete <strong id="delete_product_name"></strong>?</p>
-            <p class="text-danger">This action cannot be undone and will fail if the product has any sales or production history. Consider marking it as "Discontinued" instead.</p>
+            <p class="text-danger small">This action cannot be undone. Deletion will fail if the product has associated sales or production history. Consider marking it as "Discontinued" instead.</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -656,8 +837,10 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
   </div>
 </div>
 
-
+<!-- Include Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Include Custom Inventory Script -->
 <script src="../js/script_inventory.js"></script>
 </body>
 </html>
+
