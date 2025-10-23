@@ -1,0 +1,298 @@
+/* --- Root Variables for Colors --- */
+:root {
+    --color-background-page: #F8F1E7; /* Light beige background */
+    --color-card-background: #ffffff; /* White form background */
+    --color-panel: #E4A26C; /* Burnt orange panel color */
+    --color-login-btn: #E4A26C; /* Login button color */
+    --color-text-dark: #333333; /* Dark gray text */
+    --color-text-light: #ffffff; /* White text */
+    --color-input-bg: #F0F0F0; /* Light gray input field background */
+}
+
+/* --- Base & Reset --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+/* The logo text and welcome text look like a serif font, potentially 'Georgia' or 'Playfair Display' */
+@import url('https://fonts.googleapis.com/css2?family=Playfair Display:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+    text-decoration: none;
+    list-style: none;
+}
+
+body.page-login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--color-background-page); /* Light beige background */
+    overflow: hidden; /* Prevent scroll issues during transitions */
+}
+
+/* --- Main Wrapper for the Login Card --- */
+.page-login .main-wrapper {
+    position: relative;
+    width: 850px; /* Fixed width as per design */
+    height: 550px; /* Fixed height as per design */
+    background: var(--color-card-background);
+    margin: 20px;
+    border-radius: 30px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, .1);
+    display: flex; /* Use flexbox for the two main sides */
+    overflow: hidden; /* Hide overflowing content during slides */
+    transition: transform 0.6s ease-in-out; /* Smooth transition for the wrapper slide */
+}
+
+/* --- Left Side: Form Content --- */
+.page-login .form-side {
+    width: 50%;
+    height: 100%;
+    position: relative; /* For absolute positioning of form container */
+    overflow: hidden; /* Hide forms that are not active */
+}
+
+.page-login .form-container {
+    display: flex; /* To lay out admin and cashier forms side-by-side */
+    width: 200%; /* Admin + Cashier form widths */
+    height: 100%;
+    transition: transform 0.6s ease-in-out; /* Smooth slide transition for forms */
+}
+
+.page-login .login-form {
+    width: 50%; /* Each form takes half of the form-container width */
+    flex-shrink: 0; /* Prevent forms from shrinking */
+    padding: 70px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    color: var(--color-text-dark);
+    text-align: center; /* Center the form elements */
+}
+
+.page-login.login-form h2 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--color-text-dark);
+}
+
+.page-login .login-form form { 
+    width: 100%; 
+    max-width: 320px; /* Constrain form width as in the design */
+}
+
+.page-login .input-box {
+    position: relative;
+    margin: 30px 0;
+}
+
+.page-login .input-box input {
+    width: 100%;
+    padding: 15px 20px;
+    background: var(--color-input-bg);
+    border-radius: 8px;
+    border: 1px solid transparent; 
+    outline: none;
+    font-size: 16px;
+    color: var(--color-text-dark);
+    font-weight: 500;
+}
+
+.page-login .input-box input::placeholder {
+    color: #888;
+    font-weight: 400;
+    text-align: left; 
+}
+
+.page-login .password-box input {
+    padding-right: 50px; 
+}
+
+.page-login .password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    cursor: pointer;
+    color: #888;
+}
+
+.page-login .forgot-link {
+    margin: 10px 0 0; 
+    text-align: center; /* Center the forgot password link */
+    width: 100%;
+}
+
+.page-login .forgot-link a {
+    font-size: 14.5px;
+    color: var(--color-text-dark);
+    font-weight: 500;
+}
+
+.page-login .forgot-link a:hover {
+   color:#ef914f;
+}
+.page-login .btn {
+    width: 100%;
+    height: 50px;
+    background:#ef914f;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, .1);
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--color-text-light);
+    font-weight: 600;
+    transition: background-color 0.3s;
+}
+
+.page-login .btn:hover {
+    background: #9b4a10; /* Slightly darker orange on hover */
+}
+
+/* --- Right Side: Brand Panel (Switches to left in Cashier mode) --- */
+.page-login .brand-side {
+    width: 50%;
+    height: 100%;
+    background-color: var(--color-panel); /* Burnt orange background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 0 30px 30px 0; /* Rounded corners for initial Admin view */
+    transition: border-radius 0.6s ease-in-out; /* Smooth transition for corner change */
+}
+
+.page-login .brand-content {
+    text-align: center;
+    color: var(--color-text-light);
+    width: 100%;
+    padding: 20px;
+}
+
+.page-login .welcome-text {
+    font-family: 'Playfair Display', serif; 
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 25px;
+    color:black;
+}
+
+.page-login .logo-wrapper {
+    background-color: transparent;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 20px auto;
+    width: fit-content;
+    box-shadow: none; /* Subtle shadow for the logo wrapper */
+}
+
+.page-login .bakery-logo {
+    max-width: 300px; 
+    height: auto;
+    display: block;
+}
+
+/* --- Dynamic Switching Button (Cashier/Admin Login?) --- */
+.switch-btn {
+    width: 160px;
+    height: 46px;
+    background-color: #9b4a10;
+    border: none;
+    color: white; /* Orange text */
+    box-shadow: none;
+    margin-top: 15px;
+}
+
+.switch-btn:hover {
+    background: #efefef;
+    color: #c98858;
+}
+
+/* --- State for Cashier Mode (when body has .cashier-mode) --- */
+body.page-login.cashier-mode .main-wrapper {
+    flex-direction: row-reverse; /* Swaps brand-side and form-side */
+}
+
+body.page-login.cashier-mode .form-container {
+    transform: translateX(-50%); 
+}
+
+body.page-login.cashier-mode .brand-side {
+    border-radius: 30px 0 0 30px; 
+}
+.page-landing,
+.page-landing html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.page-landing .landing-page {
+    height: 100vh;
+    padding: 0;
+    /* Ensure page-landing body has the correct background */
+    background-color: #f8f0e5;
+}
+
+/* Text Column Styling (Left Side) */
+.page-landing .text-column {
+    /* Set the light tan background color from the image */
+    background-color: #f8f0e5;
+    
+    /* We can remove the Arial font, Poppins from the reset will be used */
+}
+
+/* Heading Font Style */
+.page-landing .text-column h1 {
+    font-family: 'Lora', 'Georgia', serif; 
+    color: #333;
+    line-height: 1.1;
+}
+
+/* Description and Powered-by Text */
+.page-landing .description-text, 
+.page-landing .powered-by-text {
+    font-size: 1.1rem;
+    color: #444;
+}
+
+.page-landing .content-box {
+    max-width: 500px;
+    padding: 0; 
+}
+/* LOGIN Button Styling */
+.page-landing .login-btn {
+    background-color: #E4A26C; 
+    border-color: #E4A26C; 
+    color: #fff;
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+}
+
+.page-landing .login-btn:hover {
+  background-color: #c98858; 
+    border-color: #c98858;
+    color: #fff;
+}
+
+/* Image Column Styling (Right Side) */
+.page-landing .bakery-column {
+   /* This is where we will add the 3D effect */
+   padding: 0; /* Remove bootstrap's default column padding */
+}
+
+.page-landing .bakery-img {
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    height: 100%;
+    width: 100%;
+}
