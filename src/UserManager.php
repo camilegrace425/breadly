@@ -19,10 +19,8 @@ class UserManager {
         }
 
         try {
-            $stmt = $this->conn->prepare(
-                "INSERT INTO users (username, password, role, email, phone_number) 
-                 VALUES (?, ?, ?, ?, ?)"
-            );
+            // UPDATED: Changed from INSERT query to stored procedure
+            $stmt = $this->conn->prepare("CALL UserCreateAccount(?, ?, ?, ?, ?)");
             return $stmt->execute([$username, $hashed_password, $role, $email, $phone_number]);
         } catch (PDOException $e) {
             return false;
@@ -32,7 +30,8 @@ class UserManager {
     // Authenticates a user by checking username and verifying the hashed password.
     public function login($username, $plain_password) {
         
-        $stmt = $this->conn->prepare("SELECT * FROM users WHERE username = ?");
+        // UPDATED: Changed from SELECT query to stored procedure
+        $stmt = $this->conn->prepare("CALL UserLogin(?)");
         $stmt->execute([$username]);
         $user = $stmt->fetch();
 
@@ -46,7 +45,8 @@ class UserManager {
 
     // Finds a user by their ID.
     public function findUserById($user_id) {
-        $stmt = $this->conn->prepare("SELECT user_id, username, role, email, phone_number FROM users WHERE user_id = ?");
+        // UPDATED: Changed from SELECT query to stored procedure
+        $stmt = $this->conn->prepare("CALL UserFindById(?)");
         $stmt->execute([$user_id]);
         return $stmt->fetch();
     }

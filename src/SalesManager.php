@@ -12,12 +12,12 @@ class SalesManager {
 
     /**
      * Gets a paginated or date-ranged list of sales transactions.
-     * Calls: ReportGetSalesHistory(?, ?)
+     * Calls: ReportGetSalesHistory(?, ?, ?, ?)
      */
-    public function getSalesHistory($date_start, $date_end) {
+    public function getSalesHistory($date_start, $date_end, $sort_column, $sort_direction) {
         try {
-            $stmt = $this->conn->prepare("CALL ReportGetSalesHistory(?, ?)");
-            $stmt->execute([$date_start, $date_end]);
+            $stmt = $this->conn->prepare("CALL ReportGetSalesHistory(?, ?, ?, ?)");
+            $stmt->execute([$date_start, $date_end, $sort_column, $sort_direction]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
