@@ -4,12 +4,16 @@ const switchBtn = document.getElementById('switch-btn');
 
 document.querySelectorAll('.password-toggle').forEach(toggle => {
     toggle.addEventListener('click', () => {
-        const input = toggle.previousElementSibling; // Get the input field
-        const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-        input.setAttribute('type', type);
-        
-        toggle.classList.toggle('bx-show-alt');
-        toggle.classList.toggle('bx-hide');
+        const inputContainer = toggle.closest('.input-box'); 
+        const input = inputContainer ? inputContainer.querySelector('input') : null;
+
+        if (input) {
+            const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+            input.setAttribute('type', type);
+            
+            toggle.classList.toggle('bx-show-alt');
+            toggle.classList.toggle('bx-hide')
+        }
     });
 });
 

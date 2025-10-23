@@ -5,58 +5,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KZ and Khyle's Bakery | Powered by BREADLY</title>
-    <link href="https://cdn.jsdelivr-net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="styles.css">
-
-    <style>
-        /* This style block ensures the specific bakery image is used */
-        .bakery-img {
-            background-image: url('images/landingbakery.png');
-        }
-    </style>
-
+    <!-- FIXED: Removed redundant Lora font import, as it's already in styles.css -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css"> 
 </head>
 
 <body class="page-landing">
 
     <div class="container-fluid landing-page">
-        <div class="row h-100">
+        <div class="row d-flex">
 
-            <div class="col-lg-6 col-12 d-flex align-items-center text-column" style="padding: 5rem;">
-                <div class="content-box">
+            <!-- This column order is correct: text on the left -->
+            <div class="col-6 d-flex align-items-center text-column">
+                <div class="content-box w-100">
 
-                    <h1 class="display-3 fw-bold text-dark mb-4">
+                    <h1 class="fw-bold mb-4">
                         KZ and Khyle's <br>Bakery
                     </h1>
 
                     <p class="mb-4 description-text">
-                        A bakery management system designed for **KZ & Khyle's Bakery**. It automates inventory
+                        A bakery management system designed for <strong>"KZ & Khyle's Bakery"</strong>. It automates inventory
                         tracking, sales monitoring, and production management — ensuring efficiency and accuracy in
-                        daily operations. **BREADLY** helps the bakery stay organized, productive, and always ready to
+                        daily operations. <strong>BREADLY </strong>helps the bakery stay organized, productive, and always ready to
                         serve freshly baked happiness.
                     </p>
 
-                    <p class="mb-5 powered-by-text" style="margin-bottom: 50px !important;">
-                        Powered by <span class="fw-bold">BREADLY</span>
+                    <p class="mb-5 powered-by-text">
+                        Powered by <span class="fw-bold powered-by-brand">BREADLY</span>
                     </p>
 
-                    <a href="login.html" class="btn login-btn btn-lg fw-bold" role="button">
+                    <a href="login.html" class="btn login-btn fw-bold" role="button">
                         LOGIN
                     </a>
 
                 </div>
             </div>
 
-            <div class="col-lg-6 col-12 bakery-column">
-                <div class="bakery-img h-100 w-100">
-                </div>
+            <!-- This column order is correct: image on the right -->
+            <div class="col-6 bakery-column">
+                <!-- Ensure 'landingbakery.jpg' is in the same folder or update the src path -->
+                <img src="images/landingbakery.jpg" alt="KZ and Khyle's Front" class="bakery-img">
             </div>
+
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr-net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
 </body>
 
