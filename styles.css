@@ -1,0 +1,380 @@
+/* ===================================================================
+   Global & Login/Forgot Password Styles
+   =================================================================== */
+
+   body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .container-fluid {
+    height: 100vh;
+  }
+  
+  /* Page split layout for login/forgot */
+  .login-left {
+    background: linear-gradient(to bottom right, #6a381f, #a0522d);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+  }
+  .login-left h1 {
+    font-size: 3rem;
+    font-weight: bold;
+  }
+  .login-left p {
+    font-size: 1.2rem;
+    max-width: 400px;
+    text-align: center;
+  }
+  
+  .login-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background-color: #fdfaf6;
+  }
+  
+  /* Form container for login/forgot */
+  .form-box {
+    background: #ffffff;
+    padding: 2.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+  }
+  .form-box h2 {
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    color: #6a381f;
+  }
+  .form-box .form-control {
+    border-radius: 0.5rem;
+  }
+  .form-box .btn-primary {
+    width: 100%;
+    border-radius: 0.5rem;
+    background-color: #8B4513;
+    border-color: #8B4513;
+    transition: 0.3s ease;
+  }
+  .form-box .btn-primary:hover {
+    background-color: #6a381f;
+    border-color: #6a381f;
+  }
+  .form-box .alert {
+    font-size: 0.9rem;
+  }
+  
+  
+  /* ===================================================================
+     Dashboard Panel Styles
+     =================================================================== */
+  
+  /* Define color palette from the image */
+  :root {
+      --bg-light-cream: #FFFBF5;
+      --sidebar-bg: #FDEEDC;
+      --card-bg-1: #FEE8D0; /* Sales card */
+      --card-bg-2: #FBF3D5; /* Orders card */
+      --card-bg-3: #FBF3D5; /* Best Selling card */
+      --card-bg-4: #F8DFAA; /* Inventory/Low stock card */
+      --text-dark: #6a381f;
+      --text-secondary: #7a7a7a;
+      --bar-color-1: #E5A26A;
+      --bar-color-2: #F5C6A5;
+      --bar-color-3: #D3D3D3; /* Light gray for Choco German bar */
+  }
+  
+  /* Apply main background and font to dashboard body */
+  body.dashboard {
+      background-color: var(--bg-light-cream);
+      color: var(--text-dark);
+      height: auto; /* Override 100% height for dashboard */
+      min-height: 100vh;
+  }
+  
+  .sidebar {
+      background-color: var(--sidebar-bg);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      display: flex; /* ADDED: For sticky footer */
+      flex-direction: column; /* ADDED: For sticky footer */
+  }
+  .sidebar-brand {
+      text-align: center;
+      margin-bottom: 2rem;
+  }
+  .sidebar-brand img {
+      max-width: 50px;
+      margin-bottom: 0.5rem;
+  }
+  .sidebar-brand h5 {
+      font-weight: bold;
+      color: var(--text-dark);
+  }
+  .sidebar-brand p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+  }
+  .sidebar-nav {
+      flex-grow: 1; /* ADDED: Pushes user menu down */
+  }
+  .sidebar-nav .nav-link {
+      padding: 0.75rem 1.5rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0.5rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+  }
+  .sidebar-nav .nav-link.active {
+      background-color: var(--text-dark);
+      color: #fff;
+  }
+  .sidebar-nav .nav-link:hover {
+      background-color: #f8e5d0;
+  }
+  
+  .main-content {
+      padding: 2rem;
+  }
+  
+  .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+  }
+  .header h1 {
+      font-weight: bold;
+      color: var(--text-dark);
+  }
+  
+  .stat-card {
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: none;
+      margin-bottom: 1.5rem;
+  }
+  .stat-card h1 {
+      font-weight: 700;
+      color: var(--text-dark);
+  }
+  .stat-card p {
+      margin: 0;
+      color: var(--text-secondary);
+  }
+  .stat-card .percent-change {
+      font-size: 0.9rem;
+      color: #6c757d;
+  }
+  
+  .chart-container, .low-stock-card {
+      background-color: #fff;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+  }
+  
+  h3.chart-title {
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+  }
+  
+  /* Horizontal Bar Chart Simulation */
+  .bar-chart-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+  }
+  .bar-label {
+      width: 100px; /* Fixed width for labels */
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      flex-shrink: 0; /* Prevents label from shrinking */
+  }
+  .bar-wrapper {
+      flex-grow: 1;
+      background-color: #f3f3f3;
+      border-radius: 4px;
+  }
+  .bar {
+      height: 18px;
+      border-radius: 4px;
+  }
+  
+  /* Low Stock / Best Seller Card */
+  .low-stock-card {
+      background-color: var(--card-bg-4);
+  }
+  .low-stock-card h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+  }
+  .low-stock-card .best-seller-name {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 1.5rem;
+  }
+  .low-stock-card .low-stock-warning {
+      color: #d9534f; /* Red warning color */
+      font-weight: bold;
+      font-size: 1.1rem;
+  }
+  .low-stock-card .low-stock-details {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+  }
+  .low-stock-card a {
+      color: var(--text-dark);
+      font-weight: 500;
+      text-decoration: none;
+  }
+  .low-stock-card a:hover {
+      text-decoration: underline;
+  }
+  
+  /* ===================================================================
+     POS System Styles
+     =================================================================== */
+  
+  body.pos-page {
+      background-color: var(--bg-light-cream, #fdfaf6);
+      height: 100vh;
+      overflow: hidden; /* Prevent scrolling of the whole page */
+  }
+  .pos-container {
+      display: grid;
+      /* Responsive grid: 1 column on small screens, 2 on medium+ */
+      grid-template-columns: 1fr;
+      /* We use 100vh (viewport height) minus padding */
+      height: calc(100vh - 2rem); 
+      gap: 1rem;
+      padding: 1rem;
+  }
+
+  /* Apply 2-column layout on screens 768px and wider */
+  @media (min-width: 768px) {
+    .pos-container {
+        grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  .product-grid {
+      background-color: #fff;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      overflow-y: auto; /* Allow product grid to scroll */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      /* Ensure it doesn't collapse and has a scrollbar */
+      height: 100%;
+  }
+  .order-panel {
+      background-color: #fff;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      /* Allow panel to scroll if content overflows */
+      height: 100%;
+      overflow-y: auto; 
+  }
+
+  .product-card {
+      border: 1px solid #eee;
+      border-radius: 0.5rem;
+      text-align: center;
+      padding: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      height: 100%; /* Make cards in a row same height */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background-color: #fff;
+  }
+  .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .product-name { 
+      font-weight: 600; 
+      color: var(--text-dark, #6a381f);
+      font-size: 1rem;
+  }
+  .product-price { 
+      color: var(--text-secondary, #7a7a7a); 
+      font-size: 0.9rem;
+  }
+  
+  .order-items {
+      flex-grow: 1; /* This makes the item list take up available space */
+      overflow-y: auto; /* Allows just this section to scroll */
+      min-height: 200px; /* Ensures it has some height even when empty */
+      padding: 0.5rem;
+      background-color: #fafafa;
+      border-radius: 0.5rem;
+  }
+  .order-total {
+      border-top: 2px dashed #ddd;
+      padding-top: 1rem;
+      margin-top: 1rem;
+      flex-shrink: 0; /* Prevent this from shrinking */
+  }
+  .cart-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      background-color: #fff;
+      border: 1px solid #eee;
+      border-radius: 0.5rem;
+  }
+  .cart-item-details { 
+      flex-grow: 1;
+      font-size: 0.9rem;
+  }
+  .cart-item-controls { 
+      display: flex; 
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 1rem;
+   }
+  .cart-item-controls .btn { 
+      padding: 0.1rem 0.5rem; 
+      font-size: 0.9rem; 
+  }
+  .cart-item-controls span { 
+      padding: 0 0.75rem;
+      font-weight: 500;
+  }
+
+/* ADDED: Styles for new inventory page */
+.sidebar-user {
+    margin-top: 1rem;
+}
+.main-content .nav-tabs .nav-link {
+    color: var(--text-secondary);
+}
+.main-content .nav-tabs .nav-link.active {
+    color: var(--text-dark);
+    font-weight: 500;
+    background-color: #fff;
+    border-bottom-color: #fff;
+}
+.table-responsive {
+    max-height: 60vh;
+    overflow-y: auto;
+}
