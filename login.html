@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BREADLY Login</title>
     <link rel="stylesheet" href="styles.css"> 
+    <!-- Boxicons CSS for the eye icons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 </head>
 <body class="page-login">
     <div class="main-wrapper">
         <div class="form-side">
             <div class="form-container" id="formContainer">
-                <!-- Admin Login Form --><div class="login-form admin-form active" id="adminLoginForm">
+                
+                <!-- Admin Login Form -->
+                <div class="login-form admin-form active" id="adminLoginForm">
                     <h2>Admin Login</h2>
                     <form action="#">
                         <div class="input-box">
@@ -23,12 +26,13 @@
                         </div>
                         <button type="submit" class="btn">LOGIN</button>
                         <div class="forgot-link">
-                            <a href="#">Forgot password?</a>
+                            <a href="forgot-password.html">Forgot password?</a>
                         </div>
                     </form>
                 </div>
 
-                <!-- Cashier Login Form --><div class="login-form cashier-form" id="cashierLoginForm">
+                <!-- Cashier Login Form -->
+                <div class="login-form cashier-form" id="cashierLoginForm">
                     <h2>Cashier Login</h2>
                     <form action="#">
                         <div class="input-box">
@@ -36,11 +40,12 @@
                         </div>
                         <div class="input-box password-box">
                             <input type="password" placeholder="Password" required>
-                            <i class='bx bx-show-alt password-toggle' data-target="cashierPassword"></i> 
+                            <!-- FIXED: Changed 'bx-show-alt' to 'bx-hide' to match the default password state -->
+                            <i class='bx bx-hide password-toggle' data-target="cashierPassword"></i> 
                         </div>
                         <button type="submit" class="btn">LOGIN</button>
                         <div class="forgot-link">
-                            <a href="#">Forgot password?</a>
+                            <a href="forgot-password.html">Forgot password?</a>
                         </div>
                     </form>
                 </div>
