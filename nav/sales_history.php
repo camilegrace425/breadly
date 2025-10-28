@@ -171,7 +171,7 @@ $sales = $salesManager->getSalesHistory($date_start, $date_end, $sort_column, $s
                                         <td><?php echo htmlspecialchars(date('M d, Y', strtotime($sale['date']))); ?></td>
                                         <td><?php echo htmlspecialchars($sale['product_name']); ?></td>
                                         <td><?php echo htmlspecialchars($sale['qty_sold']); ?></td>
-                                        <td>P<?php echo htmlspecialchars(number_format($sale['total_price'], 2)); ?></td>
+                                        <td>₱<?php echo htmlspecialchars(number_format($sale['total_price'], 2)); ?></td>
                                         <td><?php echo htmlspecialchars($sale['cashier_username']); ?></td>
                                     </tr>
                                     <?php endforeach; ?>

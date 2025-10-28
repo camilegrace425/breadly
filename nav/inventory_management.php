@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
             case 'restock_ingredient':
-                $user_id_to_pass = isset($current_user_id) ? $current_user_id : null; // Handle potential missing user ID
+                $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
                 $bakeryManager->restockIngredient($_POST['ingredient_id'], $user_id_to_pass, $_POST['added_qty']);
                 $success_message = 'Successfully restocked ingredient!';
                 break;
@@ -63,12 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
                 case 'adjust_product':
-                    $user_id_to_pass = isset($current_user_id) ? $current_user_id : null; // Handle potential missing user ID
+                    $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
                     $result = $bakeryManager->adjustProductStock($_POST['product_id'], $user_id_to_pass, $_POST['adjustment_qty'], $_POST['reason']);
                     if ($result) {
                         $success_message = 'Successfully adjusted product stock!';
                     } else {
-                        // More specific error message if possible, otherwise generic
                         $error_message = 'Failed to execute stock adjustment. Please check input or contact support.';
                     }
                     break;
@@ -117,9 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } catch (PDOException $e) {
         // --- Database Error Handling ---
-        // Log detailed error for admin/debugging
         error_log("Database Error in inventory_management.php: " . $e->getMessage());
-        // Set user-friendly message
         $message = 'A database error occurred. Please try again later.';
         $message_type = 'danger';
         $active_tab = $form_active_tab; // Keep user on the current tab
@@ -129,18 +126,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // --- Fetch Data for Display ---
 $products = $inventoryManager->getProductsInventory();
 $ingredients = $inventoryManager->getIngredientsInventory();
+// Fetch recall history using the date-aware function (defaulting to a wide range for the tab view)
+$recall_history = $inventoryManager->getRecallHistoryByDate('1970-01-01', date('Y-m-d')); 
 $discontinued_products = $inventoryManager->getDiscontinuedProducts();
-// Check if class and method exist before calling (robustness)
 if (method_exists($inventoryManager, 'getAdjustmentHistory')) {
     $adjustment_history = $inventoryManager->getAdjustmentHistory();
 } else {
-    $adjustment_history = []; // Default to empty array if function doesn't exist yet
+    $adjustment_history = [];
 }
 
 
 // --- Static Options for Modals ---
 $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
-$product_status_options = ['available', 'recalled', 'discontinued'];
+// Removed 'recalled' status
+$product_status_options = ['available', 'discontinued'];
 ?>
 
 <!DOCTYPE html>
@@ -156,7 +155,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
         <aside class="col-lg-2 col-md-3 sidebar">
             <div class="sidebar-brand">
                 <img src="https://via.placeholder.com/50/6a381f/FFFFFF?Text=B" alt="BREADLY Logo">
@@ -199,13 +197,11 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
             </div>
         </aside>
 
-        <!-- Main Content Area -->
         <main class="col-lg-10 col-md-9 main-content">
             <div class="header">
                 <h1>Inventory Management</h1>
             </div>
 
-            <!-- Display Session Messages -->
             <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">
                 <?php echo htmlspecialchars($message); ?>
@@ -213,7 +209,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
             </div>
             <?php endif; ?>
 
-            <!-- Inventory Tabs Navigation -->
             <ul class="nav nav-tabs" id="inventoryTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link <?php echo ($active_tab === 'products') ? 'active' : ''; ?>" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-pane" type="button" role="tab">
@@ -226,8 +221,13 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </button>
                 </li>
                  <li class="nav-item" role="presentation">
+                    <button class="nav-link text-warning <?php echo ($active_tab === 'recall_log') ? 'active' : ''; ?>" id="recall-log-tab" data-bs-toggle="tab" data-bs-target="#recall-log-pane" type="button" role="tab">
+                        <i class="bi bi-exclamation-triangle me-1"></i> Recall Log
+                    </button>
+                </li>
+                 <li class="nav-item" role="presentation">
                     <button class="nav-link <?php echo ($active_tab === 'discontinued') ? 'active' : ''; ?>" id="discontinued-tab" data-bs-toggle="tab" data-bs-target="#discontinued-pane" type="button" role="tab">
-                        <i class="bi bi-slash-circle me-1"></i> Discontinued Products
+                        <i class="bi bi-slash-circle me-1"></i> Discontinued
                     </button>
                 </li>
                  <li class="nav-item" role="presentation">
@@ -237,18 +237,13 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                 </li>
             </ul>
 
-            <!-- Tab Content Panes -->
             <div class="tab-content" id="inventoryTabContent">
 
-                <!-- =============================================
-                     ACTIVE PRODUCTS TAB PANE
-                ============================================== -->
                 <div class="tab-pane fade <?php echo ($active_tab === 'products') ? 'show active' : ''; ?>" id="products-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span>Active & Recalled Products</span>
+                            <span>Active Products</span>
                             <div>
-                                <!-- Product Sort Dropdown -->
                                 <div class="dropdown d-inline-block me-2">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
@@ -283,18 +278,12 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                         <?php foreach ($products as $product): ?>
                                         <tr>
                                             <td><?php echo htmlspecialchars($product['name']); ?></td>
-                                            <td>P<?php echo number_format($product['price'], 2); ?></td>
+                                            <td>₱<?php echo number_format($product['price'], 2); ?></td>
                                             <td>
-                                                <?php
-                                                    $status_color = 'success'; // default for 'available'
-                                                    if ($product['status'] == 'recalled') $status_color = 'warning';
-                                                    // Add other statuses if needed
-                                                ?>
-                                                <span class="badge bg-<?php echo $status_color; ?>"><?php echo htmlspecialchars(ucfirst($product['status'])); ?></span>
+                                                <span class="badge bg-success"><?php echo htmlspecialchars(ucfirst($product['status'])); ?></span>
                                             </td>
                                             <td><strong><?php echo $product['stock_qty']; ?></strong></td>
                                             <td>
-                                                <!-- Action Buttons -->
                                                 <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editProductModal"
                                                         data-product-id="<?php echo $product['product_id']; ?>"
@@ -319,7 +308,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                         </tr>
                                         <?php endforeach; ?>
                                         <?php if (empty($products)): ?>
-                                            <tr><td colspan="5" class="text-center text-muted">No active or recalled products found.</td></tr>
+                                            <tr><td colspan="5" class="text-center text-muted">No active products found.</td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -328,15 +317,11 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </div>
                 </div>
 
-                <!-- =============================================
-                     INGREDIENTS TAB PANE
-                ============================================== -->
                 <div class="tab-pane fade <?php echo ($active_tab === 'ingredients') ? 'show active' : ''; ?>" id="ingredients-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>All Ingredients</span>
                             <div>
-                                <!-- Ingredient Sort Dropdown -->
                                 <div class="dropdown d-inline-block me-2">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
@@ -385,8 +370,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <!-- Action Buttons -->
-                                                 <button class="btn btn-outline-primary btn-sm"
+                                                <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editIngredientModal"
                                                         data-ingredient-id="<?php echo $ing['ingredient_id']; ?>"
                                                         data-ingredient-name="<?php echo htmlspecialchars($ing['name']); ?>"
@@ -420,14 +404,85 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </div>
                 </div>
 
-                <!-- =============================================
-                     DISCONTINUED PRODUCTS TAB PANE
-                ============================================== -->
+                <div class="tab-pane fade <?php echo ($active_tab === 'recall_log') ? 'show active' : ''; ?>" id="recall-log-pane" role="tabpanel">
+                    <div class="card shadow-sm mt-3 border-warning">
+                        <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+                            <span>Recall Log (From Adjust Stock)</span>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Sort By: <span class="current-sort-text">Date (Newest First)</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
+                                    <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                             <p class="text-muted">This log shows all stock adjustments where the reason contains the word "recall". Use the "Adjust Stock" button on a product to create a recall entry.</p>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
+                                            <th data-sort-by="user">User</th>
+                                            <th data-sort-by="item">Item Name</th>
+                                            <th data-sort-by="type">Type</th>
+                                            <th data-sort-by="qty" data-sort-type="number">Quantity</th>
+                                            <th data-sort-by="value" data-sort-type="number">Removed Value</th>
+                                            <th data-sort-by="reason">Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($recall_history)): ?>
+                                            <tr><td colspan="7" class="text-center text-muted">No recall history found.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($recall_history as $log): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($log['timestamp']))); ?></td>
+                                                <td><?php echo htmlspecialchars($log['username'] ?? 'N/A'); ?></td>
+                                                <td><?php echo htmlspecialchars($log['item_name'] ?? 'Item Deleted'); ?></td>
+                                                <td>
+                                                    <?php if ($log['item_type'] == 'product'): ?>
+                                                        <span class="badge bg-primary">Product</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-secondary">Ingredient</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php if ($log['adjustment_qty'] > 0): ?>
+                                                        <strong class="text-success">+<?php echo number_format($log['adjustment_qty'], 2); ?></strong>
+                                                    <?php elseif ($log['adjustment_qty'] < 0): ?>
+                                                        <strong class="text-danger"><?php echo number_format($log['adjustment_qty'], 2); ?></strong>
+                                                    <?php else: ?>
+                                                        <?php echo number_format($log['adjustment_qty'], 2); ?>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php if ($log['removed_value'] < 0): ?>
+                                                        <span class="text-danger">₱<?php echo number_format(abs($log['removed_value']), 2); ?></span>
+                                                    <?php else: ?>
+                                                        P0.00
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?php echo htmlspecialchars($log['reason']); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="tab-pane fade <?php echo ($active_tab === 'discontinued') ? 'show active' : ''; ?>" id="discontinued-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Discontinued Products (Archived)</span>
-                            <!-- Discontinued Sort Dropdown -->
                             <div class="dropdown">
                                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     Sort By: <span class="current-sort-text">Name (A-Z)</span>
@@ -458,12 +513,11 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                         <?php foreach ($discontinued_products as $product): ?>
                                         <tr>
                                             <td><?php echo htmlspecialchars($product['name']); ?></td>
-                                            <td>P<?php echo number_format($product['price'], 2); ?></td>
+                                            <td>₱<?php echo number_format($product['price'], 2); ?></td>
                                             <td><span class="badge bg-secondary"><?php echo htmlspecialchars(ucfirst($product['status'])); ?></span></td>
                                             <td><?php echo $product['stock_qty']; ?></td>
                                             <td>
-                                                <!-- Action Buttons -->
-                                                 <button class="btn btn-outline-primary btn-sm"
+                                                <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editProductModal"
                                                         data-product-id="<?php echo $product['product_id']; ?>"
                                                         data-product-name="<?php echo htmlspecialchars($product['name']); ?>"
@@ -490,14 +544,10 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </div>
                 </div>
 
-                <!-- =============================================
-                     ADJUSTMENT HISTORY TAB PANE
-                ============================================== -->
                 <div class="tab-pane fade <?php echo ($active_tab === 'history') ? 'show active' : ''; ?>" id="history-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Stock Adjustment History (Last 200)</span>
-                            <!-- History Sort Dropdown -->
                             <div class="dropdown">
                                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     Sort By: <span class="current-sort-text">Date (Newest First)</span>
@@ -534,8 +584,8 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                             <?php foreach ($adjustment_history as $log): ?>
                                             <tr>
                                                 <td><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($log['timestamp']))); ?></td>
-                                                <td><?php echo htmlspecialchars($log['username'] ?? 'N/A'); // Handle potentially null username ?></td>
-                                                <td><?php echo htmlspecialchars($log['item_name'] ?? 'Item Deleted'); // Handle potentially deleted items ?></td>
+                                                <td><?php echo htmlspecialchars($log['username'] ?? 'N/A'); ?></td>
+                                                <td><?php echo htmlspecialchars($log['item_name'] ?? 'Item Deleted'); ?></td>
                                                 <td>
                                                     <?php if ($log['item_type'] == 'product'): ?>
                                                         <span class="badge bg-primary">Product</span>
@@ -549,7 +599,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                                                     <?php elseif ($log['adjustment_qty'] < 0): ?>
                                                         <strong class="text-danger"><?php echo number_format($log['adjustment_qty'], 2); ?></strong>
                                                     <?php else: ?>
-                                                        <?php echo number_format($log['adjustment_qty'], 2); // Display 0 without color ?>
+                                                        <?php echo number_format($log['adjustment_qty'], 2); ?>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td><?php echo htmlspecialchars($log['reason']); ?></td>
@@ -563,14 +613,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                     </div>
                 </div>
 
-            </div> <!-- End Tab Content -->
-        </main> <!-- End Main Content -->
-    </div> <!-- End Row -->
-</div> <!-- End Container Fluid -->
-
-<!-- Modals Section (Keep all modals as they were) -->
-<!-- Add Ingredient Modal -->
-<div class="modal fade" id="addIngredientModal" tabindex="-1" aria-labelledby="addIngredientModalLabel" aria-hidden="true">
+            </div> </main> </div> </div> <div class="modal fade" id="addIngredientModal" tabindex="-1" aria-labelledby="addIngredientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -580,7 +623,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="add_ingredient">
-                <input type="hidden" name="active_tab" value="ingredients"> <!-- Set default active tab -->
+                <input type="hidden" name="active_tab" value="ingredients"> 
                 <div class="mb-3">
                     <label for="add_ing_name" class="form-label">Ingredient Name</label>
                     <input type="text" class="form-control" id="add_ing_name" name="name" required>
@@ -612,7 +655,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       </div>
 </div>
 
-<!-- Restock Ingredient Modal -->
 <div class="modal fade" id="restockModal" tabindex="-1" aria-labelledby="restockModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -643,7 +685,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       </div>
 </div>
 
-<!-- Add Product Modal -->
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
@@ -674,7 +715,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       </div>
 </div>
 
-<!-- Adjust Product Stock Modal -->
 <div class="modal fade" id="adjustProductModal" tabindex="-1" aria-labelledby="adjustProductModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
@@ -685,8 +725,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="adjust_product">
-                <input type="hidden" name="active_tab" value="products"> <!-- Default, JS might override -->
-                <input type="hidden" name="product_id" id="adjust_product_id">
+                <input type="hidden" name="active_tab" value="products"> <input type="hidden" name="product_id" id="adjust_product_id">
                 <p>Adjusting: <strong id="adjust_product_name"></strong></p>
                 <div class="mb-3">
                     <label for="adjust_adjustment_qty" class="form-label">Adjustment Quantity</label>
@@ -695,7 +734,8 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
                 </div>
                 <div class="mb-3">
                     <label for="adjust_reason" class="form-label">Reason for Adjustment</label>
-                    <input type="text" class="form-control" id="adjust_reason" name="reason" placeholder="e.g., Spoilage, Manual count correction" required>
+                    <input type="text" class="form-control" id="adjust_reason" name="reason" placeholder="e.g., Spoilage, Recall batch, Correction" required>
+                    <div class="form-text text-warning">To log a recall, enter a negative quantity and include the word "recall" in the reason.</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -707,7 +747,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       </div>
 </div>
 
-<!-- Edit Ingredient Modal -->
 <div class="modal fade" id="editIngredientModal" tabindex="-1" aria-labelledby="editIngredientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -746,7 +785,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       </div>
 </div>
 
-<!-- Edit Product Modal -->
 <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
@@ -757,8 +795,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="edit_product">
-                <input type="hidden" name="active_tab" id="edit_product_active_tab" value="products"> <!-- Default, JS will set based on origin tab -->
-                <input type="hidden" name="product_id" id="edit_product_id">
+                <input type="hidden" name="active_tab" id="edit_product_active_tab" value="products"> <input type="hidden" name="product_id" id="edit_product_id">
                 <div class="mb-3">
                     <label for="edit_product_name" class="form-label">Product Name</label>
                     <input type="text" class="form-control" name="name" id="edit_product_name" required>
@@ -787,7 +824,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       </div>
 </div>
 
-<!-- Delete Ingredient Modal -->
 <div class="modal fade" id="deleteIngredientModal" tabindex="-1" aria-labelledby="deleteIngredientModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
@@ -812,7 +848,6 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       </div>
 </div>
 
-<!-- Delete Product Modal -->
 <div class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -823,8 +858,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
       <form action="inventory_management.php" method="POST">
         <div class="modal-body">
             <input type="hidden" name="action" value="delete_product">
-            <input type="hidden" name="active_tab" id="delete_product_active_tab" value="products"> <!-- Default, JS will set -->
-            <input type="hidden" name="product_id" id="delete_product_id">
+            <input type="hidden" name="active_tab" id="delete_product_active_tab" value="products"> <input type="hidden" name="product_id" id="delete_product_id">
             <p>Are you sure you want to permanently delete <strong id="delete_product_name"></strong>?</p>
             <p class="text-danger small">This action cannot be undone. Deletion will fail if the product has associated sales or production history. Consider marking it as "Discontinued" instead.</p>
         </div>
@@ -837,10 +871,7 @@ $product_status_options = ['available', 'recalled', 'discontinued'];
   </div>
 </div>
 
-<!-- Include Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Include Custom Inventory Script -->
 <script src="../js/script_inventory.js"></script>
 </body>
 </html>
-

@@ -3,6 +3,11 @@
 session_start();
 require_once '../src/UserManager.php'; // Include your secure user manager class
 
+// --- ADDED: Check for success message from reset password page ---
+$success_message = $_SESSION['success_message'] ?? '';
+unset($_SESSION['success_message']); // Clear it so it only shows once
+// -----------------------------------------------------------------
+
 // UPDATED: Redirect to correct page if already logged in
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'manager') {
@@ -64,6 +69,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
           
           <form action="login.php" method="POST">
             <?php 
+              // --- ADDED: Display success message (if any) ---
+              if (!empty($success_message)) { 
+                echo '<div class="alert alert-success">' . htmlspecialchars($success_message) . '</div>'; 
+              } 
               if (!empty($error_message)) { 
                 echo '<div class="alert alert-danger">' . htmlspecialchars($error_message) . '</div>'; 
               } 

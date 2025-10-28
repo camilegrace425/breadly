@@ -40,6 +40,24 @@ class InventoryManager {
             return [];
         }
     }
+    
+    // --- (Removed getRecalledProducts) ---
+
+    // --- ADDED: New function to get recall history ---
+    // --- MODIFIED: Now accepts a date range ---
+    public function getRecallHistoryByDate($date_start, $date_end) {
+        try {
+            $stmt = $this->conn->prepare("CALL InventoryGetRecallHistory(?, ?)");
+            $stmt->execute([$date_start, $date_end]);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+            return $data;
+        } catch (PDOException $e) {
+            error_log("Error fetching recall history: " . $e->getMessage());
+            return [];
+        }
+    }
+    // ------------------------------------------------
 
     public function getDiscontinuedProducts() {
         try {

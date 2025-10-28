@@ -11,17 +11,27 @@ $success_message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $identifier = $_POST['identifier'];
     $userManager = new UserManager();
+    
+    // Unset any previous attempts
+    unset($_SESSION['reset_in_progress']); 
+
     if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
         $token = $userManager->requestEmailReset($identifier);
         if ($token) {
-            $success_message = "A password reset link has been sent to your email.";
+            // Set session flag and redirect
+            $_SESSION['reset_in_progress'] = true;
+            header('Location: reset_password.php?method=email'); // Redirect to reset page
+            exit();
         } else {
             $error_message = "No account found with that email address.";
         }
     } else {
         $otp = $userManager->requestPhoneReset($identifier);
         if ($otp) {
-            $success_message = "A 6-digit OTP has been sent to your phone.";
+            // Set session flag and redirect
+            $_SESSION['reset_in_progress'] = true;
+            header('Location: reset_password.php?method=phone'); // Redirect to reset page
+            exit();
         } else {
             $error_message = "No account found with that phone number.";
         }
@@ -36,9 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reset Password</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
-  
   <link rel="stylesheet" href="../styles.css" />
-  
 </head>
 <body>
   <div class="container-fluid">

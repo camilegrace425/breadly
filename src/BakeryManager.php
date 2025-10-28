@@ -45,29 +45,10 @@ class BakeryManager {
         return $stmt->execute([$ingredient_id, $user_id, $added_qty]);
     }
 
-    // Adds an ingredient to a product's recipe. Calls: RecipeAddIngredient(?, ?, ?, ?)
-    public function addIngredientToRecipe($product_id, $ingredient_id, $qty_needed, $unit) {
-        $stmt = $this->conn->prepare("CALL RecipeAddIngredient(?, ?, ?, ?)");
-        return $stmt->execute([$product_id, $ingredient_id, $qty_needed, $unit]);
-    }
-
-    // Gets the full recipe for a single product. Calls: RecipeGetForProduct(?)
-    public function getRecipeForProduct($product_id) {
-        $stmt = $this->conn->prepare("CALL RecipeGetForProduct(?)");
-        $stmt->execute([$product_id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
     // Manually triggers a scan to find all low-stock ingredients. Calls: IngredientCheckLowStock()
     public function checkLowStock() {
         $stmt = $this->conn->prepare("CALL IngredientCheckLowStock()");
         return $stmt->execute();
-    }
-
-    // Marks a specific low-stock alert as resolved. Calls: AlertMarkResolved(?)
-    public function resolveAlert($alert_id) {
-        $stmt = $this->conn->prepare("CALL AlertMarkResolved(?)");
-        return $stmt->execute([$alert_id]);
     }
 
     // Adds a new finished product. Calls: ProductAdd(?, ?)
@@ -75,8 +56,6 @@ class BakeryManager {
         $stmt = $this->conn->prepare("CALL ProductAdd(?, ?)");
         return $stmt->execute([$name, $price]);
     }
-
-
 
     // Updates an existing product's details. Calls: ProductUpdate(?, ?, ?, ?)
     public function productUpdate($product_id, $name, $price, $status) {
