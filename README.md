@@ -6,9 +6,11 @@ P.S. try lang lahat ng mga dashboard, etc. loging pa lang ang functional dyan, d
 accounts are:
 
 for admin:
-username: Camile123
+username: camile123
 password: admin
 
 for Cashier:
-username: Klain123
+username: klain123
 password: cashier
+
+update: i forgot password nio na lang pag di kayo makapag login
