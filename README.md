@@ -13,3 +13,4 @@ username: klain123
 password: cashier
 
 update: i forgot password nio na lang pag di kayo makapag login
+PS. wag nio i abuse ung SMS kasi limited lang sha, thankss
