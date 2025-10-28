@@ -52,7 +52,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Determine active tab based on button's parent tab-pane
             const currentTabPane = button.closest('.tab-pane');
-            const activeTabValue = currentTabPane && currentTabPane.id === 'discontinued-pane' ? 'discontinued' : 'products';
+            let activeTabValue = 'products'; // Default
+            if (currentTabPane) {
+                if (currentTabPane.id === 'discontinued-pane') {
+                    activeTabValue = 'discontinued';
+                } 
+                // --- REMOVED 'recalled-pane' check ---
+            }
+            
             const activeTabInput = document.getElementById('edit_product_active_tab');
             if (activeTabInput) {
                 activeTabInput.value = activeTabValue;
@@ -84,7 +91,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Determine active tab based on button's parent tab-pane
             const currentTabPane = button.closest('.tab-pane');
-            const activeTabValue = currentTabPane && currentTabPane.id === 'discontinued-pane' ? 'discontinued' : 'products';
+            let activeTabValue = 'products'; // Default
+            if (currentTabPane) {
+                if (currentTabPane.id === 'discontinued-pane') {
+                    activeTabValue = 'discontinued';
+                }
+                // --- REMOVED 'recalled-pane' check ---
+            }
+            
              const activeTabInput = document.getElementById('delete_product_active_tab');
             if (activeTabInput) {
                 activeTabInput.value = activeTabValue;
@@ -102,6 +116,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (paneId === '#ingredients-pane') {
                 activeTabValue = 'ingredients';
+            } else if (paneId === '#recall-log-pane') { // <-- MODIFIED
+                 activeTabValue = 'recall_log';
             } else if (paneId === '#discontinued-pane') {
                  activeTabValue = 'discontinued';
             } else if (paneId === '#history-pane') {
@@ -220,4 +236,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 }); // End DOMContentLoaded
-
