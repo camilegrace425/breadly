@@ -247,7 +247,12 @@
   /* ===================================================================
      POS System Styles
      =================================================================== */
-  
+    .product-list {
+        -webkit-user-select: none; 
+        -ms-user-select: none;    
+        user-select: none;       
+    }
+
   body.pos-page {
       background-color: var(--bg-light-cream, #fdfaf6);
       height: 100vh;

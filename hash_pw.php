@@ -1,6 +1,6 @@
 <?php
 // The password you want to use
-$plain_password = 'admin'; 
+$plain_password = 'cashier'; 
 
 $hashed_password = password_hash($plain_password, PASSWORD_DEFAULT);
 
