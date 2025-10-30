@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('restock_ingredient_id').value = button.dataset.ingredientId;
             document.getElementById('restock_ingredient_name').textContent = button.dataset.ingredientName;
             document.getElementById('restock_ingredient_unit').textContent = button.dataset.ingredientUnit;
+            
+            // --- ADDED: Clear the quantity input field ---
+            document.getElementById('restock_added_qty').value = '';
         });
     }
 
@@ -21,6 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
              if(label) label.textContent = 'Adjust Stock for ' + button.dataset.productName; // Use Label ID
             document.getElementById('adjust_product_id').value = button.dataset.productId;
             document.getElementById('adjust_product_name').textContent = button.dataset.productName;
+
+            // --- ADDED: Clear the quantity and reason fields ---
+            document.getElementById('adjust_adjustment_qty').value = '';
+            document.getElementById('adjust_reason').value = '';
         });
     }
 

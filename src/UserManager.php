@@ -81,7 +81,9 @@ class UserManager {
         // 3. Prepare data for the API
         $data = [
             'api_token' => $this->api_token,
-            'phone_number' => $formatted_phone
+            'phone_number' => $formatted_phone,
+            'expires_in' => 600, // --- MODIFIED: Set OTP expiration to 10 minutes (600 seconds) ---
+            'interval' => 180    // --- MODIFIED: Set resend interval to 3 minutes (180 seconds) ---
         ];
         // --- FIX: Change payload to http_build_query ---
         $payload = http_build_query($data);

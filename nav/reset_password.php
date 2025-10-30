@@ -23,6 +23,12 @@ $method = $_GET['method'] ?? 'phone';
 $code_label = $method === 'email' ? 'Token (from email)' : 'OTP Code (from phone)';
 $placeholder_text = $method === 'email' ? 'Enter token from email' : 'Enter 6-digit code';
 
+// --- ADDED: Get resend timer info ---
+$resend_available_at = $_SESSION['resend_available_at'] ?? 0;
+$time_now = time();
+$resend_cooldown = $resend_available_at - $time_now;
+// ---------------------------------
+
 
 // --- MODIFIED: POST logic now redirects ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -45,6 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // On success, send message to LOGIN page and redirect there
         $_SESSION['success_message'] = "Password reset successfully! You can now log in.";
         unset($_SESSION['reset_in_progress']); // Clear the session flag
+        unset($_SESSION['resend_available_at']); // --- ADDED: Clear timer ---
+        unset($_SESSION['reset_identifier']); // --- ADDED: Clear identifier ---
+        unset($_SESSION['reset_method']); // --- ADDED: Clear method ---
+        unset($_SESSION['reset_started_at']); // --- MODIFIED: Clear start time ---
         header('Location: login.php'); // Redirect to login
         exit();
     } else {
@@ -93,21 +103,77 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <div class="form-group">
               <label for="new_password">New Password</label>
-              <input type="password" name="new_password" class="form-control" placeholder="Enter new password" required />
+              <input type="password" name="new_password" id="new_password" class="form-control" placeholder="Enter new password" required />
+              <input type="checkbox" onclick="newPassword()">Show Password
             </div>
             <div class="form-group">
               <label for="confirm_password">Confirm New Password</label>
-              <input type="password" name="confirm_password" class="form-control" placeholder="Confirm new password" required />
+              <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="Confirm new password" required />
+              <input type="checkbox" onclick="confPassword()">Show Password
             </div>
             <button type="submit" class="btn btn-primary mt-3">Reset Password</button>
-
-            <div class="text-center mt-3">
-              <a href="login.php">Back to Login</a>
-            </div>
           </form>
+
+          <form action="forgot_password.php" method="POST" class="mt-3 text-center">
+            <input type="hidden" name="action" value="resend">
+            <button type="submit" id="resend-button" class="btn btn-link" disabled>
+              Resend Code
+            </button>
+            <span id="timer-text" class="text-muted small"></span>
+          </form>
+          <div class="text-center mt-2">
+            <a href="login.php">Back to Login</a>
+          </div>
         </div>
       </div>
     </div>
   </div>
+  <script>
+    function newPassword() {
+      var x = document.getElementById("new_password");
+      if (x.type === "password") {
+        x.type = "text";
+      } else {
+        x.type = "password";
+      }
+    }
+
+    function confPassword() {
+      var x = document.getElementById("confirm_password");
+      if (x.type === "password") {
+        x.type = "text";
+      } else {
+        x.type = "password";
+      }
+    }
+
+    // --- ADDED: Resend Timer ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const resendButton = document.getElementById('resend-button');
+        const timerText = document.getElementById('timer-text');
+        
+        // Get the cooldown from PHP
+        let cooldown = <?php echo $resend_cooldown > 0 ? $resend_cooldown : 0; ?>;
+
+        if (cooldown > 0) {
+            resendButton.disabled = true;
+            timerText.textContent = `(Wait ${cooldown}s)`;
+            
+            const interval = setInterval(() => {
+                cooldown--;
+                if (cooldown <= 0) {
+                    clearInterval(interval);
+                    timerText.textContent = '';
+                    resendButton.disabled = false;
+                } else {
+                    timerText.textContent = `(Wait ${cooldown}s)`;
+                }
+            }, 1000);
+        } else {
+            resendButton.disabled = false;
+            timerText.textContent = '';
+        }
+    });
+  </script>
 </body>
 </html>
