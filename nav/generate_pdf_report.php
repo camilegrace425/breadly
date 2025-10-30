@@ -80,7 +80,7 @@ class PDF extends FPDF
         foreach ($data as $row) {
             $this->Cell(80, 7, $row['product_name'], 'LR', 0, 'L');
             $this->Cell(30, 7, $row['total_qty_sold'], 'LR', 0, 'C');
-            $this->Cell(50, 7, '₱ ' . number_format($row['total_revenue'], 2), 'LR', 1, 'R');
+            $this->Cell(50, 7, 'P ' . number_format($row['total_revenue'], 2), 'LR', 1, 'R');
             $total_qty += $row['total_qty_sold'];
             $total_revenue += $row['total_revenue'];
         }
@@ -89,7 +89,7 @@ class PDF extends FPDF
         $this->SetFont('Arial', 'B', 10);
         $this->Cell(80, 7, 'Overall Total', 'T', 0, 'R');
         $this->Cell(30, 7, $total_qty, 1, 0, 'C');
-        $this->Cell(50, 7, '₱ ' . number_format($total_revenue, 2), 1, 1, 'R');
+        $this->Cell(50, 7, 'P ' . number_format($total_revenue, 2), 1, 1, 'R');
     }
     
     function RecallHeader()

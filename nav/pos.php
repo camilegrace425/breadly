@@ -69,9 +69,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="pos-page"> <div class="pos-container">
     <div class="product-grid">
         <h4 class="mb-3">Products</h4>
+        
+        <div class="input-group mb-3">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="product-search" class="form-control" placeholder="Search products...">
+        </div>
         <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3" id="product-list">
             <?php foreach ($products as $product): ?>
-            <div class="col">
+            <div class="col" data-product-name="<?= htmlspecialchars(strtolower($product['name'])) ?>">
                 <div class="product-card" 
                      data-id="<?= htmlspecialchars($product['product_id']) ?>"
                      data-name="<?= htmlspecialchars($product['name']) ?>"
@@ -87,6 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if (empty($products)): ?>
                 <p class="text-muted">No products are currently in stock or available.</p>
             <?php endif; ?>
+            
+            <div id="no-results-message" class="col-12 text-center text-muted" style="display: none;">
+                <p>No products match your search.</p>
+            </div>
         </div>
     </div>
 

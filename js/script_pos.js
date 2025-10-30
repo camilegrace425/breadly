@@ -7,6 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const payButton = document.getElementById('pay-button');
     const clearButton = document.getElementById('clear-button');
     const productListContainer = document.getElementById('product-list');
+    
+    // --- ADDED: Search Bar References ---
+    const searchInput = document.getElementById('product-search');
+    const noResultsMessage = document.getElementById('no-results-message');
+    // ------------------------------------
 
     // --- Core Cart Functions ---
 
@@ -193,4 +198,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.product-card').forEach(card => {
         card.addEventListener('click', () => addToCart(card));
     });
+
+    // --- ADDED: Search Filter Logic ---
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            let itemsFound = 0;
+
+            // Loop through all product columns in the grid
+            productListContainer.querySelectorAll('.col[data-product-name]').forEach(col => {
+                const productName = col.dataset.productName; // Get name from data attribute
+
+                // Use startsWith() as requested
+                if (productName.startsWith(searchTerm)) {
+                    col.style.display = ''; // Show column
+                    itemsFound++;
+                } else {
+                    col.style.display = 'none'; // Hide column
+                }
+            });
+
+            // Show or hide the 'no results' message
+            if (noResultsMessage) {
+                noResultsMessage.style.display = itemsFound === 0 ? '' : 'none';
+            }
+        });
+    }
 });

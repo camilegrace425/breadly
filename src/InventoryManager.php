@@ -40,11 +40,7 @@ class InventoryManager {
             return [];
         }
     }
-    
-    // --- (Removed getRecalledProducts) ---
 
-    // --- ADDED: New function to get recall history ---
-    // --- MODIFIED: Now accepts a date range ---
     public function getRecallHistoryByDate($date_start, $date_end) {
         try {
             $stmt = $this->conn->prepare("CALL InventoryGetRecallHistory(?, ?)");
@@ -57,7 +53,6 @@ class InventoryManager {
             return [];
         }
     }
-    // ------------------------------------------------
 
     public function getDiscontinuedProducts() {
         try {

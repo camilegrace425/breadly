@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 28, 2025 at 05:37 PM
+-- Generation Time: Oct 30, 2025 at 03:45 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -53,12 +53,6 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminUpdateMySettings` (IN `p_user_
         phone_number = p_phone_number,
         enable_daily_report = p_enable_report
     WHERE user_id = p_user_id;
-END$$
-
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AlertMarkResolved` (IN `alert_id` INT)   BEGIN
-    UPDATE alerts
-    SET status = 'resolved'
-    WHERE alerts.alert_id = alert_id;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetActiveLowStockAlerts` (IN `p_limit` INT)   BEGIN
@@ -414,23 +408,6 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `RecallLogRemoval` (IN `recall_id` I
     COMMIT;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeAddIngredient` (IN `p_product_id` INT, IN `p_ingredient_id` INT, IN `p_qty_needed` FLOAT, IN `p_unit` VARCHAR(20))   BEGIN
-    INSERT INTO recipes(product_id, ingredient_id, qty_needed, unit) -- Add the column
-    VALUES (p_product_id, p_ingredient_id, p_qty_needed, p_unit); -- Add the value
-END$$
-
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeGetForProduct` (IN `product_id` INT)   BEGIN
-    SELECT
-        r.recipe_id,
-        i.ingredient_id,
-        i.name,
-        r.qty_needed,
-        r.unit -- <-- ADDED
-    FROM recipes r
-    JOIN ingredients i ON r.ingredient_id = i.ingredient_id
-    WHERE r.product_id = product_id;
-END$$
-
 CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetBestSellers` (IN `date_start` DATE, IN `date_end` DATE)   BEGIN
     SELECT
         p.name,
@@ -675,20 +652,6 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Table structure for table `alerts`
---
-
-CREATE TABLE `alerts` (
-  `alert_id` int(11) NOT NULL,
-  `ingredient_id` int(11) DEFAULT NULL,
-  `message` varchar(255) DEFAULT NULL,
-  `date_triggered` date DEFAULT NULL,
-  `status` enum('unread','resolved') DEFAULT 'unread'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `ingredients`
 --
 
@@ -800,21 +763,15 @@ CREATE TABLE `password_resets` (
 
 INSERT INTO `password_resets` (`reset_id`, `user_id`, `reset_method`, `reset_token`, `otp_code`, `expiration`, `used`) VALUES
 (0, 3, 'phone_otp', NULL, '174387', '2025-10-28 23:58:26', 1),
-(0, 3, 'phone_otp', NULL, '470422', '2025-10-29 00:33:25', 1);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `production`
---
-
-CREATE TABLE `production` (
-  `production_id` int(11) NOT NULL,
-  `product_id` int(11) DEFAULT NULL,
-  `qty_baked` int(11) DEFAULT NULL,
-  `date` date DEFAULT NULL,
-  `batch_size_produced` int(11) DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+(0, 3, 'phone_otp', NULL, '470422', '2025-10-29 00:33:25', 1),
+(0, 3, 'phone_otp', NULL, '122628', '2025-10-29 17:41:31', 1),
+(0, 3, 'phone_otp', NULL, '835657', '2025-10-29 17:44:32', 1),
+(0, 3, 'phone_otp', NULL, '022090', '2025-10-30 21:21:43', 0),
+(0, 3, 'phone_otp', NULL, '819411', '2025-10-30 21:31:35', 0),
+(0, 3, 'phone_otp', NULL, '447255', '2025-10-30 21:34:54', 0),
+(0, 3, 'phone_otp', NULL, '241755', '2025-10-30 21:37:58', 0),
+(0, 3, 'phone_otp', NULL, '347496', '2025-10-30 21:41:59', 0),
+(0, 3, 'phone_otp', NULL, '665319', '2025-10-30 21:48:47', 0);
 
 -- --------------------------------------------------------
 
@@ -828,7 +785,6 @@ CREATE TABLE `products` (
   `price` decimal(10,2) NOT NULL,
   `status` enum('available','recalled','discontinued') NOT NULL DEFAULT 'available',
   `stock_qty` int(11) DEFAULT 0,
-  `batch_size` int(11) DEFAULT 1,
   `stock_unit` varchar(20) NOT NULL DEFAULT 'pcs',
   `is_sellable` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1 = Appears on POS, 0 = Intermediate product'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -837,57 +793,37 @@ CREATE TABLE `products` (
 -- Dumping data for table `products`
 --
 
-INSERT INTO `products` (`product_id`, `name`, `price`, `status`, `stock_qty`, `batch_size`, `stock_unit`, `is_sellable`) VALUES
-(4, 'Jumbo Pandesal', 5.00, 'available', 30, 150, 'pcs', 1),
-(6, 'Ham & Cheese', 25.00, 'available', 10, 1, 'pcs', 1),
-(7, 'Garlic Cheese', 25.00, 'available', 10, 1, 'pcs', 1);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `product_recalls`
---
-
-CREATE TABLE `product_recalls` (
-  `recall_id` int(11) NOT NULL,
-  `product_id` int(11) NOT NULL,
-  `reason` text NOT NULL,
-  `recall_date` date NOT NULL,
-  `status` enum('active','completed') DEFAULT 'active',
-  `affected_batch_date_start` date DEFAULT NULL,
-  `affected_batch_date_end` date DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `recalled_stock_log`
---
-
-CREATE TABLE `recalled_stock_log` (
-  `log_id` int(11) NOT NULL,
-  `recall_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `qty_removed` int(11) NOT NULL,
-  `date_removed` datetime DEFAULT current_timestamp(),
-  `notes` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `recipes`
---
-
-CREATE TABLE `recipes` (
-  `recipe_id` int(11) NOT NULL,
-  `product_id` int(11) NOT NULL COMMENT 'The product this recipe is FOR',
-  `ingredient_id` int(11) DEFAULT NULL COMMENT 'Link to raw ingredients',
-  `sub_product_id` int(11) DEFAULT NULL COMMENT 'Link to another product (sub-assembly)',
-  `qty_needed` float NOT NULL,
-  `unit` varchar(20) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+INSERT INTO `products` (`product_id`, `name`, `price`, `status`, `stock_qty`, `stock_unit`, `is_sellable`) VALUES
+(1, 'Spanish Bread', 10.00, 'available', 50, 'pcs', 1),
+(2, 'Cheese Bread', 12.00, 'available', 30, 'pcs', 1),
+(3, 'Ensaymada', 15.00, 'available', 28, 'pcs', 1),
+(4, 'Cinnamon Roll', 20.00, 'available', 25, 'pcs', 1),
+(5, 'Choco Bread', 12.00, 'available', 35, 'pcs', 1),
+(6, 'Ube Cheese Pandesal', 15.00, 'available', 35, 'pcs', 1),
+(7, 'Hotdog Roll', 18.00, 'available', 15, 'pcs', 1),
+(8, 'Cheese Stick Bread', 10.00, 'available', 30, 'pcs', 1),
+(9, 'Tuna Bun', 20.00, 'available', 15, 'pcs', 1),
+(10, 'Egg Pie Slice', 25.00, 'available', 8, 'pcs', 1),
+(11, 'Mocha Bun', 12.00, 'available', 35, 'pcs', 1),
+(12, 'Corned Beef Bread', 20.00, 'available', 20, 'pcs', 1),
+(13, 'Chicken Floss Bun', 25.00, 'available', 23, 'pcs', 1),
+(14, 'Chocolate Donut', 18.00, 'available', 30, 'pcs', 1),
+(15, 'Sugar Donut', 15.00, 'available', 40, 'pcs', 1),
+(16, 'Cream Bread', 10.00, 'available', 48, 'pcs', 1),
+(17, 'Coffee Bun', 15.00, 'available', 30, 'pcs', 1),
+(18, 'Garlic Bread', 12.00, 'available', 30, 'pcs', 1),
+(19, 'Milky Loaf', 35.00, 'available', 19, 'loaf', 1),
+(20, 'Whole Wheat Loaf', 40.00, 'available', 14, 'loaf', 1),
+(21, 'Raisin Bread', 20.00, 'available', 15, 'pcs', 1),
+(22, 'Banana Loaf', 35.00, 'available', 10, 'loaf', 1),
+(23, 'Cheese Cupcake', 15.00, 'available', 25, 'pcs', 1),
+(24, 'Butter Muffin', 18.00, 'available', 20, 'pcs', 1),
+(25, 'Yema Bread', 12.00, 'available', 30, 'pcs', 1),
+(26, 'Chocolate Crinkles', 10.00, 'available', 25, 'pcs', 1),
+(27, 'Pan de Coco', 12.00, 'available', 20, 'pcs', 1),
+(28, 'Baguette', 30.00, 'available', 10, 'pcs', 1),
+(29, 'Focaccia Bread', 28.00, 'available', 5, 'pcs', 1),
+(30, 'Mini Donut', 8.00, 'available', 30, 'pcs', 1);
 
 -- --------------------------------------------------------
 
@@ -938,7 +874,16 @@ INSERT INTO `sales` (`sale_id`, `product_id`, `user_id`, `qty_sold`, `total_pric
 (27, 4, 3, 10, 50.00, '2025-10-28'),
 (28, 4, 3, 5, 25.00, '2025-10-28'),
 (29, 6, 3, 2, 50.00, '2025-10-28'),
-(30, 7, 3, 2, 50.00, '2025-10-28');
+(30, 7, 3, 2, 50.00, '2025-10-28'),
+(31, 4, 3, 10, 50.00, '2025-10-30'),
+(32, 13, 3, 2, 50.00, '2025-10-30'),
+(33, 10, 3, 2, 50.00, '2025-10-30'),
+(34, 3, 3, 2, 30.00, '2025-10-30'),
+(35, 7, 3, 5, 90.00, '2025-10-30'),
+(36, 16, 3, 2, 20.00, '2025-10-30'),
+(37, 19, 3, 1, 35.00, '2025-10-30'),
+(38, 20, 3, 1, 40.00, '2025-10-30'),
+(39, 6, 3, 5, 75.00, '2025-10-30');
 
 -- --------------------------------------------------------
 
@@ -972,49 +917,13 @@ INSERT INTO `stock_adjustments` (`adjustment_id`, `item_id`, `item_type`, `user_
 (9, 4, 'product', 3, -10, 'recall Spoilage', '2025-10-28 23:35:43'),
 (10, 7, 'product', 3, 10, 'Newly Baked', '2025-10-29 00:36:19'),
 (11, 4, 'product', 3, 30, 'Newly Baked', '2025-10-29 00:36:28'),
-(12, 6, 'product', 3, 10, 'Newly Baked', '2025-10-29 00:36:35');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `unit_conversions`
---
-
-CREATE TABLE `unit_conversions` (
-  `id` int(11) NOT NULL,
-  `from_unit` varchar(20) NOT NULL,
-  `to_unit` varchar(20) NOT NULL,
-  `conversion_factor` float NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `unit_conversions`
---
-
-INSERT INTO `unit_conversions` (`id`, `from_unit`, `to_unit`, `conversion_factor`) VALUES
-(1, 'kg', 'g', 1000),
-(2, 'g', 'kg', 0.001),
-(3, 'L', 'ml', 1000),
-(4, 'ml', 'L', 0.001),
-(5, 'pcs', 'pcs', 1),
-(6, 'pack', 'pack', 1),
-(7, 'tray', 'tray', 1),
-(8, 'can', 'can', 1),
-(9, 'bottle', 'bottle', 1),
-(10, 'tbsp', 'g', 15),
-(11, 'g', 'tbsp', 0.0667),
-(12, 'kg', 'pcs', 1),
-(13, 'g', 'pcs', 1),
-(14, 'L', 'pcs', 1),
-(15, 'ml', 'pcs', 1),
-(16, 'pcs', 'g', 1),
-(17, 'pcs', 'kg', 1),
-(18, 'pcs', 'ml', 1),
-(19, 'pcs', 'L', 1),
-(20, 'g', 'ml', 1),
-(21, 'ml', 'g', 1),
-(22, 'kg', 'ml', 1000),
-(23, 'ml', 'kg', 0.001);
+(12, 6, 'product', 3, 10, 'Newly Baked', '2025-10-29 00:36:35'),
+(13, 7, 'product', 3, 5, 'Newly Baked', '2025-10-29 00:59:48'),
+(14, 0, 'product', 3, 10, 'Newly Baked', '2025-10-30 22:05:11'),
+(15, 0, 'product', 3, -25, 'Correction', '2025-10-30 22:11:20'),
+(16, 0, 'product', 3, 25, 'Correction', '2025-10-30 22:12:00'),
+(17, 2, 'product', 3, -10, 'Correction', '2025-10-30 22:19:19'),
+(18, 17, 'product', 3, 5, 'Newly Baked', '2025-10-30 22:19:37');
 
 -- --------------------------------------------------------
 
@@ -1039,8 +948,8 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`user_id`, `username`, `password`, `role`, `email`, `phone_number`, `enable_daily_report`, `created_at`) VALUES
 (1, 'camile123', '$2y$10$Dfv1I9ZXClQUsKS5SOTRP.UrjdaHjcRHLT7lzV0JrZbvxbVkehmKy', 'manager', 'camile@gmail.com', '09935581868', 0, '2025-10-20 04:44:55'),
-(2, 'klain123', '$2y$10$WnuNoGX/HOAm2ykTqzKWPONBVYztP5XwWkXbsJGiy29PMWtHKPJSe', 'cashier', 'klain@gmail.com', '09923142756', 0, '2025-10-20 04:44:55'),
-(3, 'gian123', '$2y$10$BI.mEwT7T/YfRABQkD/ArOjQOsJA/aXeaZIrX7ijr99D0OiybNWsK', 'manager', 'givano550@gmail.com', '09359840820', 0, '2025-10-20 05:50:57');
+(2, 'klain123', '$2y$10$pS2IpgUKXqAaSGO3oqgSHOnVJ0CS3FHy6f0nrDxFj6iapGe3FeTne', 'cashier', 'klain@gmail.com', '09923142756', 0, '2025-10-20 04:44:55'),
+(3, 'gian123', '$2y$10$vQHK0i2VDLOGM9NvZ/eDZOba.u5GgVWFdNNpqgFeFJ/vd68LreKW6', 'manager', 'givano550@gmail.com', '09359840820', 0, '2025-10-20 05:50:57');
 
 -- --------------------------------------------------------
 
@@ -1049,13 +958,6 @@ INSERT INTO `users` (`user_id`, `username`, `password`, `role`, `email`, `phone_
 -- (See below for the actual view)
 --
 CREATE TABLE `view_activelowstockalerts` (
-`alert_id` int(11)
-,`ingredient_id` int(11)
-,`ingredient_name` varchar(100)
-,`current_stock` float
-,`reorder_level` float
-,`message` varchar(255)
-,`date_triggered` date
 );
 
 -- --------------------------------------------------------
@@ -1065,14 +967,6 @@ CREATE TABLE `view_activelowstockalerts` (
 -- (See below for the actual view)
 --
 CREATE TABLE `view_discontinuedproducts` (
-`product_id` int(11)
-,`name` varchar(100)
-,`price` decimal(10,2)
-,`stock_qty` int(11)
-,`status` enum('available','recalled','discontinued')
-,`batch_size` int(11)
-,`stock_unit` varchar(20)
-,`is_sellable` tinyint(1)
 );
 
 -- --------------------------------------------------------
@@ -1102,7 +996,6 @@ CREATE TABLE `view_productinventory` (
 ,`price` decimal(10,2)
 ,`stock_qty` int(11)
 ,`status` enum('available','recalled','discontinued')
-,`batch_size` int(11)
 ,`stock_unit` varchar(20)
 ,`is_sellable` tinyint(1)
 );
@@ -1141,11 +1034,17 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `view_productinventory`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_productinventory`  AS SELECT `products`.`product_id` AS `product_id`, `products`.`name` AS `name`, `products`.`price` AS `price`, `products`.`stock_qty` AS `stock_qty`, `products`.`status` AS `status`, `products`.`batch_size` AS `batch_size`, `products`.`stock_unit` AS `stock_unit`, `products`.`is_sellable` AS `is_sellable` FROM `products` WHERE `products`.`status` in ('available','recalled') ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_productinventory`  AS SELECT `products`.`product_id` AS `product_id`, `products`.`name` AS `name`, `products`.`price` AS `price`, `products`.`stock_qty` AS `stock_qty`, `products`.`status` AS `status`, `products`.`stock_unit` AS `stock_unit`, `products`.`is_sellable` AS `is_sellable` FROM `products` WHERE `products`.`status` in ('available','recalled') ;
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `products`
+--
+ALTER TABLE `products`
+  ADD PRIMARY KEY (`product_id`);
 
 --
 -- Indexes for table `sales`
@@ -1171,16 +1070,22 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `products`
+--
+ALTER TABLE `products`
+  MODIFY `product_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+
+--
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `stock_adjustments`
 --
 ALTER TABLE `stock_adjustments`
-  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- Constraints for dumped tables
