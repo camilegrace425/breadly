@@ -13,6 +13,34 @@ class UserManager {
         $this->conn = $db->getConnection();
     }
 
+    // --- ADDED: New robust phone formatting function ---
+    /**
+     * Formats a phone number to the 639XXXXXXXXX format required by the API.
+     * Handles 09, 9, and 639 prefixes.
+     */
+    private function formatPhoneNumberForAPI($phone_number) {
+        // 1. Remove all non-numeric characters (like +, -, spaces)
+        $cleaned = preg_replace('/[^0-9]/', '', $phone_number);
+
+        // 2. Check for 11-digit format (0917...)
+        if (strlen($cleaned) == 11 && substr($cleaned, 0, 2) == '09') {
+            return '63' . substr($cleaned, 1);
+        }
+
+        // 3. Check for 10-digit format (917...)
+        if (strlen($cleaned) == 10 && substr($cleaned, 0, 1) == '9') {
+            return '63' . $cleaned;
+        }
+
+        // 4. Check for 12-digit format (63917...)
+        if (strlen($cleaned) == 12 && substr($cleaned, 0, 3) == '639') {
+            return $cleaned;
+        }
+
+        // If it's none of the above, return the (likely invalid) original for the API to reject
+        return $phone_number;
+    }
+
     // Authenticates a user by checking username and verifying the hashed password.
     public function login($username, $plain_password) {
         
@@ -73,10 +101,9 @@ class UserManager {
         $user_id = $user['user_id'];
 
         // 2. Format phone number for the API (e.g., 0917... -> 63917...)
-        $formatted_phone = $phone_number;
-        if (strlen($phone_number) == 11 && substr($phone_number, 0, 2) == '09') {
-            $formatted_phone = '63' . substr($phone_number, 1);
-        }
+        // --- MODIFIED: Using new robust function ---
+        $formatted_phone = $this->formatPhoneNumberForAPI($phone_number);
+        // -------------------------------------------
 
         // 3. Prepare data for the API
         $data = [

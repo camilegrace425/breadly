@@ -64,14 +64,13 @@ $sales = $salesManager->getSalesHistory($date_start, $date_end, $sort_column, $s
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../styles.css" />
-    <!-- Sortable header CSS might not be needed anymore, but keep for now -->
 </head>
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
         <aside class="col-lg-2 col-md-3 sidebar">
              <div class="sidebar-brand">
-                <img src="https://via.placeholder.com/50/6a381f/FFFFFF?Text=B" alt="BREADLY Logo">
+                <img src="../images/breadlylogo.png" alt="BREADLY Logo">
                 <h5>BREADLY</h5>
                 <p>Kz & Rhyne's Bakery</p>
             </div>

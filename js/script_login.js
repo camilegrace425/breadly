@@ -20,13 +20,15 @@ document.querySelectorAll('.password-toggle').forEach(toggle => {
     });
 });
 
-switchBtn.addEventListener('click', () => {
-
-    const isCashierMode = body.classList.toggle('cashier-mode');
-
-    if (isCashierMode) {
-        switchBtn.textContent = 'Admin Login?';
-    } else {
-        switchBtn.textContent = 'Cashier Login?';
-    }
-});
+if (switchBtn) {
+    switchBtn.addEventListener('click', () => {
+    
+        const isCashierMode = body.classList.toggle('cashier-mode');
+    
+        if (isCashierMode) {
+            switchBtn.textContent = 'Admin Login?';
+        } else {
+            switchBtn.textContent = 'Cashier Login?';
+        }
+    });
+}
