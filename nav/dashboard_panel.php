@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 break;
             }
         }
+        // STEP 1: Set the session message
         $_SESSION['flash_message'] = "Summary Report successfully sent to $sent_to_username ($phone_number).";
         $_SESSION['flash_type'] = 'success';
     } else {
@@ -45,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'date_start' => $_GET['date_start'] ?? date('Y-m-d', strtotime('-29 days')),
         'date_end' => $_GET['date_end'] ?? date('Y-m-d')
     ]);
+    // STEP 2: Redirect
     header('Location: dashboard_panel.php?' . $query_params);
     exit();
 }
@@ -69,12 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'date_start' => $_GET['date_start'] ?? date('Y-m-d', strtotime('-29 days')),
         'date_end' => $_GET['date_end'] ?? date('Y-m-d')
     ]);
+    // STEP 2: Redirect
     header('Location: dashboard_panel.php?' . $query_params);
     exit();
 }
 // --- (The PDF POST is handled by 'generate_pdf_report.php', so no handler is needed here) ---
 
 
+// STEP 3: Read the session message on page load (GET request)
 $flash_message = $_SESSION['flash_message'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? 'info';
 unset($_SESSION['flash_message']);

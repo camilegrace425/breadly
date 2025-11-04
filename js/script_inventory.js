@@ -139,6 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- THIS IS THE SORTING LOGIC THAT WAS OMITTED ---
+
     function getSortableValue(value, type = 'text') {
         if (value === null || value === undefined) return ''; // Handle null/undefined
 
@@ -241,5 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sortTableByDropdown(defaultSortLink); // Apply the default sort
         }
     });
+    // --- END OF SORTING LOGIC ---
 
 }); // End DOMContentLoaded

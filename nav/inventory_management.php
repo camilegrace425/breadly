@@ -47,37 +47,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // --- Action Switch ---
         switch ($action) {
              case 'add_ingredient':
+                // --- MODIFIED ---
                 $bakeryManager->addIngredient($_POST['name'], $_POST['unit'], $_POST['stock_qty'], $_POST['reorder_level']);
                 $success_message = 'Successfully added new ingredient!';
                 break;
 
             case 'restock_ingredient':
+                // --- THIS IS THE CORRECTED LOGIC ---
                 $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
-                $bakeryManager->restockIngredient($_POST['ingredient_id'], $user_id_to_pass, $_POST['added_qty']);
-                $success_message = 'Successfully restocked ingredient!';
+                // 1. Get the status message from the function
+                $status = $bakeryManager->restockIngredient($_POST['ingredient_id'], $user_id_to_pass, $_POST['added_qty']);
+                
+                // 2. Check if the status message contains "Success"
+                if (strpos($status, 'Success') !== false) {
+                    $success_message = 'Successfully restocked ingredient!';
+                } else {
+                    // It's an error, pass it along
+                    $error_message = $status; 
+                }
                 break;
+                // --- END OF CORRECTION ---
 
             case 'add_product':
+                // --- MODIFIED ---
                 $bakeryManager->addProduct($_POST['name'], $_POST['price']);
                 $success_message = 'Successfully added new product!';
                 break;
 
-                case 'adjust_product':
-                    $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
-                    $result = $bakeryManager->adjustProductStock($_POST['product_id'], $user_id_to_pass, $_POST['adjustment_qty'], $_POST['reason']);
-                    if ($result) {
-                        $success_message = 'Successfully adjusted product stock!';
-                    } else {
-                        $error_message = 'Failed to execute stock adjustment. Please check input or contact support.';
-                    }
-                    break;
+            case 'adjust_product':
+                $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
+                $result = $bakeryManager->adjustProductStock($_POST['product_id'], $user_id_to_pass, $_POST['adjustment_qty'], $_POST['reason']);
+                if ($result) {
+                    $success_message = 'Successfully adjusted product stock!';
+                } else {
+                    $error_message = 'Failed to execute stock adjustment. Please check input or contact support.';
+                }
+                break;
 
             case 'edit_ingredient':
+                // --- MODIFIED ---
                 $bakeryManager->ingredientUpdate($_POST['ingredient_id'], $_POST['name'], $_POST['unit'], $_POST['reorder_level']);
                 $success_message = 'Successfully updated ingredient!';
                 break;
 
             case 'edit_product':
+                // --- MODIFIED ---
                 $bakeryManager->productUpdate($_POST['product_id'], $_POST['name'], $_POST['price'], $_POST['status']);
                 $success_message = 'Successfully updated product!';
                 break;
@@ -117,9 +131,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (PDOException $e) {
         // --- Database Error Handling ---
         error_log("Database Error in inventory_management.php: " . $e->getMessage());
-        $message = 'A database error occurred. Please try again later.';
-        $message_type = 'danger';
-        $active_tab = $form_active_tab; // Keep user on the current tab
+        
+        // Provide a more user-friendly error
+        $user_error = 'A database error occurred. Please try again.';
+
+        // --- MODIFIED: Check for custom recall error ---
+        if (strpos($e->getMessage(), 'Recalls must have a negative quantity') !== false) {
+            $user_error = 'Error: Recalls must have a negative quantity. Positive values are not allowed for recalls.';
+        } 
+        // --- END MODIFIED ---
+        else if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+             $user_error = 'Error: An item with this name already exists.';
+        }
+        
+        $_SESSION['message'] = $user_error;
+        $_SESSION['message_type'] = 'danger';
+        $_SESSION['active_tab'] = $form_active_tab; // Keep user on the current tab
+
+        // Now, redirect to prevent resubmission
+        header('Location: inventory_management.php'); 
+        exit();
+        
     }
 } // End POST Handling
 
@@ -613,7 +645,11 @@ $product_status_options = ['available', 'discontinued'];
                     </div>
                 </div>
 
-            </div> </main> </div> </div> <div class="modal fade" id="addIngredientModal" tabindex="-1" aria-labelledby="addIngredientModalLabel" aria-hidden="true">
+            </div> </main>
+    </div>
+</div>
+
+<div class="modal fade" id="addIngredientModal" tabindex="-1" aria-labelledby="addIngredientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
