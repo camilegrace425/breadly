@@ -1,7 +1,6 @@
 <?php
 require_once '../db_connection.php';
 
-// Manages fetching sales history data.
 class SalesManager {
     private $conn;
 
@@ -10,10 +9,6 @@ class SalesManager {
         $this->conn = $db->getConnection();
     }
 
-    /**
-     * Gets a paginated or date-ranged list of sales transactions.
-     * Calls: ReportGetSalesHistory(?, ?, ?, ?)
-     */
     public function getSalesHistory($date_start, $date_end, $sort_column, $sort_direction) {
         try {
             $stmt = $this->conn->prepare("CALL ReportGetSalesHistory(?, ?, ?, ?)");

@@ -13,11 +13,6 @@ class UserManager {
         $this->conn = $db->getConnection();
     }
 
-    // --- ADDED: New robust phone formatting function ---
-    /**
-     * Formats a phone number to the 639XXXXXXXXX format required by the API.
-     * Handles 09, 9, and 639 prefixes.
-     */
     private function formatPhoneNumberForAPI($phone_number) {
         // 1. Remove all non-numeric characters (like +, -, spaces)
         $cleaned = preg_replace('/[^0-9]/', '', $phone_number);
@@ -95,13 +90,9 @@ class UserManager {
         // 1. Check if user exists in our DB using new SP
         $user = $this->findUserByPhone($phone_number);
         if (!$user) {
-            // No user found with this phone number
             return false;
         }
         $user_id = $user['user_id'];
-
-        // 2. Format phone number for the API (e.g., 0917... -> 63917...)
-        // --- MODIFIED: Using new robust function ---
         $formatted_phone = $this->formatPhoneNumberForAPI($phone_number);
         // -------------------------------------------
 
@@ -109,10 +100,9 @@ class UserManager {
         $data = [
             'api_token' => $this->api_token,
             'phone_number' => $formatted_phone,
-            'expires_in' => 600, // --- MODIFIED: Set OTP expiration to 10 minutes (600 seconds) ---
-            'interval' => 180    // --- MODIFIED: Set resend interval to 3 minutes (180 seconds) ---
+            'expires_in' => 600,
+            'interval' => 180    
         ];
-        // --- FIX: Change payload to http_build_query ---
         $payload = http_build_query($data);
 
         // 4. Send cURL request to iProg API
@@ -213,5 +203,5 @@ class UserManager {
             return [];
         }
     }
-} // This is the existing closing brace for the class
+}
 ?>

@@ -1,7 +1,5 @@
 <?php
 require_once '../db_connection.php';
-
-// Handles fetching data specifically for the inventory management page.
 class InventoryManager {
     private $conn;
 

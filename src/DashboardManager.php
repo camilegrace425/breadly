@@ -12,11 +12,6 @@ class DashboardManager {
         $this->conn = $db->getConnection();
     }
     
-    // --- ADDED: New robust phone formatting function ---
-    /**
-     * Formats a phone number to the 639XXXXXXXXX format required by the API.
-     * Handles 09, 9, and 639 prefixes.
-     */
     private function formatPhoneNumberForAPI($phone_number) {
         // 1. Remove all non-numeric characters (like +, -, spaces)
         $cleaned = preg_replace('/[^0-9]/', '', $phone_number);
@@ -168,12 +163,8 @@ class DashboardManager {
              $message = substr($message, 0, 315) . "...";
         }
 
-        // 5. Format phone number (e.g., 0917... -> 63917...)
-        // --- MODIFIED: Using new robust function ---
         $formatted_phone = $this->formatPhoneNumberForAPI($phone_number);
-        // -------------------------------------------
-
-        // 6. Send the SMS via cURL
+    
         $data = [
             'api_token' => $this->api_token,
             'message' => $message,
