@@ -120,7 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
       rel="stylesheet"
     />
-    <link href="../styles.css" rel="stylesheet" />
+    <link rel="stylesheet" href="../styles/global.css"> 
+    <link rel="stylesheet" href="../styles/forgot_password.css"> 
   </head>
   <body class="page-forgot-password"> <main class="container py-4 py-md-5">
       <div class="row justify-content-center">

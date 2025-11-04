@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 Swal.fire('Out of Stock', `Cannot add more ${name}. Only ${maxStock} available.`, 'warning');
                 return;
             }
-            existingItem.quantity++;
+            // --- MODIFIED: Use setQuantity ---
+            setQuantity(productId, existingItem.quantity + 1);
         } else {
             // Check stock before adding new item
             if (1 > maxStock) {
@@ -41,9 +42,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             cart.push({ id: productId, name: name, price: price, quantity: 1, maxStock: maxStock });
+            renderCart();
+        }
+    }
+
+    // --- NEW FUNCTION ---
+    /**
+     * Sets an item's quantity to a specific value.
+     * Handles validation, stock limits, and item removal.
+     */
+    function setQuantity(productId, newQuantity) {
+        const item = cart.find(item => item.id === productId);
+        if (!item) return;
+
+        // Validate newQuantity
+        if (isNaN(newQuantity) || newQuantity < 0) {
+            newQuantity = 0; // Default to 0 if invalid input (e.g., empty string)
+        }
+        
+        // Remove item if quantity is set to 0 or less
+        if (newQuantity === 0) {
+            cart = cart.filter(item => item.id !== productId);
+        } else if (newQuantity > item.maxStock) {
+            // Handle exceeding max stock
+            newQuantity = item.maxStock;
+            Swal.fire('Stock Limit', `Only ${item.maxStock} ${item.name} available.`, 'warning');
+            item.quantity = newQuantity;
+        } else {
+            // Set the new quantity
+            item.quantity = newQuantity;
         }
         renderCart();
     }
+    // --- END NEW FUNCTION ---
 
     /**
      * Updates an item's quantity or removes it from the cart.
@@ -51,21 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
     window.updateQuantity = function(productId, change) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
-
-        // Check stock limit when increasing quantity
-        if (change > 0 && (item.quantity + change > item.maxStock)) {
-            Swal.fire('Out of Stock', `Cannot add more ${item.name}. Only ${item.maxStock} available.`, 'warning');
-            return;
-        }
-
-        // Adjust quantity
-        item.quantity += change;
-
-        // Remove item if quantity drops to 0 or below
-        if (item.quantity <= 0) {
-            cart = cart.filter(item => item.id !== productId);
-        }
-        renderCart();
+        
+        // --- MODIFIED: Use setQuantity for all logic ---
+        const newQuantity = item.quantity + change;
+        setQuantity(productId, newQuantity);
     }
 
     /**
@@ -99,7 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const itemEl = document.createElement('div');
             itemEl.className = 'cart-item';
-            // Note: Switched to addEventListener for buttons, removed inline onclick
+            
+            // --- MODIFIED: Replaced <span> with <input> for quantity ---
             itemEl.innerHTML = `
                 <div class="cart-item-details">
                     <strong>${item.name}</strong>
@@ -107,7 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="cart-item-controls">
                     <button class="btn btn-outline-secondary btn-sm btn-dec" data-id="${item.id}">-</button>
-                    <span class="mx-2">${item.quantity}</span>
+                    <input type="number" class="form-control form-control-sm cart-quantity-input mx-1" 
+                           value="${item.quantity}" data-id="${item.id}" min="0" max="${item.maxStock}">
                     <button class="btn btn-outline-secondary btn-sm btn-inc" data-id="${item.id}">+</button>
                 </div>
             `;
@@ -120,6 +142,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         orderItemsContainer.querySelectorAll('.btn-inc').forEach(btn => {
             btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), 1));
+        });
+
+        // --- ADDED: Event listener for new quantity inputs ---
+        orderItemsContainer.querySelectorAll('.cart-quantity-input').forEach(input => {
+            // 'change' event fires when user clicks away or presses Enter
+            input.addEventListener('change', (e) => {
+                const newQty = parseInt(e.target.value, 10);
+                const productId = parseInt(e.target.dataset.id, 10);
+                setQuantity(productId, newQty);
+            });
+            // Optional: Prevent typing non-integer characters
+            input.addEventListener('keydown', (e) => {
+                if (['e', '+', '-', '.'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
         });
 
         // Update total price and enable pay button

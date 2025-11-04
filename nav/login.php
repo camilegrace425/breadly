@@ -65,12 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BREADLY Login</title>
-    <!-- Path updated to point to root styles.css -->
-    <link rel="stylesheet" href="../styles.css"> 
-    <!-- Boxicons CSS for the eye icons -->
+    <link rel="stylesheet" href="../styles/global.css"> 
+    <link rel="stylesheet" href="../styles/login.css"> 
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 </head>
-<body class="page-login"> <!-- JavaScript will add 'cashier-mode' here -->
+<body class="page-login">
     <div class="main-wrapper">
         <div class="form-side">
             <div class="form-container" id="formContainer">

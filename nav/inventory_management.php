@@ -47,13 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // --- Action Switch ---
         switch ($action) {
              case 'add_ingredient':
-                // --- MODIFIED ---
                 $bakeryManager->addIngredient($_POST['name'], $_POST['unit'], $_POST['stock_qty'], $_POST['reorder_level']);
                 $success_message = 'Successfully added new ingredient!';
                 break;
 
             case 'restock_ingredient':
-                // --- THIS IS THE CORRECTED LOGIC ---
                 $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
                 // 1. Get the status message from the function
                 $status = $bakeryManager->restockIngredient($_POST['ingredient_id'], $user_id_to_pass, $_POST['added_qty']);
@@ -66,10 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error_message = $status; 
                 }
                 break;
-                // --- END OF CORRECTION ---
 
             case 'add_product':
-                // --- MODIFIED ---
                 $bakeryManager->addProduct($_POST['name'], $_POST['price']);
                 $success_message = 'Successfully added new product!';
                 break;
@@ -85,13 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
             case 'edit_ingredient':
-                // --- MODIFIED ---
                 $bakeryManager->ingredientUpdate($_POST['ingredient_id'], $_POST['name'], $_POST['unit'], $_POST['reorder_level']);
                 $success_message = 'Successfully updated ingredient!';
                 break;
 
             case 'edit_product':
-                // --- MODIFIED ---
                 $bakeryManager->productUpdate($_POST['product_id'], $_POST['name'], $_POST['price'], $_POST['status']);
                 $success_message = 'Successfully updated product!';
                 break;
@@ -113,9 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error_message = $status; // Pass the error message from the procedure
                 }
                 break;
-        } // End Action Switch
+        }
 
-        // --- Set Session Message & Redirect ---
         if ($error_message) {
             $_SESSION['message'] = $error_message;
             $_SESSION['message_type'] = 'danger';
@@ -135,11 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Provide a more user-friendly error
         $user_error = 'A database error occurred. Please try again.';
 
-        // --- MODIFIED: Check for custom recall error ---
         if (strpos($e->getMessage(), 'Recalls must have a negative quantity') !== false) {
             $user_error = 'Error: Recalls must have a negative quantity. Positive values are not allowed for recalls.';
         } 
-        // --- END MODIFIED ---
         else if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
              $user_error = 'Error: An item with this name already exists.';
         }
@@ -182,14 +173,15 @@ $product_status_options = ['available', 'discontinued'];
     <title>Inventory Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../styles/global.css"> 
+    <link rel="stylesheet" href="../styles/dashboard.css"> 
 </head>
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
         <aside class="col-lg-2 col-md-3 sidebar">
             <div class="sidebar-brand">
-                <img src="../images/breadlylogo.png" alt="BREADLY Logo">
+                <img src="../images/kzklogo.png" alt="BREADLY Logo">
                 <h5>BREADLY</h5>
                 <p>Kz & Rhyne's Bakery</p>
             </div>

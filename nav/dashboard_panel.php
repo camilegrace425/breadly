@@ -134,7 +134,8 @@ if (!empty($priorityAlert)) {
     <title>Bakery Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../styles/global.css"> 
+    <link rel="stylesheet" href="../styles/dashboard.css"> 
     <style>
         .chart-container {
             position: relative;
@@ -159,7 +160,7 @@ if (!empty($priorityAlert)) {
     <div class="row">
         <aside class="col-lg-2 col-md-3 sidebar">
             <div class="sidebar-brand">
-                <img src="../images/breadlylogo.png" alt="BREADLY Logo">
+                <img src="../images/kzklogo.png" alt="BREADLY Logo">
                 <h5>BREADLY</h5>
                 <p>Kz & Rhyne's Bakery</p>
             </div>
@@ -393,7 +394,7 @@ if (!empty($priorityAlert)) {
                 <h5 class="modal-title" id="generatePdfModalLabel">Generate PDF Report</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="generate_pdf_report.php" method="POST" target="_blank">
+            <form action="../lib/generate_pdf_report.php" method="POST" target="_blank">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="date_start_pdf" class="form-label">Start Date</label>

@@ -1,7 +1,7 @@
 <?php
 session_start();
 // 1. Load all necessary files
-require_once '../lib/fpdf.php';
+require_once 'fpdf.php';
 require_once '../src/DashboardManager.php';
 require_once '../src/InventoryManager.php';
 
