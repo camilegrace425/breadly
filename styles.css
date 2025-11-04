@@ -1,4 +1,7 @@
-:root {
+/* ===================================================================
+   New Styles (from styles.css)
+   =================================================================== */
+   :root {
     --color-background-page: #F8F1E7;
     --color-card-background: #ffffff;
     --color-panel: #E4A26C;
@@ -73,7 +76,7 @@ body.page-login {
     text-align: center;
 }
 
-.page-login.login-form h2 {
+.page-login .login-form h2 {
     font-size: 28px;
     font-weight: 600;
     margin-bottom: 20px;
@@ -308,37 +311,39 @@ html, body {
     width: 100%;
 }
 
-
+/* --- FORGOT/RESET PASSWORD --- */
 body.page-forgot-password {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #b9662b;
+    background-color: #F8F1E7; /* Use page background color */
     overflow: hidden;
+    font-family: "Poppins", sans-serif;
 }
 
 .login-card {
-    background-color: #c98858;
+    background-color: var(--color-card-background);
     border: none;
     border-radius: 15px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .login-heading {
-  color: #111111;
+  color: var(--color-text-dark);
   font-weight: 600; 
 }
 
 .login-btn {
-    background-color:#9b4a10;
+    background-color:var(--color-login-btn);
     color: white;
-    border-color: black;
+    border-color: var(--color-login-btn);
     font-weight: 400;
+    transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .login-btn:hover {
-  background-color: #D97D24; 
+  background-color: #9b4a10; 
   color: white; 
   transform: translateY(-2px); 
 }
@@ -347,15 +352,363 @@ body.page-forgot-password {
   transform: translateY(0);
 }
 
-.forgot a {
+.forgot a,
+.page-forgot-password .text-center a,
+.page-forgot-password p a {
   color: #9b4a10; 
-  font-weight: 600;
+  font-weight: 500;
   transition: color 0.3s ease;
-  text-decoration:underline;
-  text-decoration-color: aqua;
+  text-decoration:none;
 }
 
-.forgot a:hover {
+.page-forgot-password .text-center a:hover,
+.page-forgot-password p a:hover {
   color: #4E342E; 
   text-decoration: underline; 
+}
+
+/* Alert styles for Bootstrap forms */
+.login-card .alert {
+    font-size: 0.9rem;
+}
+
+
+/* ===================================================================
+   Original Dashboard Panel Styles (Preserved)
+   =================================================================== */
+  
+  /* Define color palette from the image */
+  :root {
+      /* ... (variables are already defined, but good to keep in mind) ... */
+      --bg-light-cream: #FFFBF5;
+      --sidebar-bg: #FDEEDC;
+      --card-bg-1: #FEE8D0; /* Sales card */
+      --card-bg-2: #FBF3D5; /* Orders card */
+      --card-bg-3: #FBF3D5; /* Best Selling card */
+      --card-bg-4: #F8DFAA; /* Inventory/Low stock card */
+      --text-dark: #6a381f;
+      --text-secondary: #7a7a7a;
+      --bar-color-1: #E5A26A;
+      --bar-color-2: #F5C6A5;
+      --bar-color-3: #D3D3D3; /* Light gray for Choco German bar */
+  }
+  
+  /* Apply main background and font to dashboard body */
+  body.dashboard {
+      background-color: var(--bg-light-cream);
+      color: var(--text-dark);
+      height: auto; /* Override 100% height for dashboard */
+      min-height: 100vh;
+  }
+  
+  .sidebar {
+      background-color: var(--sidebar-bg);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      display: flex; /* ADDED: For sticky footer */
+      flex-direction: column; /* ADDED: For sticky footer */
+  }
+  .sidebar-brand {
+      text-align: center;
+      margin-bottom: 2rem;
+  }
+  .sidebar-brand img {
+      max-width: 50px;
+      margin-bottom: 0.5rem;
+  }
+  .sidebar-brand h5 {
+      font-weight: bold;
+      color: var(--text-dark);
+  }
+  .sidebar-brand p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+  }
+  .sidebar-nav {
+      flex-grow: 1; /* ADDED: Pushes user menu down */
+  }
+  .sidebar-nav .nav-link {
+      padding: 0.75rem 1.5rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0.5rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+  }
+  .sidebar-nav .nav-link.active {
+      background-color: var(--text-dark);
+      color: #fff;
+  }
+  .sidebar-nav .nav-link:hover {
+      background-color: #f8e5d0;
+  }
+  
+  .main-content {
+      padding: 2rem;
+  }
+  
+  .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+  }
+  .header h1 {
+      font-weight: bold;
+      color: var(--text-dark);
+  }
+  
+  .stat-card {
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      border: none;
+      margin-bottom: 1.5rem;
+  }
+  .stat-card h1 {
+      font-weight: 700;
+      color: var(--text-dark);
+  }
+  .stat-card p {
+      margin: 0;
+      color: var(--text-secondary);
+  }
+  .stat-card .percent-change {
+      font-size: 0.9rem;
+      color: #6c757d;
+  }
+  
+  .chart-container, .low-stock-card {
+      background-color: #fff;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+  }
+  
+  h3.chart-title {
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+  }
+  
+  /* Horizontal Bar Chart Simulation */
+  .bar-chart-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+  }
+  .bar-label {
+      width: 100px; /* Fixed width for labels */
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      flex-shrink: 0; /* Prevents label from shrinking */
+  }
+  .bar-wrapper {
+      flex-grow: 1;
+      background-color: #f3f3f3;
+      border-radius: 4px;
+  }
+  .bar {
+      height: 18px;
+      border-radius: 4px;
+  }
+  
+  /* Low Stock / Best Seller Card */
+  .low-stock-card {
+      background-color: var(--card-bg-4);
+  }
+  .low-stock-card h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+  }
+  .low-stock-card .best-seller-name {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 1.5rem;
+  }
+  .low-stock-card .low-stock-warning {
+      color: #d9534f; /* Red warning color */
+      font-weight: bold;
+      font-size: 1.1rem;
+  }
+  .low-stock-card .low-stock-details {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+  }
+  .low-stock-card a {
+      color: var(--text-dark);
+      font-weight: 500;
+      text-decoration: none;
+  }
+  .low-stock-card a:hover {
+      text-decoration: underline;
+  }
+  
+  /* ===================================================================
+     POS System Styles (Preserved)
+     =================================================================== */
+    .product-list {
+        -webkit-user-select: none; 
+        -ms-user-select: none;    
+        user-select: none;       
+    }
+
+  body.pos-page {
+      background-color: var(--bg-light-cream, #fdfaf6);
+      height: 100vh;
+      overflow: hidden; /* Prevent scrolling of the whole page */
+  }
+  .pos-container {
+      display: grid;
+      /* Responsive grid: 1 column on small screens, 2 on medium+ */
+      grid-template-columns: 1fr;
+      /* We use 100vh (viewport height) minus padding */
+      height: calc(100vh - 2rem); 
+      gap: 1rem;
+      padding: 1rem;
+  }
+
+  /* Apply 2-column layout on screens 768px and wider */
+  @media (min-width: 768px) {
+    .pos-container {
+        grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  .product-grid {
+      background-color: #fff;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      overflow-y: auto; /* Allow product grid to scroll */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      /* Ensure it doesn't collapse and has a scrollbar */
+      height: 100%;
+  }
+  .order-panel {
+      background-color: #fff;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      /* Allow panel to scroll if content overflows */
+      height: 100%;
+      overflow-y: auto; 
+  }
+
+  .product-card {
+      border: 1px solid #eee;
+      border-radius: 0.5rem;
+      text-align: center;
+      padding: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      height: 100%; /* Make cards in a row same height */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background-color: #fff;
+  }
+  .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .product-name { 
+      font-weight: 600; 
+      color: var(--text-dark, #6a381f);
+      font-size: 1rem;
+  }
+  .product-price { 
+      color: var(--text-secondary, #7a7a7a); 
+      font-size: 0.9rem;
+  }
+  
+  .order-items {
+      flex-grow: 1; /* This makes the item list take up available space */
+      overflow-y: auto; /* Allows just this section to scroll */
+      min-height: 200px; /* Ensures it has some height even when empty */
+      padding: 0.5rem;
+      background-color: #fafafa;
+      border-radius: 0.5rem;
+  }
+  .order-total {
+      border-top: 2px dashed #ddd;
+      padding-top: 1rem;
+      margin-top: 1rem;
+      flex-shrink: 0; /* Prevent this from shrinking */
+  }
+  .cart-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      background-color: #fff;
+      border: 1px solid #eee;
+      border-radius: 0.5rem;
+  }
+  .cart-item-details { 
+      flex-grow: 1;
+      font-size: 0.9rem;
+  }
+  .cart-item-controls { 
+      display: flex; 
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 1rem;
+   }
+  .cart-item-controls .btn { 
+      padding: 0.1rem 0.5rem; 
+      font-size: 0.9rem; 
+  }
+  .cart-item-controls span { 
+      padding: 0 0.75rem;
+      font-weight: 500;
+  }
+
+/* ADDED: Styles for new inventory page (Preserved) */
+.sidebar-user {
+    margin-top: 1rem;
+}
+.main-content .nav-tabs .nav-link {
+    color: var(--text-secondary);
+}
+.main-content .nav-tabs .nav-link.active {
+    color: var(--text-dark);
+    font-weight: 500;
+    background-color: #fff;
+    border-bottom-color: #fff;
+}
+.table-responsive {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* --- Sortable Table Styles (Preserved) --- */
+.sortable-header {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
+.sortable-header::after {
+    content: '\25B2'; /* Up arrow */
+    position: absolute;
+    right: 0.5rem;
+    opacity: 0.3;
+}
+.sortable-header[data-sort-dir="desc"]::after {
+    content: '\25BC'; /* Down arrow */
+}
+.sortable-header[data-sort-dir="asc"]::after,
+.sortable-header[data-sort-dir="desc"]::after {
+    opacity: 1;
+}
+
+/* Make links in sortable headers in sales history blend in */
+.sortable-header a {
+    color: inherit;
+    text-decoration: none;
+}
+.sortable-header a:hover {
+    color: inherit;
 }

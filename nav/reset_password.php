@@ -31,7 +31,7 @@ $resend_cooldown = $resend_available_at - $time_now;
 
 
 // --- MODIFIED: POST logic now redirects ---
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset') {
     $otp_code = $_POST['otp_code'];
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
@@ -65,70 +65,118 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 ?>
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reset Password</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="../styles.css" />
-</head>
-<body>
-  <div class="container-fluid">
-    <div class="row no-gutters h-100">
-      <div class="col-md-6 login-left d-none d-md-flex">
-        <div>
-          <h1>Bakery Management System</h1>
-          <p>Secure access for inventory, sales, production, and user management.</p>
-        </div>
-      </div>
-      <div class="col-md-6 login-right">
-        <div class="form-box">
-          <h2>Set New Password</h2>
-          
-          <form action="reset_password.php?method=<?php echo htmlspecialchars($method); ?>" method="POST">
-            <?php 
-              // This now reads the error message from the session
-              if (!empty($error_message)) { 
-                echo '<div class="alert alert-danger">' . htmlspecialchars($error_message) . '</div>'; 
-              }
-            ?>
-            
-            <p class="text-muted">Enter the <?php echo $method === 'email' ? 'token from your email' : '6-digit code sent to your phone'; ?> and choose a new password.</p>
-            <div class="form-group">
-              <label for="otp_code"><?php echo htmlspecialchars($code_label); ?></label>
-              <input type="text" name="otp_code" class="form-control" placeholder="<?php echo htmlspecialchars($placeholder_text); ?>" required />
-            </div>
-            <div class="form-group">
-              <label for="new_password">New Password</label>
-              <input type="password" name="new_password" id="new_password" class="form-control" placeholder="Enter new password" required />
-              <input type="checkbox" onclick="newPassword()"> Show Password
-            </div>
-            <div class="form-group">
-              <label for="confirm_password">Confirm New Password</label>
-              <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="Confirm new password" required />
-              <input type="checkbox" onclick="confPassword()"> Show Password
-            </div>
-            <button type="submit" class="btn btn-primary mt-3">Reset Password</button>
-          </form>
+  <head>
+    <meta charset="utf-tr" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reset Password</title>
 
-          <form action="forgot_password.php" method="POST" class="mt-3 text-center">
-            <input type="hidden" name="action" value="resend">
-            <button type="submit" id="resend-button" class="btn btn-link" disabled>
-              Resend Code
-            </button>
-            <span id="timer-text" class="text-muted small"></span>
-          </form>
-          <div class="text-center mt-2">
-            <a href="login.php">Back to Login</a>
-          </div>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+
+    <link href="../styles.css" rel="stylesheet" />
+  </head>
+  <body class="page-forgot-password"> <main class="container py-4 py-md-5">
+      <div class="row justify-content-center">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
+          <section class="login-card p-4 p-md-5 shadow">
+            <div class="d-flex align-items-center justify-content-center mb-4">
+              <img src="../images/breadlylogo.png" alt="Breadly Bakery Logo" class="img-fluid me-3" style="max-height: 95px;">
+            </div>
+            <h2 class="login-heading text-center mb-4">Set New Password</h2>
+
+            <form action="reset_password.php?method=<?php echo htmlspecialchars($method); ?>" method="POST">
+              <input type="hidden" name="action" value="reset">
+
+              <?php 
+                // This now reads the error message from the session
+                if (!empty($error_message)) { 
+                  echo '<div class="alert alert-danger">' . htmlspecialchars($error_message) . '</div>'; 
+                }
+              ?>
+              
+              <p class="text-center text-muted small">Enter the <?php echo $method === 'email' ? 'token from your email' : '6-digit code sent to your phone'; ?> and choose a new password.</p>
+
+              <div class="form-floating mb-3">
+                <input 
+                  type="text" 
+                  name="otp_code" 
+                  class="form-control" 
+                  id="otp_code"
+                  placeholder="<?php echo htmlspecialchars($placeholder_text); ?>" 
+                  required />
+                <label for="otp_code"><?php echo htmlspecialchars($code_label); ?></label>
+              </div>
+
+              <div class="form-floating mb-3">
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="new_password" 
+                  name="new_password" placeholder="New Password" 
+                  required>
+                <label for="new_password">New Password</label>
+              </div>
+
+              <div class="form-floating mb-3">
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="confirm_password" 
+                  name="confirm_password" placeholder="Confirm Password" 
+                  required>
+                <label for="confirm_password">Confirm Password</label>
+              </div>
+              
+              <div class="d-flex justify-content-between">
+                  <div class="form-check">
+                      <input class="form-check-input" type="checkbox" onclick="newPassword()" id="showNewPass">
+                      <label class="form-check-label" for="showNewPass" style="font-size: 0.9rem;">
+                          Show New Password
+                      </label>
+                  </div>
+                  <div class="form-check">
+                      <input class="form-check-input" type="checkbox" onclick="confPassword()" id="showConfPass">
+                      <label class="form-check-label" for="showConfPass" style="font-size: 0.9rem;">
+                          Show Confirm Password
+                      </label>
+                  </div>
+              </div>
+
+
+              <div class="text-center mt-3">
+                <button type="submit" class="btn login-btn btn-lg w-100">Update Password</button>
+              </div>
+            </form>
+            
+            <form action="forgot_password.php" method="POST" class="mt-3 text-center">
+              <input type="hidden" name="action" value="resend">
+              <button type="submit" id="resend-button" class="btn btn-link" disabled>
+                Resend Code
+              </button>
+              <span id="timer-text" class="text-muted small"></span>
+            </form>
+
+            <p class="text-center mt-3 mb-0">
+              <a href="login.php" class="text-decoration-none">Back to Login</a>
+            </p>
+
+          </section>
         </div>
       </div>
-    </div>
-  </div>
-  <script>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
     function newPassword() {
       var x = document.getElementById("new_password");
       if (x.type === "password") {
@@ -175,5 +223,5 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     });
   </script>
-</body>
+  </body>
 </html>

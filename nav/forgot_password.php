@@ -103,67 +103,96 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 ?>
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reset Password</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="../styles.css" />
-</head>
-<body>
-  <div class="container-fluid">
-    <div class="row no-gutters h-100">
-      <div class="col-md-6 login-left d-none d-md-flex">
-        <div>
-          <h1>Bakery Management System</h1>
-          <p>Secure access for inventory, sales, production, and user management.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Forgot Password</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link href="../styles.css" rel="stylesheet" />
+  </head>
+  <body class="page-forgot-password"> <main class="container py-4 py-md-5">
+      <div class="row justify-content-center">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
+          <section class="login-card p-4 p-md-5">
+            <div class="d-flex align-items-center justify-content-center mb-4">
+              <img
+                src="../images/breadlylogo.png" alt="Breadly Bakery Logo"
+                class="img-fluid me-3"
+                style="max-height: 95px"
+              />
+            </div>
+            <h2 class="login-heading text-center mb-4">Forgot Password</h2>
+
+            <form action="forgot_password.php" method="POST">
+              <input type="hidden" name="action" value="request">
+
+              <?php 
+                // PHP error message block
+                if (!empty($error_message)) { 
+                  echo '<div class="alert alert-danger">' . htmlspecialchars($error_message) . '</div>'; 
+                } 
+                if (!empty($success_message)) { 
+                  echo '<div class="alert alert-success">' . htmlspecialchars($success_message) . '</div>'; 
+                } 
+              ?>
+
+              <div class="form-floating mb-3">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="identifier"
+                  name="identifier" placeholder="Enter your email or phone"
+                  required
+                />
+                <label for="identifier">Email or Phone Number</label>
+              </div>
+
+              <div class="text-center">
+                <button 
+                  type="submit"
+                  class="btn login-btn btn-lg w-100"
+                >
+                  Send Reset Code
+                </button>
+              </div>
+
+                <p class="forgot text-center mt-3 mb-0">
+                  <a href="login.php" class="text-decoration-none">Back to Login</a>
+                </p>
+
+            </form>
+
+            <?php 
+              // --- ADDED: Conditional "Go Back" button from old file ---
+              if (!empty($error_message) && isset($_SESSION['reset_in_progress']) && $_SESSION['reset_in_progress'] === true):
+                $method = $_SESSION['reset_method'] ?? 'phone';
+            ?>
+              <hr>
+              <div class="text-center">
+                <p class="text-muted small">Made a typo?</p>
+                <a href="reset_password.php?method=<?php echo htmlspecialchars($method); ?>" class="btn btn-outline-secondary btn-sm">
+                  Go Back to Code Entry
+                </a>
+              </div>
+            <?php endif; ?>
+
+          </section>
         </div>
       </div>
-      <div class="col-md-6 login-right">
-        <div class="form-box">
-          <h2>Reset Password</h2>
-          
-          <form action="forgot_password.php" method="POST">
-            <input type="hidden" name="action" value="request">
-            
-            <?php 
-              if (!empty($error_message)) { 
-                echo '<div class="alert alert-danger">' . htmlspecialchars($error_message) . '</div>'; 
-              } 
-              if (!empty($success_message)) { 
-                echo '<div class="alert alert-success">' . htmlspecialchars($success_message) . '</div>'; 
-              } 
-            ?>
-            <div class="form-group">
-              <label for="identifier">Email or Phone Number</label>
-              <input type="text" name="identifier" class="form-control" placeholder="Enter your email or phone" required />
-            </div>
-            <button type="submit" class="btn btn-primary mt-3">Send Reset Code</button>
-            <div class="text-center mt-3">
-              <a href="login.php">Remembered your password? Login</a>
-            </div>
-          </form>
+    </main>
 
-          <?php 
-            // --- ADDED: Conditional "Go Back" button ---
-            // Show this button if an error occurred BUT a valid reset is still in progress
-            if (!empty($error_message) && isset($_SESSION['reset_in_progress']) && $_SESSION['reset_in_progress'] === true):
-              $method = $_SESSION['reset_method'] ?? 'phone';
-          ?>
-            <hr>
-            <div class="text-center">
-              <p class="text-muted small">Made a typo?</p>
-              <a href="reset_password.php?method=<?php echo htmlspecialchars($method); ?>" class="btn btn-outline-secondary btn-sm">
-                Go Back to Code Entry
-              </a>
-            </div>
-          <?php endif; ?>
-          </div>
-      </div>
-    </div>
-  </div>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
 </html>

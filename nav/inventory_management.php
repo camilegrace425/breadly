@@ -189,7 +189,7 @@ $product_status_options = ['available', 'discontinued'];
     <div class="row">
         <aside class="col-lg-2 col-md-3 sidebar">
             <div class="sidebar-brand">
-                <img src="https://via.placeholder.com/50/6a381f/FFFFFF?Text=B" alt="BREADLY Logo">
+                <img src="../images/breadlylogo.png" alt="BREADLY Logo">
                 <h5>BREADLY</h5>
                 <p>Kz & Rhyne's Bakery</p>
             </div>
