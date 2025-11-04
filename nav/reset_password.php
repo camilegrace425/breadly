@@ -104,12 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="form-group">
               <label for="new_password">New Password</label>
               <input type="password" name="new_password" id="new_password" class="form-control" placeholder="Enter new password" required />
-              <input type="checkbox" onclick="newPassword()">Show Password
+              <input type="checkbox" onclick="newPassword()"> Show Password
             </div>
             <div class="form-group">
               <label for="confirm_password">Confirm New Password</label>
               <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="Confirm new password" required />
-              <input type="checkbox" onclick="confPassword()">Show Password
+              <input type="checkbox" onclick="confPassword()"> Show Password
             </div>
             <button type="submit" class="btn btn-primary mt-3">Reset Password</button>
           </form>

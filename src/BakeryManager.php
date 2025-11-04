@@ -13,13 +13,17 @@ class BakeryManager {
     // Adds a new ingredient to the database. Calls: IngredientAdd(?, ?, ?, ?)
     public function addIngredient($name, $unit, $stock_qty, $reorder_level) {
         $stmt = $this->conn->prepare("CALL IngredientAdd(?, ?, ?, ?)");
-        return $stmt->execute([$name, $unit, $stock_qty, $reorder_level]);
+        $success = $stmt->execute([$name, $unit, $stock_qty, $reorder_level]);
+        $stmt->closeCursor();
+        return $success;
     }
 
     // Updates an existing ingredient. Calls: IngredientUpdate(?, ?, ?, ?)
     public function ingredientUpdate($ingredient_id, $name, $unit, $reorder_level) {
         $stmt = $this->conn->prepare("CALL IngredientUpdate(?, ?, ?, ?)");
-        return $stmt->execute([$ingredient_id, $name, $unit, $reorder_level]);
+        $success = $stmt->execute([$ingredient_id, $name, $unit, $reorder_level]);
+        $stmt->closeCursor();
+        return $success;
     }
 
     // Safely deletes an ingredient. Returns the status message from the procedure.
@@ -39,10 +43,22 @@ class BakeryManager {
         }
     }
 
+    // ---
+    // THIS IS THE CORRECTED FUNCTION
+    // ---
     // Adds stock to an existing ingredient. Calls: IngredientRestock(?, ?, ?)
     public function restockIngredient($ingredient_id, $user_id, $added_qty) {
-        $stmt = $this->conn->prepare("CALL IngredientRestock(?, ?, ?)");
-        return $stmt->execute([$ingredient_id, $user_id, $added_qty]);
+        try {
+            $stmt = $this->conn->prepare("CALL IngredientRestock(?, ?, ?)");
+            $stmt->execute([$ingredient_id, $user_id, $added_qty]);
+            $stmt->closeCursor();
+            return "Success: Ingredient restocked."; // Return a success string
+        } catch (PDOException $e) {
+            // Log the actual database error for debugging
+            error_log("Error in restockIngredient: " . $e->getMessage());
+            // Return an error string for the controller
+            return "Error: Could not restock ingredient. " . $e->getMessage();
+        }
     }
 
     // Manually triggers a scan to find all low-stock ingredients. Calls: IngredientCheckLowStock()
@@ -54,13 +70,17 @@ class BakeryManager {
     // Adds a new finished product. Calls: ProductAdd(?, ?)
     public function addProduct($name, $price) {
         $stmt = $this->conn->prepare("CALL ProductAdd(?, ?)");
-        return $stmt->execute([$name, $price]);
+        $success = $stmt->execute([$name, $price]);
+        $stmt->closeCursor();
+        return $success;
     }
 
     // Updates an existing product's details. Calls: ProductUpdate(?, ?, ?, ?)
     public function productUpdate($product_id, $name, $price, $status) {
         $stmt = $this->conn->prepare("CALL ProductUpdate(?, ?, ?, ?)");
-        return $stmt->execute([$product_id, $name, $price, $status]);
+        $success = $stmt->execute([$product_id, $name, $price, $status]);
+        $stmt->closeCursor();
+        return $success;
     }
     
     // Safely deletes a product. Returns the status message from the procedure.
@@ -85,14 +105,14 @@ class BakeryManager {
     public function adjustProductStock($product_id, $user_id, $adjustment_qty, $reason) {
         try {
             $stmt = $this->conn->prepare("CALL ProductAdjustStock(?, ?, ?, ?)");
-            // Just return whether the execute command itself succeeded or failed
             $success = $stmt->execute([$product_id, $user_id, $adjustment_qty, $reason]);
             $stmt->closeCursor(); // Close cursor after execution
             return $success; // Return true if execute worked, false if it failed
         } catch (PDOException $e) {
             // Log error for debugging
             error_log("Error adjusting stock: " . $e->getMessage());
-            return false;
+            // --- MODIFIED: Re-throw the exception to be caught by the controller ---
+            throw $e;
         }
     }
 
