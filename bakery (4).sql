@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 04, 2025 at 02:29 AM
+-- Generation Time: Nov 04, 2025 at 02:46 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -230,14 +230,20 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdd` (IN `name` VARCHAR(100)
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdjustStock` (IN `p_product_id` INT, IN `p_user_id` INT, IN `p_adjustment_qty` INT, IN `p_reason` VARCHAR(255))   BEGIN
-    -- 1. Update the stock
-    UPDATE products
-    SET stock_qty = stock_qty + p_adjustment_qty
-    WHERE product_id = p_product_id;
+    -- Add validation block
+    IF (p_adjustment_qty > 0 AND LOWER(p_reason) LIKE '%recall%') THEN
+        -- Signal a custom error (This is the corrected syntax)
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: Recalls must have a negative quantity.';
+    ELSE
+        -- 1. Update the stock
+        UPDATE products
+        SET stock_qty = stock_qty + p_adjustment_qty
+        WHERE product_id = p_product_id;
 
-    -- 2. Log the adjustment
-    INSERT INTO stock_adjustments (item_id, item_type, user_id, adjustment_qty, reason)
-    VALUES (p_product_id, 'product', p_user_id, p_adjustment_qty, p_reason);
+        -- 2. Log the adjustment
+        INSERT INTO stock_adjustments (item_id, item_type, user_id, adjustment_qty, reason)
+        VALUES (p_product_id, 'product', p_user_id, p_adjustment_qty, p_reason);
+    END IF;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductDelete` (IN `p_product_id` INT, OUT `p_status` VARCHAR(255))   BEGIN
@@ -778,7 +784,7 @@ INSERT INTO `products` (`product_id`, `name`, `price`, `status`, `stock_qty`, `s
 (24, 'Butter Muffin', 18.00, 'available', 20, 'pcs', 1),
 (25, 'Yema Bread', 12.00, 'available', 30, 'pcs', 1),
 (26, 'Chocolate Crinkles', 10.00, 'available', 25, 'pcs', 1),
-(27, 'Pan de Coco', 12.00, 'available', 30, 'pcs', 1),
+(27, 'Pan de Coco', 12.00, 'available', 20, 'pcs', 1),
 (28, 'Baguette', 30.00, 'available', 10, 'pcs', 1),
 (29, 'Focaccia Bread', 28.00, 'available', 5, 'pcs', 1),
 (30, 'Mini Donut', 8.00, 'available', 30, 'pcs', 1);
@@ -953,7 +959,8 @@ INSERT INTO `stock_adjustments` (`adjustment_id`, `item_id`, `item_type`, `user_
 (41, 0, 'ingredient', 3, 5, 'Restock', '2025-11-04 09:11:15'),
 (42, 0, 'ingredient', 3, 5, 'Restock', '2025-11-04 09:15:07'),
 (43, 0, 'ingredient', 3, 5, 'Restock', '2025-11-04 09:16:13'),
-(44, 5, 'ingredient', 3, 3, 'Restock', '2025-11-04 09:28:36');
+(44, 5, 'ingredient', 3, 3, 'Restock', '2025-11-04 09:28:36'),
+(45, 27, 'product', 3, -10, 'recall Spoilage', '2025-11-04 09:43:34');
 
 -- --------------------------------------------------------
 
@@ -1238,7 +1245,7 @@ ALTER TABLE `sales`
 -- AUTO_INCREMENT for table `stock_adjustments`
 --
 ALTER TABLE `stock_adjustments`
-  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
 
 --
 -- AUTO_INCREMENT for table `users`
