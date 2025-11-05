@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 04, 2025 at 02:46 AM
+-- Generation Time: Nov 05, 2025 at 04:59 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -65,7 +65,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetLowStockAlertsCount` ()
     SELECT COUNT(*) AS alertCount FROM view_ActiveLowStockAlerts;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` ()   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT
         -- Use COALESCE to ensure it returns 0.00 instead of NULL if no recalls exist
         -- The value is negative (qty) * price, so we use SUM to add all negative values.
@@ -83,7 +83,9 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` () 
         products p ON sa.item_id = p.product_id AND sa.item_type = 'product'
     WHERE
         -- Find all adjustments marked as recall
-        sa.reason LIKE '%recall%';
+        sa.reason LIKE '%recall%'
+        -- AND filter by the provided date range
+        AND DATE(sa.timestamp) BETWEEN p_date_start AND p_date_end;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetSalesSummaryByDateRange` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
@@ -784,8 +786,8 @@ INSERT INTO `products` (`product_id`, `name`, `price`, `status`, `stock_qty`, `s
 (24, 'Butter Muffin', 18.00, 'available', 20, 'pcs', 1),
 (25, 'Yema Bread', 12.00, 'available', 30, 'pcs', 1),
 (26, 'Chocolate Crinkles', 10.00, 'available', 25, 'pcs', 1),
-(27, 'Pan de Coco', 12.00, 'available', 20, 'pcs', 1),
-(28, 'Baguette', 30.00, 'available', 10, 'pcs', 1),
+(27, 'Pan de Coco', 12.00, 'available', 15, 'pcs', 1),
+(28, 'Baguette', 30.00, 'available', 0, 'pcs', 1),
 (29, 'Focaccia Bread', 28.00, 'available', 5, 'pcs', 1),
 (30, 'Mini Donut', 8.00, 'available', 30, 'pcs', 1);
 
@@ -960,7 +962,9 @@ INSERT INTO `stock_adjustments` (`adjustment_id`, `item_id`, `item_type`, `user_
 (42, 0, 'ingredient', 3, 5, 'Restock', '2025-11-04 09:15:07'),
 (43, 0, 'ingredient', 3, 5, 'Restock', '2025-11-04 09:16:13'),
 (44, 5, 'ingredient', 3, 3, 'Restock', '2025-11-04 09:28:36'),
-(45, 27, 'product', 3, -10, 'recall Spoilage', '2025-11-04 09:43:34');
+(45, 27, 'product', 3, -10, 'recall Spoilage', '2025-11-04 09:43:34'),
+(46, 27, 'product', 3, -5, 'recall Spoilage', '2025-11-05 23:24:43'),
+(47, 28, 'product', 3, -10, 'recall Spoilage', '2025-11-05 23:58:01');
 
 -- --------------------------------------------------------
 
@@ -1245,7 +1249,7 @@ ALTER TABLE `sales`
 -- AUTO_INCREMENT for table `stock_adjustments`
 --
 ALTER TABLE `stock_adjustments`
-  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
 
 --
 -- AUTO_INCREMENT for table `users`

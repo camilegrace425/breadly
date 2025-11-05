@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (topProductsCtx) {
         // Read the data from the canvas element's 'data-products' attribute
         const topProductsData = JSON.parse(topProductsCtx.dataset.products);
+        const dateRangeText = topProductsCtx.dataset.dateRange || 'the selected period';
+        // ---
 
         // Prepare data for charts
         const productLabels = Array.isArray(topProductsData) ? topProductsData.map(product => product.name) : [];
@@ -44,7 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.font = '16px Segoe UI';
             ctx.fillStyle = '#6c757d'; // Bootstrap text-muted color
             ctx.textAlign = 'center';
-            ctx.fillText('No sales data available for the last 30 days.', topProductsCtx.width / 2, topProductsCtx.height / 2);
+
+            // ---
+            // --- MODIFICATION HERE ---
+            // ---
+            // Use the dynamic date range text instead of a hard-coded string
+            ctx.fillText(`No sales data available for ${dateRangeText}.`, topProductsCtx.width / 2, topProductsCtx.height / 2);
         }
     }
 });
