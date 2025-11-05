@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 04, 2025 at 02:46 AM
+-- Generation Time: Nov 05, 2025 at 05:10 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -65,7 +65,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetLowStockAlertsCount` ()
     SELECT COUNT(*) AS alertCount FROM view_ActiveLowStockAlerts;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` ()   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT
         -- Use COALESCE to ensure it returns 0.00 instead of NULL if no recalls exist
         -- The value is negative (qty) * price, so we use SUM to add all negative values.
@@ -83,7 +83,9 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` () 
         products p ON sa.item_id = p.product_id AND sa.item_type = 'product'
     WHERE
         -- Find all adjustments marked as recall
-        sa.reason LIKE '%recall%';
+        sa.reason LIKE '%recall%'
+        -- AND filter by the provided date range
+        AND DATE(sa.timestamp) BETWEEN p_date_start AND p_date_end;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetSalesSummaryByDateRange` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
@@ -779,13 +781,13 @@ INSERT INTO `products` (`product_id`, `name`, `price`, `status`, `stock_qty`, `s
 (19, 'Milky Loaf', 35.00, 'available', 19, 'loaf', 1),
 (20, 'Whole Wheat Loaf', 40.00, 'available', 14, 'loaf', 1),
 (21, 'Raisin Bread', 20.00, 'available', 15, 'pcs', 1),
-(22, 'Banana Loaf', 35.00, 'available', 10, 'loaf', 1),
+(22, 'Banana Loaf', 35.00, 'available', 5, 'loaf', 1),
 (23, 'Cheese Cupcake', 15.00, 'available', 25, 'pcs', 1),
 (24, 'Butter Muffin', 18.00, 'available', 20, 'pcs', 1),
 (25, 'Yema Bread', 12.00, 'available', 30, 'pcs', 1),
 (26, 'Chocolate Crinkles', 10.00, 'available', 25, 'pcs', 1),
-(27, 'Pan de Coco', 12.00, 'available', 20, 'pcs', 1),
-(28, 'Baguette', 30.00, 'available', 10, 'pcs', 1),
+(27, 'Pan de Coco', 12.00, 'available', 15, 'pcs', 1),
+(28, 'Baguette', 30.00, 'available', 0, 'pcs', 1),
 (29, 'Focaccia Bread', 28.00, 'available', 5, 'pcs', 1),
 (30, 'Mini Donut', 8.00, 'available', 30, 'pcs', 1);
 
@@ -893,7 +895,8 @@ INSERT INTO `sales` (`sale_id`, `product_id`, `user_id`, `qty_sold`, `total_pric
 (37, 19, 3, 1, 35.00, '2025-10-30'),
 (38, 20, 3, 1, 40.00, '2025-10-30'),
 (39, 6, 3, 5, 75.00, '2025-10-30'),
-(40, 13, 3, 3, 75.00, '2025-11-04');
+(40, 13, 3, 3, 75.00, '2025-11-04'),
+(41, 22, 3, 5, 175.00, '2025-11-06');
 
 -- --------------------------------------------------------
 
@@ -960,7 +963,9 @@ INSERT INTO `stock_adjustments` (`adjustment_id`, `item_id`, `item_type`, `user_
 (42, 0, 'ingredient', 3, 5, 'Restock', '2025-11-04 09:15:07'),
 (43, 0, 'ingredient', 3, 5, 'Restock', '2025-11-04 09:16:13'),
 (44, 5, 'ingredient', 3, 3, 'Restock', '2025-11-04 09:28:36'),
-(45, 27, 'product', 3, -10, 'recall Spoilage', '2025-11-04 09:43:34');
+(45, 27, 'product', 3, -10, 'recall Spoilage', '2025-11-04 09:43:34'),
+(46, 27, 'product', 3, -5, 'recall Spoilage', '2025-11-05 23:24:43'),
+(47, 28, 'product', 3, -10, 'recall Spoilage', '2025-11-05 23:58:01');
 
 -- --------------------------------------------------------
 
@@ -998,7 +1003,7 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`user_id`, `username`, `password`, `role`, `email`, `phone_number`, `enable_daily_report`, `created_at`) VALUES
 (1, 'camile123', '$2y$10$Dfv1I9ZXClQUsKS5SOTRP.UrjdaHjcRHLT7lzV0JrZbvxbVkehmKy', 'manager', 'camile@gmail.com', '09935581868', 0, '2025-10-20 04:44:55'),
 (2, 'klain123', '$2y$10$pS2IpgUKXqAaSGO3oqgSHOnVJ0CS3FHy6f0nrDxFj6iapGe3FeTne', 'cashier', 'klain@gmail.com', '09923142756', 0, '2025-10-20 04:44:55'),
-(3, 'gian123', '$2y$10$/FDRF1Ki3yrVAWlxtAdnYusYiz6xD4bujgsyv59LA6cya713Gk.CO', 'manager', 'givano550@gmail.com', '09359840820', 0, '2025-10-20 05:50:57');
+(3, 'gian123', '$2y$10$/FDRF1Ki3yrVAWlxtAdnYusYiz6xD4bujgsyv59LA6cya713Gk.CO', 'manager', 'givano550@gmail.com', '09945005100', 0, '2025-10-20 05:50:57');
 
 -- --------------------------------------------------------
 
@@ -1239,13 +1244,13 @@ ALTER TABLE `recipes`
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `stock_adjustments`
 --
 ALTER TABLE `stock_adjustments`
-  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+  MODIFY `adjustment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
 
 --
 -- AUTO_INCREMENT for table `users`

@@ -29,10 +29,19 @@ if (isset($_SESSION['message'])) {
 
 // --- Active Tab Handling ---
 $active_tab = 'products'; // Default tab
-if (isset($_SESSION['active_tab'])) {
+if (isset($_POST['active_tab'])) { // Check POST first
+    $active_tab = $_POST['active_tab'];
+} elseif (isset($_GET['active_tab'])) { // Then check GET
+    $active_tab = $_GET['active_tab'];
+} elseif (isset($_SESSION['active_tab'])) { // Finally, check session
     $active_tab = $_SESSION['active_tab'];
     unset($_SESSION['active_tab']);
 }
+
+// --- Date Range Handling (for Recall Log) ---
+$date_start = $_GET['date_start'] ?? date('Y-m-d');
+$date_end = $_GET['date_end'] ?? date('Y-m-d');
+
 
 // --- POST Request Handling ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -149,8 +158,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // --- Fetch Data for Display ---
 $products = $inventoryManager->getProductsInventory();
 $ingredients = $inventoryManager->getIngredientsInventory();
-// Fetch recall history using the date-aware function (defaulting to a wide range for the tab view)
-$recall_history = $inventoryManager->getRecallHistoryByDate('1970-01-01', date('Y-m-d')); 
+// --- FIXED: Pass the date variables to the function ---
+$recall_history = $inventoryManager->getRecallHistoryByDate($date_start, $date_end); 
 $discontinued_products = $inventoryManager->getDiscontinuedProducts();
 if (method_exists($inventoryManager, 'getAdjustmentHistory')) {
     $adjustment_history = $inventoryManager->getAdjustmentHistory();
@@ -430,20 +439,39 @@ $product_status_options = ['available', 'discontinued'];
 
                 <div class="tab-pane fade <?php echo ($active_tab === 'recall_log') ? 'show active' : ''; ?>" id="recall-log-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3 border-warning">
-                        <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
-                            <span>Recall Log (From Adjust Stock)</span>
-                            <div class="dropdown">
-                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Sort By: <span class="current-sort-text">Date (Newest First)</span>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
-                                </ul>
-                            </div>
+                        <div class="card-header bg-warning-subtle">
+                            <form method="GET" action="inventory_management.php" class="row g-3 align-items-end">
+                                <input type="hidden" name="active_tab" value="recall_log">
+                                
+                                <div class="col-12">
+                                    <span class="fs-5">Recall Log (From Adjust Stock)</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="recall_date_start" class="form-label mb-0 small">Start Date</label>
+                                    <input type="date" class="form-control form-control-sm" name="date_start" id="recall_date_start" value="<?php echo htmlspecialchars($date_start); ?>">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="recall_date_end" class="form-label mb-0 small">End Date</label>
+                                    <input type="date" class="form-control form-control-sm" name="date_end" id="recall_date_end" value="<?php echo htmlspecialchars($date_end); ?>">
+                                </div>
+                                <div class="col-md-2">
+                                     <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+                                </div>
+                                <div class="col-md-4 d-flex justify-content-end align-items-end">
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Sort By: <span class="current-sort-text">Date (Newest First)</span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
+                                            <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
+                                            <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
+                                            <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
+                                            <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                         <div class="card-body">
                              <p class="text-muted">This log shows all stock adjustments where the reason contains the word "recall". Use the "Adjust Stock" button on a product to create a recall entry.</p>
@@ -462,7 +490,7 @@ $product_status_options = ['available', 'discontinued'];
                                     </thead>
                                     <tbody>
                                         <?php if (empty($recall_history)): ?>
-                                            <tr><td colspan="7" class="text-center text-muted">No recall history found.</td></tr>
+                                            <tr><td colspan="7" class="text-center text-muted">No recall history found for this period.</td></tr>
                                         <?php else: ?>
                                             <?php foreach ($recall_history as $log): ?>
                                             <tr>

@@ -87,9 +87,11 @@ class DashboardManager {
         }
     }
 
-    public function getRecalledStockValue() {
+    public function getRecalledStockValue($date_start, $date_end) {
         try {
-            $stmt = $this->conn->query("CALL DashboardGetRecalledStockValue()");
+            // --- MODIFIED: Call the procedure with date parameters ---
+            $stmt = $this->conn->prepare("CALL DashboardGetRecalledStockValue(?, ?)");
+            $stmt->execute([$date_start, $date_end]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $stmt->closeCursor(); 
             return $row['totalRecalledValue'] ?? 0.00;

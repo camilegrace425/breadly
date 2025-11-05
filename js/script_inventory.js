@@ -116,6 +116,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- JavaScript for Active Tab Persistence ---
     const allTabButtons = document.querySelectorAll('#inventoryTabs .nav-link');
+    
+    // -- ADDED: Check for URL query params to set active tab --
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabFromUrl = urlParams.get('active_tab');
+    if (tabFromUrl) {
+        const tabButton = document.querySelector(`[data-bs-target="#${tabFromUrl}-pane"]`);
+        if (tabButton) {
+            // Deactivate all
+            allTabButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+            
+            // Activate the one from the URL
+            tabButton.classList.add('active');
+            const paneToShow = document.getElementById(`${tabFromUrl}-pane`);
+            if(paneToShow) {
+                paneToShow.classList.add('active', 'show');
+            }
+        }
+    }
+    // --- END: URL query param check ---
+
+
     allTabButtons.forEach(tabButton => {
         tabButton.addEventListener('click', function(event) {
             const paneId = event.target.dataset.bsTarget; // e.g., #products-pane
@@ -141,22 +163,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- THIS IS THE SORTING LOGIC THAT WAS OMITTED ---
 
+    // ---
+    // --- FIXED SORTING FUNCTION
+    // ---
     function getSortableValue(value, type = 'text') {
         if (value === null || value === undefined) return ''; // Handle null/undefined
 
-        let cleaned = value.trim().replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, ''); // Remove units and '+'
-        cleaned = cleaned.replace(/,/g, ''); // Remove thousands separator
+        let cleaned = value.trim(); // Start by just trimming
 
         switch (type) {
             case 'number':
-                // For ingredients, stock/reorder might have decimals
-                 const num = parseFloat(cleaned);
+                // Now, do the aggressive cleaning only for numbers
+                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, ''); // Remove units and '+'
+                cleaned = cleaned.replace(/,/g, ''); // Remove thousands separator
+                const num = parseFloat(cleaned);
                 return isNaN(num) ? 0 : num; // Return 0 if parsing fails
+            
             case 'date':
-                // Attempt to parse 'M d, Y h:i A' format
+                // Use the *original* trimmed value (e.g., "Nov 04, 2025 09:43 AM")
+                // Do not run the .replace() logic on it, which was breaking "AM/PM"
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal; // Return 0 if parsing fails
+            
             default: // 'text'
+                // Do the aggressive cleaning for text as well
+                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, ''); // Remove units and '+'
+                cleaned = cleaned.replace(/,/g, ''); // Remove thousands separator
+
                 // Special sort order for status strings
                 const lowerVal = cleaned.toLowerCase();
                 // Ingredient Status

@@ -92,7 +92,8 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
 $topProducts = $dashboardManager->getTopSellingProducts($date_start, $date_end, 5);
 // --- (These are not date-specific, so they remain the same) ---
-$recalledStockValue = $dashboardManager->getRecalledStockValue();
+// --- MODIFIED: Pass date range to getRecalledStockValue ---
+$recalledStockValue = $dashboardManager->getRecalledStockValue($date_start, $date_end);
 $priorityAlert = $dashboardManager->getActiveLowStockAlerts(1);
 $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
@@ -104,8 +105,11 @@ $date_range_text = date('M d, Y', strtotime($date_start));
 if ($date_start != $date_end) {
     $date_range_text .= ' to ' . date('M d, Y', strtotime($date_end));
 }
-if ($date_start == date('Y-m-d', strtotime('-29 days')) && $date_end == date('Y-m-d')) {
-    $date_range_text = 'Last 30 Days';
+// --- MODIFIED: Check defaults more robustly ---
+if (empty($_GET['date_start']) && empty($_GET['date_end'])) {
+    if ($date_start == date('Y-m-d', strtotime('-29 days')) && $date_end == date('Y-m-d')) {
+        $date_range_text = 'Last 30 Days';
+    }
 }
 if ($date_start == date('Y-m-d') && $date_end == date('Y-m-d')) {
     $date_range_text = 'Today';
@@ -270,8 +274,8 @@ if (!empty($priorityAlert)) {
                     <div class="stat-card" style="background-color: var(--card-bg-4);">
                         <h1 style="color: red">₱<?php echo number_format($recalledStockValue, 2); ?></h1>
                         <p>Recalled Stock Value</p>
-                        <span class="percent-change <?php echo ($recalledStockValue > 0) ? 'text-danger' : 'text-muted'; ?>">
-                            <?php echo ($recalledStockValue > 0) ? 'Needs action' : 'No recalled stock'; ?>
+                        <span class="percent-change text-muted">
+                            <?php echo $date_range_text; ?>
                         </span>
                     </div>
                 </div>
@@ -281,7 +285,10 @@ if (!empty($priorityAlert)) {
                 <div class="col-lg-7">
                     <div class="chart-container">
                         <h3 class="chart-title">Top Selling Products (<?php echo $date_range_text; ?>)</h3>
-                        <canvas id="topProductsChart" data-products="<?php echo htmlspecialchars(json_encode($topProducts)); ?>"></canvas>
+                        <canvas id="topProductsChart" 
+                                data-products="<?php echo htmlspecialchars(json_encode($topProducts)); ?>"
+                                data-date-range="<?php echo htmlspecialchars($date_range_text); ?>">
+                        </canvas>
                     </div>
                 </div>
                 <div class="col-lg-5">
@@ -418,7 +425,12 @@ if (!empty($priorityAlert)) {
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../js/script_dashboard.js"></script>
+<?php 
+    // This PHP code adds the file's last modified time to the script URL
+    // This forces the browser to re-download the file if it has changed.
+    $js_version = filemtime('../js/script_dashboard.js'); 
+?>
+<script src="../js/script_dashboard.js?v=<?php echo $js_version; ?>"></script>
 
 </body>
 </html>
