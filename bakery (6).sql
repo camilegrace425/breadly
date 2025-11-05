@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 05, 2025 at 04:59 PM
+-- Generation Time: Nov 05, 2025 at 05:10 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -781,7 +781,7 @@ INSERT INTO `products` (`product_id`, `name`, `price`, `status`, `stock_qty`, `s
 (19, 'Milky Loaf', 35.00, 'available', 19, 'loaf', 1),
 (20, 'Whole Wheat Loaf', 40.00, 'available', 14, 'loaf', 1),
 (21, 'Raisin Bread', 20.00, 'available', 15, 'pcs', 1),
-(22, 'Banana Loaf', 35.00, 'available', 10, 'loaf', 1),
+(22, 'Banana Loaf', 35.00, 'available', 5, 'loaf', 1),
 (23, 'Cheese Cupcake', 15.00, 'available', 25, 'pcs', 1),
 (24, 'Butter Muffin', 18.00, 'available', 20, 'pcs', 1),
 (25, 'Yema Bread', 12.00, 'available', 30, 'pcs', 1),
@@ -895,7 +895,8 @@ INSERT INTO `sales` (`sale_id`, `product_id`, `user_id`, `qty_sold`, `total_pric
 (37, 19, 3, 1, 35.00, '2025-10-30'),
 (38, 20, 3, 1, 40.00, '2025-10-30'),
 (39, 6, 3, 5, 75.00, '2025-10-30'),
-(40, 13, 3, 3, 75.00, '2025-11-04');
+(40, 13, 3, 3, 75.00, '2025-11-04'),
+(41, 22, 3, 5, 175.00, '2025-11-06');
 
 -- --------------------------------------------------------
 
@@ -1002,7 +1003,7 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`user_id`, `username`, `password`, `role`, `email`, `phone_number`, `enable_daily_report`, `created_at`) VALUES
 (1, 'camile123', '$2y$10$Dfv1I9ZXClQUsKS5SOTRP.UrjdaHjcRHLT7lzV0JrZbvxbVkehmKy', 'manager', 'camile@gmail.com', '09935581868', 0, '2025-10-20 04:44:55'),
 (2, 'klain123', '$2y$10$pS2IpgUKXqAaSGO3oqgSHOnVJ0CS3FHy6f0nrDxFj6iapGe3FeTne', 'cashier', 'klain@gmail.com', '09923142756', 0, '2025-10-20 04:44:55'),
-(3, 'gian123', '$2y$10$/FDRF1Ki3yrVAWlxtAdnYusYiz6xD4bujgsyv59LA6cya713Gk.CO', 'manager', 'givano550@gmail.com', '09359840820', 0, '2025-10-20 05:50:57');
+(3, 'gian123', '$2y$10$/FDRF1Ki3yrVAWlxtAdnYusYiz6xD4bujgsyv59LA6cya713Gk.CO', 'manager', 'givano550@gmail.com', '09945005100', 0, '2025-10-20 05:50:57');
 
 -- --------------------------------------------------------
 
@@ -1243,7 +1244,7 @@ ALTER TABLE `recipes`
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `stock_adjustments`
