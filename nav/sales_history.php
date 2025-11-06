@@ -87,6 +87,11 @@ $sales = $salesManager->getSalesHistory($date_start, $date_end, $sort_column, $s
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="recipes.php">
+                        <i class="bi bi-journal-bookmark me-2"></i> Recipes
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link active" href="sales_history.php">
                         <i class="bi bi-clock-history me-2"></i> Sales History
                     </a>

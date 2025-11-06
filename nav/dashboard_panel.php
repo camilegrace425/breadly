@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $_SESSION['flash_message'] = "Summary Report successfully sent to $sent_to_username ($phone_number).";
         $_SESSION['flash_type'] = 'success';
     } else {
-        $_SESSION['flash_message'] = "Failed to send report. Check API token, credits, and number.";
+        $_SESSION['flash_message'] = "Failed to send report. Check Internet Connection, API token, credits, and number.";
         $_SESSION['flash_type'] = 'danger';
     }
     
@@ -177,6 +177,11 @@ if (!empty($priorityAlert)) {
                 <li class="nav-item">
                     <a class="nav-link" href="inventory_management.php">
                         <i class="bi bi-box me-2"></i> Inventory
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="recipes.php">
+                        <i class="bi bi-journal-bookmark me-2"></i> Recipes
                     </a>
                 </li>
                 <li class="nav-item">

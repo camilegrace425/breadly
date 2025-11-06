@@ -101,26 +101,15 @@ class BakeryManager {
     }
 
 
-    // Manually adjusts product stock for spoilage, etc. Calls: ProductAdjustStock(?, ?, ?, ?)
+    // --- ::: MODIFIED FUNCTION ::: ---
+    // Manually adjusts product stock. 
+    // If qty is positive, deducts ingredients.
+    // If qty is negative, it's for spoilage/recall (no deduction).
+    // Calls: ProductAdjustStock(?, ?, ?, ?, @status)
     public function adjustProductStock($product_id, $user_id, $adjustment_qty, $reason) {
         try {
-            $stmt = $this->conn->prepare("CALL ProductAdjustStock(?, ?, ?, ?)");
-            $success = $stmt->execute([$product_id, $user_id, $adjustment_qty, $reason]);
-            $stmt->closeCursor(); // Close cursor after execution
-            return $success; // Return true if execute worked, false if it failed
-        } catch (PDOException $e) {
-            // Log error for debugging
-            error_log("Error adjusting stock: " . $e->getMessage());
-            // --- MODIFIED: Re-throw the exception to be caught by the controller ---
-            throw $e;
-        }
-    }
-
-    // Records a baking run, deducting ingredients and adding product stock. Returns status message.
-    public function recordBaking($product_id, $qty_baked) {
-         try {
-            $stmt = $this->conn->prepare("CALL ProductionRecordBaking(?, ?, @status)");
-            $stmt->execute([$product_id, $qty_baked]);
+            $stmt = $this->conn->prepare("CALL ProductAdjustStock(?, ?, ?, ?, @status)");
+            $stmt->execute([$product_id, $user_id, $adjustment_qty, $reason]);
             $stmt->closeCursor();
 
             $status_stmt = $this->conn->query("SELECT @status AS status");
@@ -128,10 +117,16 @@ class BakeryManager {
             $status_stmt->closeCursor();
 
             return $result['status'] ?? 'Error: Unknown status.';
+        
         } catch (PDOException $e) {
+            // Catch errors from the DB (like the 'Recall must be negative' signal)
+            error_log("Error adjusting stock: " . $e->getMessage());
             return 'Error: ' . $e->getMessage();
         }
     }
+    // --- ::: END MODIFIED FUNCTION ::: ---
+
+    // --- ::: REMOVED recordBaking FUNCTION ::: ---
 
     // Records a new sale transaction, deducting product stock. Returns status message.
     public function recordSale($user_id, $product_id, $qty_sold) {
@@ -166,5 +161,48 @@ class BakeryManager {
         $stmt = $this->conn->prepare("CALL RecallLogRemoval(?, ?, ?, ?)");
         return $stmt->execute([$recall_id, $user_id, $qty_removed, $notes]);
     }
+
+    // --- ::: NEW RECIPE FUNCTIONS ADDED ::: ---
+
+    // Gets all available products for the recipe dropdown.
+    public function getAllProductsSimple() {
+        $stmt = $this->conn->prepare("CALL ProductGetAllSimple()");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Gets all ingredients for the recipe dropdown.
+    public function getAllIngredientsSimple() {
+        $stmt = $this->conn->prepare("CALL IngredientGetAllSimple()");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Gets the current recipe for a single product.
+    public function getRecipeForProduct($product_id) {
+        $stmt = $this->conn->prepare("CALL RecipeGetByProductId(?)");
+        $stmt->execute([$product_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Adds a new ingredient to a product's recipe.
+    public function addIngredientToRecipe($product_id, $ingredient_id, $qty_needed, $unit) {
+        $stmt = $this->conn->prepare("CALL RecipeAddIngredient(?, ?, ?, ?)");
+        return $stmt->execute([$product_id, $ingredient_id, $qty_needed, $unit]);
+    }
+
+    // Removes an ingredient from a product's recipe.
+    public function removeIngredientFromRecipe($recipe_id) {
+        $stmt = $this->conn->prepare("CALL RecipeRemoveIngredient(?)");
+        return $stmt->execute([$recipe_id]);
+    }
+    
+    // --- ::: NEW BATCH SIZE FUNCTION ::: ---
+    // Updates the batch size for a product.
+    public function updateProductBatchSize($product_id, $batch_size) {
+        $stmt = $this->conn->prepare("CALL ProductUpdateBatchSize(?, ?)");
+        return $stmt->execute([$product_id, $batch_size]);
+    }
+    // --- ::: END ::: ---
 }
 ?>
