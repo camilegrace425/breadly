@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     <meta charset="utf-tr" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Reset Password</title>
-
+    <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"

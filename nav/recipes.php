@@ -104,6 +104,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recipe Management</title>
+    <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../styles/global.css"> 
@@ -138,7 +139,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
             <div class="sidebar-brand">
                 <img src="../images/kzklogo.png" alt="BREADLY Logo">
                 <h5>BREADLY</h5>
-                <p>Kz & Rhyne's Bakery</p>
+                <p>Kz & Khyle's Bakery</p>
             </div>
             <ul class="nav flex-column sidebar-nav">
                 <li class="nav-item">
