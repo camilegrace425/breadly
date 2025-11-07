@@ -43,21 +43,19 @@ class BakeryManager {
         }
     }
 
-    // ---
-    // THIS IS THE CORRECTED FUNCTION
-    // ---
-    // Adds stock to an existing ingredient. Calls: IngredientRestock(?, ?, ?)
-    public function restockIngredient($ingredient_id, $user_id, $added_qty) {
+    // --- ::: MODIFIED: Replaced restockIngredient ::: ---
+    // Adds/Removes stock from an existing ingredient. Calls: IngredientAdjustStock(?, ?, ?, ?)
+    public function adjustIngredientStock($ingredient_id, $user_id, $added_qty, $reason) {
         try {
-            $stmt = $this->conn->prepare("CALL IngredientRestock(?, ?, ?)");
-            $stmt->execute([$ingredient_id, $user_id, $added_qty]);
+            $stmt = $this->conn->prepare("CALL IngredientAdjustStock(?, ?, ?, ?)");
+            $stmt->execute([$ingredient_id, $user_id, $added_qty, $reason]);
             $stmt->closeCursor();
-            return "Success: Ingredient restocked."; // Return a success string
+            return "Success: Ingredient stock adjusted."; // Return a success string
         } catch (PDOException $e) {
             // Log the actual database error for debugging
-            error_log("Error in restockIngredient: " . $e->getMessage());
+            error_log("Error in adjustIngredientStock: " . $e->getMessage());
             // Return an error string for the controller
-            return "Error: Could not restock ingredient. " . $e->getMessage();
+            return "Error: " . $e->getMessage();
         }
     }
 
@@ -101,11 +99,7 @@ class BakeryManager {
     }
 
 
-    // --- ::: MODIFIED FUNCTION ::: ---
     // Manually adjusts product stock. 
-    // If qty is positive, deducts ingredients.
-    // If qty is negative, it's for spoilage/recall (no deduction).
-    // Calls: ProductAdjustStock(?, ?, ?, ?, @status)
     public function adjustProductStock($product_id, $user_id, $adjustment_qty, $reason) {
         try {
             $stmt = $this->conn->prepare("CALL ProductAdjustStock(?, ?, ?, ?, @status)");
@@ -119,20 +113,16 @@ class BakeryManager {
             return $result['status'] ?? 'Error: Unknown status.';
         
         } catch (PDOException $e) {
-            // Catch errors from the DB (like the 'Recall must be negative' signal)
             error_log("Error adjusting stock: " . $e->getMessage());
             return 'Error: ' . $e->getMessage();
         }
     }
-    // --- ::: END MODIFIED FUNCTION ::: ---
-
-    // --- ::: REMOVED recordBaking FUNCTION ::: ---
 
     // Records a new sale transaction, deducting product stock. Returns status message.
-    public function recordSale($user_id, $product_id, $qty_sold) {
+    public function recordSale($user_id, $product_id, $qty_sold, $discount_percent = 0) {
         try {
-            $stmt = $this->conn->prepare("CALL SaleRecordTransaction(?, ?, ?, @status, @sale_id)");
-            $success = $stmt->execute([$user_id, $product_id, $qty_sold]);
+            $stmt = $this->conn->prepare("CALL SaleRecordTransaction(?, ?, ?, ?, @status, @sale_id)");
+            $success = $stmt->execute([$user_id, $product_id, $qty_sold, $discount_percent]);
 
             if (!$success) {
                 return 'Error: Execution failed.';
@@ -149,6 +139,20 @@ class BakeryManager {
             return 'Error: ' . $e->getMessage();
         }
     }
+    
+    // Processes a return against a specific sale
+    public function returnSale($sale_id, $user_id, $return_qty, $reason) {
+         try {
+            $stmt = $this->conn->prepare("CALL SaleProcessReturn(?, ?, ?, ?)");
+            $stmt->execute([$sale_id, $user_id, $return_qty, $reason]);
+            $stmt->closeCursor();
+            return "Success: Return processed. Stock has been updated.";
+        
+        } catch (PDOException $e) {
+            error_log("Error processing sale return: " . $e->getMessage());
+            return 'Error: ' . $e->getMessage();
+        }
+    }
 
     // Initiates a product recall. Calls: RecallInitiate(?, ?, ?, ?)
     public function initiateRecall($product_id, $reason, $batch_start_date, $batch_end_date) {
@@ -161,8 +165,6 @@ class BakeryManager {
         $stmt = $this->conn->prepare("CALL RecallLogRemoval(?, ?, ?, ?)");
         return $stmt->execute([$recall_id, $user_id, $qty_removed, $notes]);
     }
-
-    // --- ::: NEW RECIPE FUNCTIONS ADDED ::: ---
 
     // Gets all available products for the recipe dropdown.
     public function getAllProductsSimple() {
@@ -197,12 +199,10 @@ class BakeryManager {
         return $stmt->execute([$recipe_id]);
     }
     
-    // --- ::: NEW BATCH SIZE FUNCTION ::: ---
     // Updates the batch size for a product.
     public function updateProductBatchSize($product_id, $batch_size) {
         $stmt = $this->conn->prepare("CALL ProductUpdateBatchSize(?, ?)");
         return $stmt->execute([$product_id, $batch_size]);
     }
-    // --- ::: END ::: ---
 }
 ?>

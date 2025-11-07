@@ -1,15 +1,15 @@
 <?php
 session_start();
-require_once '../src/InventoryManager.php';
-require_once '../src/BakeryManager.php';
+require_once "../src/InventoryManager.php";
+require_once "../src/BakeryManager.php";
 
 // --- Security Checks ---
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+if (!isset($_SESSION["user_id"])) {
+    header("Location: login.php");
     exit();
 }
-if ($_SESSION['role'] !== 'manager') {
-    header('Location: index.php');
+if ($_SESSION["role"] !== "manager") {
+    header("Location: index.php");
     exit();
 }
 
@@ -18,106 +18,135 @@ $inventoryManager = new InventoryManager();
 $bakeryManager = new BakeryManager();
 
 // --- Message Handling ---
-$message = '';
-$message_type = '';
-if (isset($_SESSION['message'])) {
-    $message = $_SESSION['message'];
-    $message_type = $_SESSION['message_type'];
-    unset($_SESSION['message']);
-    unset($_SESSION['message_type']);
+$message = "";
+$message_type = "";
+if (isset($_SESSION["message"])) {
+    $message = $_SESSION["message"];
+    $message_type = $_SESSION["message_type"];
+    unset($_SESSION["message"]);
+    unset($_SESSION["message_type"]);
 }
 
 // --- Active Tab Handling ---
-$active_tab = 'products'; // Default tab
-if (isset($_POST['active_tab'])) { // Check POST first
-    $active_tab = $_POST['active_tab'];
-} elseif (isset($_GET['active_tab'])) { // Then check GET
-    $active_tab = $_GET['active_tab'];
-} elseif (isset($_SESSION['active_tab'])) { // Finally, check session
-    $active_tab = $_SESSION['active_tab'];
-    unset($_SESSION['active_tab']);
+$active_tab = "products"; // Default tab
+if (isset($_POST["active_tab"])) {
+    // Check POST first
+    $active_tab = $_POST["active_tab"];
+} elseif (isset($_GET["active_tab"])) {
+    // Then check GET
+    $active_tab = $_GET["active_tab"];
+} elseif (isset($_SESSION["active_tab"])) {
+    // Finally, check session
+    $active_tab = $_SESSION["active_tab"];
+    unset($_SESSION["active_tab"]);
 }
 
-// --- Date Range Handling (for Recall Log) ---
-$date_start = $_GET['date_start'] ?? date('Y-m-d');
-$date_end = $_GET['date_end'] ?? date('Y-m-d');
-
-
 // --- POST Request Handling ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $form_active_tab = $_POST['active_tab'] ?? 'products'; // Get tab from form submission
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $action = $_POST["action"] ?? "";
+    $form_active_tab = $_POST["active_tab"] ?? "products"; // Get tab from form submission
 
     try {
-        $success_message = '';
-        $error_message = '';
-        $current_user_id = $_SESSION['user_id']; // Get current user ID
+        $success_message = "";
+        $error_message = "";
+        $current_user_id = $_SESSION["user_id"]; // Get current user ID
 
         // --- Action Switch ---
         switch ($action) {
-             case 'add_ingredient':
-                $bakeryManager->addIngredient($_POST['name'], $_POST['unit'], $_POST['stock_qty'], $_POST['reorder_level']);
-                $success_message = 'Successfully added new ingredient!';
+            case "add_ingredient":
+                $bakeryManager->addIngredient(
+                    $_POST["name"],
+                    $_POST["unit"],
+                    $_POST["stock_qty"],
+                    $_POST["reorder_level"]
+                );
+                $success_message = "Successfully added new ingredient!";
                 break;
 
-            case 'restock_ingredient':
-                $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
-                // 1. Get the status message from the function
-                $status = $bakeryManager->restockIngredient($_POST['ingredient_id'], $user_id_to_pass, $_POST['added_qty']);
-                
-                // 2. Check if the status message contains "Success"
-                if (strpos($status, 'Success') !== false) {
-                    $success_message = 'Successfully restocked ingredient!';
+            case "adjust_ingredient":
+                $user_id_to_pass = isset($current_user_id)
+                    ? $current_user_id
+                    : null;
+                $adjustment_type = $_POST["adjustment_type"];
+                $reason_note = $_POST["reason_note"];
+                $combined_reason = "[$adjustment_type] $reason_note";
+
+                $status = $bakeryManager->adjustIngredientStock(
+                    $_POST["ingredient_id"],
+                    $user_id_to_pass,
+                    $_POST["adjustment_qty"],
+                    $combined_reason
+                );
+
+                if (strpos($status, "Success") !== false) {
+                    $success_message = $status;
                 } else {
-                    // It's an error, pass it along
-                    $error_message = $status; 
+                    $error_message = $status;
                 }
                 break;
 
-            case 'add_product':
-                $bakeryManager->addProduct($_POST['name'], $_POST['price']);
-                $success_message = 'Successfully added new product!';
+            case "add_product":
+                $bakeryManager->addProduct($_POST["name"], $_POST["price"]);
+                $success_message = "Successfully added new product!";
                 break;
 
-            case 'adjust_product':
-                $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
-                
-                // --- ::: MODIFIED LOGIC ::: ---
-                // This function now returns a status message from the stored procedure
-                $status = $bakeryManager->adjustProductStock($_POST['product_id'], $user_id_to_pass, $_POST['adjustment_qty'], $_POST['reason']);
-                
-                if (strpos($status, 'Success') !== false) {
+            case "adjust_product":
+                $user_id_to_pass = isset($current_user_id)
+                    ? $current_user_id
+                    : null;
+
+                $adjustment_type = $_POST["adjustment_type"];
+                $reason_note = $_POST["reason_note"];
+                $combined_reason = "[$adjustment_type] $reason_note";
+
+                $status = $bakeryManager->adjustProductStock(
+                    $_POST["product_id"],
+                    $user_id_to_pass,
+                    $_POST["adjustment_qty"],
+                    $combined_reason
+                );
+
+                if (strpos($status, "Success") !== false) {
                     $success_message = $status;
                 } else {
                     $error_message = $status; // Pass the error message from the procedure
                 }
-                // --- ::: END MODIFIED LOGIC ::: ---
                 break;
 
-            // --- ::: REMOVED 'record_baking' CASE ::: ---
-
-            case 'edit_ingredient':
-                $bakeryManager->ingredientUpdate($_POST['ingredient_id'], $_POST['name'], $_POST['unit'], $_POST['reorder_level']);
-                $success_message = 'Successfully updated ingredient!';
+            case "edit_ingredient":
+                $bakeryManager->ingredientUpdate(
+                    $_POST["ingredient_id"],
+                    $_POST["name"],
+                    $_POST["unit"],
+                    $_POST["reorder_level"]
+                );
+                $success_message = "Successfully updated ingredient!";
                 break;
 
-            case 'edit_product':
-                $bakeryManager->productUpdate($_POST['product_id'], $_POST['name'], $_POST['price'], $_POST['status']);
-                $success_message = 'Successfully updated product!';
+            case "edit_product":
+                $bakeryManager->productUpdate(
+                    $_POST["product_id"],
+                    $_POST["name"],
+                    $_POST["price"],
+                    $_POST["status"]
+                );
+                $success_message = "Successfully updated product!";
                 break;
 
-            case 'delete_ingredient':
-                $status = $bakeryManager->ingredientDelete($_POST['ingredient_id']);
-                if (strpos($status, 'Success') !== false) {
+            case "delete_ingredient":
+                $status = $bakeryManager->ingredientDelete(
+                    $_POST["ingredient_id"]
+                );
+                if (strpos($status, "Success") !== false) {
                     $success_message = $status;
                 } else {
                     $error_message = $status; // Pass the error message from the procedure
                 }
                 break;
 
-            case 'delete_product':
-                $status = $bakeryManager->productDelete($_POST['product_id']);
-                 if (strpos($status, 'Success') !== false) {
+            case "delete_product":
+                $status = $bakeryManager->productDelete($_POST["product_id"]);
+                if (strpos($status, "Success") !== false) {
                     $success_message = $status;
                 } else {
                     $error_message = $status; // Pass the error message from the procedure
@@ -126,59 +155,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error_message) {
-            $_SESSION['message'] = $error_message;
-            $_SESSION['message_type'] = 'danger';
+            $_SESSION["message"] = $error_message;
+            $_SESSION["message_type"] = "danger";
         } else {
-            $_SESSION['message'] = $success_message;
-            $_SESSION['message_type'] = 'success';
+            $_SESSION["message"] = $success_message;
+            $_SESSION["message_type"] = "success";
         }
-        $_SESSION['active_tab'] = $form_active_tab; // Remember the tab where the action occurred
+        $_SESSION["active_tab"] = $form_active_tab; // Remember the tab where the action occurred
 
-        header('Location: inventory_management.php'); // Redirect to prevent form resubmission
+        header("Location: inventory_management.php"); // Redirect to prevent form resubmission
         exit();
-
     } catch (PDOException $e) {
         // --- Database Error Handling ---
-        error_log("Database Error in inventory_management.php: " . $e->getMessage());
-        
-        // Provide a more user-friendly error
-        $user_error = 'A database error occurred. Please try again.';
+        error_log(
+            "Database Error in inventory_management.php: " . $e->getMessage()
+        );
 
-        if (strpos($e->getMessage(), 'Recalls must have a negative quantity') !== false) {
-            $user_error = 'Error: Recalls must have a negative quantity. Positive values are not allowed for recalls.';
-        } 
-        else if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-             $user_error = 'Error: An item with this name already exists.';
+        $user_error = "A database error occurred. Please try again.";
+        if (strpos($e->getMessage(), "Duplicate entry") !== false) {
+            $user_error = "Error: An item with this name already exists.";
         }
-        
-        $_SESSION['message'] = $user_error;
-        $_SESSION['message_type'] = 'danger';
-        $_SESSION['active_tab'] = $form_active_tab; // Keep user on the current tab
 
-        // Now, redirect to prevent resubmission
-        header('Location: inventory_management.php'); 
+        $_SESSION["message"] = $user_error;
+        $_SESSION["message_type"] = "danger";
+        $_SESSION["active_tab"] = $form_active_tab; // Keep user on the current tab
+
+        header("Location: inventory_management.php");
         exit();
-        
     }
 } // End POST Handling
 
 // --- Fetch Data for Display ---
 $products = $inventoryManager->getProductsInventory();
 $ingredients = $inventoryManager->getIngredientsInventory();
-// --- FIXED: Pass the date variables to the function ---
-$recall_history = $inventoryManager->getRecallHistoryByDate($date_start, $date_end); 
 $discontinued_products = $inventoryManager->getDiscontinuedProducts();
-if (method_exists($inventoryManager, 'getAdjustmentHistory')) {
+if (method_exists($inventoryManager, "getAdjustmentHistory")) {
     $adjustment_history = $inventoryManager->getAdjustmentHistory();
 } else {
     $adjustment_history = [];
 }
-
+// --- ADDED: Fetch recall data ---
+$recall_history = $inventoryManager->getRecallHistoryByDate(
+    "1970-01-01",
+    "2099-12-31"
+);
+$total_recall_value = 0;
+foreach ($recall_history as $log) {
+    $total_recall_value += $log["removed_value"];
+}
+// --- END ADDED ---
 
 // --- Static Options for Modals ---
-$unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
-// Removed 'recalled' status
-$product_status_options = ['available', 'discontinued'];
+$unit_options = ["kg", "g", "L", "ml", "pcs", "pack", "tray", "can", "bottle"];
+$product_status_options = ["available", "discontinued"];
 ?>
 
 <!DOCTYPE html>
@@ -220,7 +249,7 @@ $product_status_options = ['available', 'discontinued'];
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="sales_history.php">
-                        <i class="bi bi-clock-history me-2"></i> Sales History
+                        <i class="bi bi-clock-history me-2"></i> Sales & Transactions
                     </a>
                 </li>
                 <li class="nav-item">
@@ -234,7 +263,9 @@ $product_status_options = ['available', 'discontinued'];
                 <div class="dropdown">
                     <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-circle me-2 fs-4"></i>
-                        <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
+                        <strong><?php echo htmlspecialchars(
+                            $_SESSION["username"]
+                        ); ?></strong>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
                         <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
@@ -257,27 +288,41 @@ $product_status_options = ['available', 'discontinued'];
 
             <ul class="nav nav-tabs" id="inventoryTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo ($active_tab === 'products') ? 'active' : ''; ?>" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-pane" type="button" role="tab">
+                    <button class="nav-link <?php echo $active_tab ===
+                    "products"
+                        ? "active"
+                        : ""; ?>" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-pane" type="button" role="tab">
                         <i class="bi bi-archive me-1"></i> Active Products
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo ($active_tab === 'ingredients') ? 'active' : ''; ?>" id="ingredients-tab" data-bs-toggle="tab" data-bs-target="#ingredients-pane" type="button" role="tab">
+                    <button class="nav-link <?php echo $active_tab ===
+                    "ingredients"
+                        ? "active"
+                        : ""; ?>" id="ingredients-tab" data-bs-toggle="tab" data-bs-target="#ingredients-pane" type="button" role="tab">
                         <i class="bi bi-droplet me-1"></i> Ingredients
                     </button>
                 </li>
                  <li class="nav-item" role="presentation">
-                    <button class="nav-link text-warning <?php echo ($active_tab === 'recall_log') ? 'active' : ''; ?>" id="recall-log-tab" data-bs-toggle="tab" data-bs-target="#recall-log-pane" type="button" role="tab">
-                        <i class="bi bi-exclamation-triangle me-1"></i> Recall Log
-                    </button>
-                </li>
-                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo ($active_tab === 'discontinued') ? 'active' : ''; ?>" id="discontinued-tab" data-bs-toggle="tab" data-bs-target="#discontinued-pane" type="button" role="tab">
+                    <button class="nav-link <?php echo $active_tab ===
+                    "discontinued"
+                        ? "active"
+                        : ""; ?>" id="discontinued-tab" data-bs-toggle="tab" data-bs-target="#discontinued-pane" type="button" role="tab">
                         <i class="bi bi-slash-circle me-1"></i> Discontinued
                     </button>
                 </li>
                  <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo ($active_tab === 'history') ? 'active' : ''; ?>" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab">
+                    <button class="nav-link text-warning <?php echo $active_tab ===
+                    "recall"
+                        ? "active"
+                        : ""; ?>" id="recall-tab" data-bs-toggle="tab" data-bs-target="#recall-pane" type="button" role="tab">
+                        <i class="bi bi-exclamation-triangle me-1"></i> Recall Log
+                    </button>
+                </li>
+                 <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo $active_tab === "history"
+                        ? "active"
+                        : ""; ?>" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab">
                         <i class="bi bi-clock-history me-1"></i> Adjustment History
                     </button>
                 </li>
@@ -285,7 +330,9 @@ $product_status_options = ['available', 'discontinued'];
 
             <div class="tab-content" id="inventoryTabContent">
 
-                <div class="tab-pane fade <?php echo ($active_tab === 'products') ? 'show active' : ''; ?>" id="products-pane" role="tabpanel">
+                <div class="tab-pane fade <?php echo $active_tab === "products"
+                    ? "show active"
+                    : ""; ?>" id="products-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center gap-3">
                             <span class="fs-5">Active Products</span>
@@ -293,7 +340,27 @@ $product_status_options = ['available', 'discontinued'];
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                                 <input type="text" id="product-search-input" class="form-control" placeholder="Search products...">
                             </div>
-                            <div class="d-flex gap-2 flex-shrink-0"> <div class="dropdown d-inline-block">
+                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
+                                    </div>
+                            <div class="d-flex gap-2 flex-shrink-0 align-items-center"> 
+                                <div class="d-flex align-items-center gap-1">
+                                    <label for="product-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
+                                    <select class="form-select form-select-sm" id="product-rows-select" style="width: auto;">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="product-next-btn">
+                                            <i class="bi bi-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                    </div>
+                                <div class="dropdown d-inline-block">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
                                     </button>
@@ -310,7 +377,7 @@ $product_status_options = ['available', 'discontinued'];
                                     <i class="bi bi-plus-circle me-1"></i> Add New Product
                                 </button>
                             </div>
-                        </div>
+                            </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -324,34 +391,62 @@ $product_status_options = ['available', 'discontinued'];
                                         </tr>
                                     </thead>
                                     <tbody id="product-table-body">
-                                        <?php foreach ($products as $product): ?>
+                                        <?php foreach (
+                                            $products
+                                            as $product
+                                        ): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($product['name']); ?></td>
-                                            <td>₱<?php echo number_format($product['price'], 2); ?></td>
+                                            <td><?php echo htmlspecialchars(
+                                                $product["name"]
+                                            ); ?></td>
+                                            <td>₱<?php echo number_format(
+                                                $product["price"],
+                                                2
+                                            ); ?></td>
                                             <td>
-                                                <span class="badge bg-success"><?php echo htmlspecialchars(ucfirst($product['status'])); ?></span>
+                                                <span class="badge bg-success"><?php echo htmlspecialchars(
+                                                    ucfirst($product["status"])
+                                                ); ?></span>
                                             </td>
-                                            <td><strong><?php echo $product['stock_qty']; ?></strong></td>
+                                            <td><strong><?php echo $product[
+                                                "stock_qty"
+                                            ]; ?></strong></td>
                                             <td>
                                                 <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editProductModal"
-                                                        data-product-id="<?php echo $product['product_id']; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars($product['name']); ?>"
-                                                        data-product-price="<?php echo $product['price']; ?>"
-                                                        data-product-status="<?php echo $product['status']; ?>">
+                                                        data-product-id="<?php echo $product[
+                                                            "product_id"
+                                                        ]; ?>"
+                                                        data-product-name="<?php echo htmlspecialchars(
+                                                            $product["name"]
+                                                        ); ?>"
+                                                        data-product-price="<?php echo $product[
+                                                            "price"
+                                                        ]; ?>"
+                                                        data-product-status="<?php echo $product[
+                                                            "status"
+                                                        ]; ?>">
                                                     <i class="bi bi-pencil-square"></i> Edit
                                                 </button>
                                                 <button class="btn btn-outline-secondary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#adjustProductModal"
-                                                        data-product-id="<?php echo $product['product_id']; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars($product['name']); ?>">
+                                                        data-product-id="<?php echo $product[
+                                                            "product_id"
+                                                        ]; ?>"
+                                                        data-product-name="<?php echo htmlspecialchars(
+                                                            $product["name"]
+                                                        ); ?>">
                                                     Adjust Stock
                                                 </button>
                                                 
                                                 <button class="btn btn-outline-danger btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#deleteProductModal"
-                                                        data-product-id="<?php echo $product['product_id']; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars($product['name']); ?>">
+                                                        data-product-id="<?php echo $product[
+                                                            "product_id"
+                                                        ]; ?>"
+                                                        data-product-name="<?php echo htmlspecialchars(
+                                                            $product["name"]
+                                                        ); ?>">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
                                             </td>
@@ -370,7 +465,10 @@ $product_status_options = ['available', 'discontinued'];
                     </div>
                 </div>
 
-                <div class="tab-pane fade <?php echo ($active_tab === 'ingredients') ? 'show active' : ''; ?>" id="ingredients-pane" role="tabpanel">
+                <div class="tab-pane fade <?php echo $active_tab ===
+                "ingredients"
+                    ? "show active"
+                    : ""; ?>" id="ingredients-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center gap-3">
                             <span class="fs-5">All Ingredients</span>
@@ -378,7 +476,27 @@ $product_status_options = ['available', 'discontinued'];
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                                 <input type="text" id="ingredient-search-input" class="form-control" placeholder="Search ingredients...">
                             </div>
-                            <div class="d-flex gap-2 flex-shrink-0"> <div class="dropdown d-inline-block">
+                            <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
+                                    </div>
+                            <div class="d-flex gap-2 flex-shrink-0 align-items-center"> 
+                                <div class="d-flex align-items-center gap-1">
+                                    <label for="ingredient-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
+                                    <select class="form-select form-select-sm" id="ingredient-rows-select" style="width: auto;">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="ingredient-next-btn">
+                                            <i class="bi bi-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                    </div>
+                                <div class="dropdown d-inline-block">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
                                     </button>
@@ -397,7 +515,7 @@ $product_status_options = ['available', 'discontinued'];
                                     <i class="bi bi-plus-circle me-1"></i> Add New Ingredient
                                 </button>
                             </div>
-                        </div>
+                            </div>
                         <div class="card-body">
                              <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -413,13 +531,31 @@ $product_status_options = ['available', 'discontinued'];
                                     </thead>
                                     <tbody id="ingredient-table-body">
                                         <?php foreach ($ingredients as $ing): ?>
-                                        <tr class="<?php echo ($ing['stock_surplus'] <= 0) ? 'table-danger' : ''; // Highlight low stock rows ?>">
-                                            <td><?php echo htmlspecialchars($ing['name']); ?></td>
-                                            <td><?php echo htmlspecialchars($ing['unit']); ?></td>
-                                            <td><strong><?php echo number_format($ing['stock_qty'], 2); ?></strong></td>
-                                            <td><?php echo number_format($ing['reorder_level'], 2); ?></td>
+                                        <tr class="<?php echo $ing[
+                                            "stock_surplus"
+                                        ] <= 0
+                                            ? "table-danger"
+                                            : "";
+                                            // Highlight low stock rows
+                                            ?>">
+                                            <td><?php echo htmlspecialchars(
+                                                $ing["name"]
+                                            ); ?></td>
+                                            <td><?php echo htmlspecialchars(
+                                                $ing["unit"]
+                                            ); ?></td>
+                                            <td><strong><?php echo number_format(
+                                                $ing["stock_qty"],
+                                                2
+                                            ); ?></strong></td>
+                                            <td><?php echo number_format(
+                                                $ing["reorder_level"],
+                                                2
+                                            ); ?></td>
                                             <td>
-                                                <?php if ($ing['stock_surplus'] <= 0): ?>
+                                                <?php if (
+                                                    $ing["stock_surplus"] <= 0
+                                                ): ?>
                                                     <span class="badge bg-danger">Low Stock</span>
                                                 <?php else: ?>
                                                     <span class="badge bg-success">In Stock</span>
@@ -428,23 +564,41 @@ $product_status_options = ['available', 'discontinued'];
                                             <td>
                                                 <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editIngredientModal"
-                                                        data-ingredient-id="<?php echo $ing['ingredient_id']; ?>"
-                                                        data-ingredient-name="<?php echo htmlspecialchars($ing['name']); ?>"
-                                                        data-ingredient-unit="<?php echo htmlspecialchars($ing['unit']); ?>"
-                                                        data-ingredient-reorder="<?php echo $ing['reorder_level']; ?>">
+                                                        data-ingredient-id="<?php echo $ing[
+                                                            "ingredient_id"
+                                                        ]; ?>"
+                                                        data-ingredient-name="<?php echo htmlspecialchars(
+                                                            $ing["name"]
+                                                        ); ?>"
+                                                        data-ingredient-unit="<?php echo htmlspecialchars(
+                                                            $ing["unit"]
+                                                        ); ?>"
+                                                        data-ingredient-reorder="<?php echo $ing[
+                                                            "reorder_level"
+                                                        ]; ?>">
                                                     <i class="bi bi-pencil-square"></i> Edit
                                                 </button>
-                                                <button class="btn btn-outline-success btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#restockModal"
-                                                        data-ingredient-id="<?php echo $ing['ingredient_id']; ?>"
-                                                        data-ingredient-name="<?php echo htmlspecialchars($ing['name']); ?>"
-                                                        data-ingredient-unit="<?php echo htmlspecialchars($ing['unit']); ?>">
-                                                    Restock
+                                                <button class="btn btn-outline-secondary btn-sm"
+                                                        data-bs-toggle="modal" data-bs-target="#adjustIngredientModal"
+                                                        data-ingredient-id="<?php echo $ing[
+                                                            "ingredient_id"
+                                                        ]; ?>"
+                                                        data-ingredient-name="<?php echo htmlspecialchars(
+                                                            $ing["name"]
+                                                        ); ?>"
+                                                        data-ingredient-unit="<?php echo htmlspecialchars(
+                                                            $ing["unit"]
+                                                        ); ?>">
+                                                    Adjust Stock
                                                 </button>
                                                 <button class="btn btn-outline-danger btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#deleteIngredientModal"
-                                                        data-ingredient-id="<?php echo $ing['ingredient_id']; ?>"
-                                                        data-ingredient-name="<?php echo htmlspecialchars($ing['name']); ?>">
+                                                        data-ingredient-id="<?php echo $ing[
+                                                            "ingredient_id"
+                                                        ]; ?>"
+                                                        data-ingredient-name="<?php echo htmlspecialchars(
+                                                            $ing["name"]
+                                                        ); ?>">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
                                             </td>
@@ -463,118 +617,48 @@ $product_status_options = ['available', 'discontinued'];
                     </div>
                 </div>
 
-                <div class="tab-pane fade <?php echo ($active_tab === 'recall_log') ? 'show active' : ''; ?>" id="recall-log-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3 border-warning">
-                        <div class="card-header bg-warning-subtle">
-                            <form method="GET" action="inventory_management.php" class="row g-3 align-items-end">
-                                <input type="hidden" name="active_tab" value="recall_log">
-                                
-                                <div class="col-12">
-                                    <span class="fs-5">Recall Log (From Adjust Stock)</span>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="recall_date_start" class="form-label mb-0 small">Start Date</label>
-                                    <input type="date" class="form-control form-control-sm" name="date_start" id="recall_date_start" value="<?php echo htmlspecialchars($date_start); ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="recall_date_end" class="form-label mb-0 small">End Date</label>
-                                    <input type="date" class="form-control form-control-sm" name="date_end" id="recall_date_end" value="<?php echo htmlspecialchars($date_end); ?>">
-                                </div>
-                                <div class="col-md-2">
-                                     <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
-                                </div>
-                                <div class="col-md-4 d-flex justify-content-end align-items-end">
-                                    <div class="dropdown">
-                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                            Sort By: <span class="current-sort-text">Date (Newest First)</span>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
-                                            <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
-                                            <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
-                                            <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
-                                            <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="card-body">
-                             <p class="text-muted">This log shows all stock adjustments where the reason contains the word "recall". Use the "Adjust Stock" button on a product to create a recall entry.</p>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
-                                            <th data-sort-by="user">User</th>
-                                            <th data-sort-by="item">Item Name</th>
-                                            <th data-sort-by="type">Type</th>
-                                            <th data-sort-by="qty" data-sort-type="number">Quantity</th>
-                                            <th data-sort-by="value" data-sort-type="number">Removed Value</th>
-                                            <th data-sort-by="reason">Reason</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($recall_history)): ?>
-                                            <tr><td colspan="7" class="text-center text-muted">No recall history found for this period.</td></tr>
-                                        <?php else: ?>
-                                            <?php foreach ($recall_history as $log): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($log['timestamp']))); ?></td>
-                                                <td><?php echo htmlspecialchars($log['username'] ?? 'N/A'); ?></td>
-                                                <td><?php echo htmlspecialchars($log['item_name'] ?? 'Item Deleted'); ?></td>
-                                                <td>
-                                                    <?php if ($log['item_type'] == 'product'): ?>
-                                                        <span class="badge bg-primary">Product</span>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-secondary">Ingredient</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <?php if ($log['adjustment_qty'] > 0): ?>
-                                                        <strong class="text-success">+<?php echo number_format($log['adjustment_qty'], 2); ?></strong>
-                                                    <?php elseif ($log['adjustment_qty'] < 0): ?>
-                                                        <strong class="text-danger"><?php echo number_format($log['adjustment_qty'], 2); ?></strong>
-                                                    <?php else: ?>
-                                                        <?php echo number_format($log['adjustment_qty'], 2); ?>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <?php if ($log['removed_value'] < 0): ?>
-                                                        <span class="text-danger">₱<?php echo number_format(abs($log['removed_value']), 2); ?></span>
-                                                    <?php else: ?>
-                                                        P0.00
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td><?php echo htmlspecialchars($log['reason']); ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade <?php echo ($active_tab === 'discontinued') ? 'show active' : ''; ?>" id="discontinued-pane" role="tabpanel">
+                <div class="tab-pane fade <?php echo $active_tab ===
+                "discontinued"
+                    ? "show active"
+                    : ""; ?>" id="discontinued-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Discontinued Products (Archived)</span>
-                            <div class="dropdown">
-                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Sort By: <span class="current-sort-text">Name (A-Z)</span>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="asc" data-sort-type="number" href="#">Price (Low-High)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="desc" data-sort-type="number" href="#">Price (High-Low)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Last Stock (Low-High)</a></li>
-                                     <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Last Stock (High-Low)</a></li>
-                                </ul>
+                            <div class="d-flex gap-2 align-items-center">
+                            <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
+                                    </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <label for="discontinued-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
+                                    <select class="form-select form-select-sm" id="discontinued-rows-select" style="width: auto;">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="discontinued-next-btn">
+                                            <i class="bi bi-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                    </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Sort By: <span class="current-sort-text">Name (A-Z)</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="asc" data-sort-type="number" href="#">Price (Low-High)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="desc" data-sort-type="number" href="#">Price (High-Low)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Last Stock (Low-High)</a></li>
+                                         <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Last Stock (High-Low)</a></li>
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
+                            </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -587,32 +671,58 @@ $product_status_options = ['available', 'discontinued'];
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <?php foreach ($discontinued_products as $product): ?>
+                                    <tbody id="discontinued-table-body">
+                                        <?php foreach (
+                                            $discontinued_products
+                                            as $product
+                                        ): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($product['name']); ?></td>
-                                            <td>₱<?php echo number_format($product['price'], 2); ?></td>
-                                            <td><span class="badge bg-secondary"><?php echo htmlspecialchars(ucfirst($product['status'])); ?></span></td>
-                                            <td><?php echo $product['stock_qty']; ?></td>
+                                            <td><?php echo htmlspecialchars(
+                                                $product["name"]
+                                            ); ?></td>
+                                            <td>₱<?php echo number_format(
+                                                $product["price"],
+                                                2
+                                            ); ?></td>
+                                            <td><span class="badge bg-secondary"><?php echo htmlspecialchars(
+                                                ucfirst($product["status"])
+                                            ); ?></span></td>
+                                            <td><?php echo $product[
+                                                "stock_qty"
+                                            ]; ?></td>
                                             <td>
                                                 <button class="btn btn-outline-primary btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#editProductModal"
-                                                        data-product-id="<?php echo $product['product_id']; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars($product['name']); ?>"
-                                                        data-product-price="<?php echo $product['price']; ?>"
-                                                        data-product-status="<?php echo $product['status']; ?>">
+                                                        data-product-id="<?php echo $product[
+                                                            "product_id"
+                                                        ]; ?>"
+                                                        data-product-name="<?php echo htmlspecialchars(
+                                                            $product["name"]
+                                                        ); ?>"
+                                                        data-product-price="<?php echo $product[
+                                                            "price"
+                                                        ]; ?>"
+                                                        data-product-status="<?php echo $product[
+                                                            "status"
+                                                        ]; ?>">
                                                     <i class="bi bi-pencil-square"></i> Edit Status
                                                 </button>
                                                 <button class="btn btn-outline-danger btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#deleteProductModal"
-                                                        data-product-id="<?php echo $product['product_id']; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars($product['name']); ?>">
+                                                        data-product-id="<?php echo $product[
+                                                            "product_id"
+                                                        ]; ?>"
+                                                        data-product-name="<?php echo htmlspecialchars(
+                                                            $product["name"]
+                                                        ); ?>">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
                                             </td>
                                         </tr>
                                         <?php endforeach; ?>
-                                        <?php if (empty($discontinued_products)): ?>
+                                        <?php if (
+                                            empty($discontinued_products)
+                                        ): ?>
                                             <tr><td colspan="5" class="text-center text-muted">No discontinued products found.</td></tr>
                                         <?php endif; ?>
                                     </tbody>
@@ -622,26 +732,186 @@ $product_status_options = ['available', 'discontinued'];
                     </div>
                 </div>
 
-                <div class="tab-pane fade <?php echo ($active_tab === 'history') ? 'show active' : ''; ?>" id="history-pane" role="tabpanel">
+                <div class="tab-pane fade <?php echo $active_tab === "recall"
+                    ? "show active"
+                    : ""; ?>" id="recall-pane" role="tabpanel">
+                    <div class="card shadow-sm mt-3 border-warning">
+                        <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+                            <span>Recall Log</span>
+                            <div class="d-flex gap-2 align-items-center">
+                            <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
+                                    </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <label for="recall-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
+                                    <select class="form-select form-select-sm" id="recall-rows-select" style="width: auto;">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="recall-next-btn">
+                                            <i class="bi bi-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                    </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Sort By: <span class="current-sort-text">Date (Newest First)</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Timestamp (Newest First)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Timestamp (Oldest First)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Product (A-Z)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Product (Z-A)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">Cashier (A-Z)</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
+                                            <th data-sort-by="item">Product</th>
+                                            <th data-sort-by="qty" data-sort-type="number">Quantity</th>
+                                            <th data-sort-by="value" data-sort-type="number">Total Price</th>
+                                            <th data-sort-by="user">Cashier</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recall-table-body">
+                                        <?php if (empty($recall_history)): ?>
+                                            <tr><td colspan="6" class="text-center text-muted">No recall history found.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach (
+                                                $recall_history
+                                                as $log
+                                            ): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars(
+                                                    date(
+                                                        "M d, Y h:i A",
+                                                        strtotime(
+                                                            $log["timestamp"]
+                                                        )
+                                                    )
+                                                ); ?></td>
+                                                <td><?php echo htmlspecialchars(
+                                                    $log["item_name"] ??
+                                                        "Item Deleted"
+                                                ); ?></td>
+                                                <td>
+                                                    <?php if (
+                                                        $log["adjustment_qty"] <
+                                                        0
+                                                    ): ?>
+                                                        <strong class="text-danger"><?php echo number_format(
+                                                            $log[
+                                                                "adjustment_qty"
+                                                            ],
+                                                            0
+                                                        ); ?></strong>
+                                                    <?php else: ?>
+                                                        <strong class="text-success">+<?php echo number_format(
+                                                            $log[
+                                                                "adjustment_qty"
+                                                            ],
+                                                            0
+                                                        ); ?></strong>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php if (
+                                                        $log["removed_value"] <
+                                                        0
+                                                    ): ?>
+                                                        <span class="text-danger">(₱<?php echo htmlspecialchars(
+                                                            number_format(
+                                                                abs(
+                                                                    $log[
+                                                                        "removed_value"
+                                                                    ]
+                                                                ),
+                                                                2
+                                                            )
+                                                        ); ?>)</span>
+                                                    <?php else: ?>
+                                                        ₱0.00
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?php echo htmlspecialchars(
+                                                    $log["username"] ?? "N/A"
+                                                ); ?></td>
+                                                <td><?php echo htmlspecialchars(
+                                                    $log["reason"]
+                                                ); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-end fw-bold fs-5">
+                                <span class="me-3 text-danger">Total Removed Value:</span>
+                                <span class="text-danger">₱<?php echo htmlspecialchars(
+                                    number_format(abs($total_recall_value), 2)
+                                ); ?></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade <?php echo $active_tab === "history"
+                    ? "show active"
+                    : ""; ?>" id="history-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Stock Adjustment History (Last 200)</span>
-                            <div class="dropdown">
-                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Sort By: <span class="current-sort-text">Date (Newest First)</span>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="desc" data-sort-type="text" href="#">User (Z-A)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="asc" data-sort-type="text" href="#">Type (Ingredient First)</a></li>
-                                    <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="desc" data-sort-type="text" href="#">Type (Product First)</a></li>
-                                </ul>
+                            <div class="d-flex gap-2 align-items-center">
+                            <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
+                                    </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <label for="history-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
+                                    <select class="form-select form-select-sm" id="history-rows-select" style="width: auto;">
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="history-next-btn">
+                                            <i class="bi bi-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                    </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Sort By: <span class="current-sort-text">Date (Newest First)</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="desc" data-sort-type="text" href="#">User (Z-A)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="asc" data-sort-type="text" href="#">Type (Ingredient First)</a></li>
+                                        <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="desc" data-sort-type="text" href="#">Type (Product First)</a></li>
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
+                            </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -655,32 +925,75 @@ $product_status_options = ['available', 'discontinued'];
                                             <th data-sort-by="reason">Reason</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <?php if (empty($adjustment_history)): ?>
+                                    <tbody id="history-table-body">
+                                        <?php if (
+                                            empty($adjustment_history)
+                                        ): ?>
                                             <tr><td colspan="6" class="text-center text-muted">No adjustment history found.</td></tr>
                                         <?php else: ?>
-                                            <?php foreach ($adjustment_history as $log): ?>
+                                            <?php foreach (
+                                                $adjustment_history
+                                                as $log
+                                            ): ?>
                                             <tr>
-                                                <td><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($log['timestamp']))); ?></td>
-                                                <td><?php echo htmlspecialchars($log['username'] ?? 'N/A'); ?></td>
-                                                <td><?php echo htmlspecialchars($log['item_name'] ?? 'Item Deleted'); ?></td>
+                                                <td><?php echo htmlspecialchars(
+                                                    date(
+                                                        "M d, Y h:i A",
+                                                        strtotime(
+                                                            $log["timestamp"]
+                                                        )
+                                                    )
+                                                ); ?></td>
+                                                <td><?php echo htmlspecialchars(
+                                                    $log["username"] ?? "N/A"
+                                                ); ?></td>
+                                                <td><?php echo htmlspecialchars(
+                                                    $log["item_name"] ??
+                                                        "Item Deleted"
+                                                ); ?></td>
                                                 <td>
-                                                    <?php if ($log['item_type'] == 'product'): ?>
+                                                    <?php if (
+                                                        $log["item_type"] ==
+                                                        "product"
+                                                    ): ?>
                                                         <span class="badge bg-primary">Product</span>
                                                     <?php else: ?>
                                                         <span class="badge bg-secondary">Ingredient</span>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td>
-                                                    <?php if ($log['adjustment_qty'] > 0): ?>
-                                                        <strong class="text-success">+<?php echo number_format($log['adjustment_qty'], 2); ?></strong>
-                                                    <?php elseif ($log['adjustment_qty'] < 0): ?>
-                                                        <strong class="text-danger"><?php echo number_format($log['adjustment_qty'], 2); ?></strong>
+                                                    <?php if (
+                                                        $log["adjustment_qty"] >
+                                                        0
+                                                    ): ?>
+                                                        <strong class="text-success">+<?php echo number_format(
+                                                            $log[
+                                                                "adjustment_qty"
+                                                            ],
+                                                            2
+                                                        ); ?></strong>
+                                                    <?php elseif (
+                                                        $log["adjustment_qty"] <
+                                                        0
+                                                    ): ?>
+                                                        <strong class="text-danger"><?php echo number_format(
+                                                            $log[
+                                                                "adjustment_qty"
+                                                            ],
+                                                            2
+                                                        ); ?></strong>
                                                     <?php else: ?>
-                                                        <?php echo number_format($log['adjustment_qty'], 2); ?>
+                                                        <?php echo number_format(
+                                                            $log[
+                                                                "adjustment_qty"
+                                                            ],
+                                                            2
+                                                        ); ?>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td><?php echo htmlspecialchars($log['reason']); ?></td>
+                                                <td><?php echo htmlspecialchars(
+                                                    $log["reason"]
+                                                ); ?></td>
                                             </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
@@ -715,7 +1028,11 @@ $product_status_options = ['available', 'discontinued'];
                     <select class="form-select" id="add_ing_unit" name="unit" required>
                         <option value="" selected disabled>Select a unit...</option>
                         <?php foreach ($unit_options as $unit): ?>
-                            <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
+                            <option value="<?php echo htmlspecialchars(
+                                $unit
+                            ); ?>"><?php echo htmlspecialchars(
+    $unit
+); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -731,36 +1048,6 @@ $product_status_options = ['available', 'discontinued'];
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
               <button type="submit" class="btn btn-primary">Add Ingredient</button>
-            </div>
-          </form>
-        </div>
-      </div>
-</div>
-
-<div class="modal fade" id="restockModal" tabindex="-1" aria-labelledby="restockModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="restockModalLabel">Restock Ingredient</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST">
-            <div class="modal-body">
-                <input type="hidden" name="action" value="restock_ingredient">
-                <input type="hidden" name="active_tab" value="ingredients">
-                <input type="hidden" name="ingredient_id" id="restock_ingredient_id">
-                <p>Restocking: <strong id="restock_ingredient_name"></strong></p>
-                <div class="mb-3">
-                    <label for="restock_added_qty" class="form-label">Quantity to Add</label>
-                    <div class="input-group">
-                        <input type="number" step="0.01" class="form-control" id="restock_added_qty" name="added_qty" required min="0.01">
-                        <span class="input-group-text" id="restock_ingredient_unit"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-success">Save Restock</button>
             </div>
           </form>
         </div>
@@ -797,6 +1084,50 @@ $product_status_options = ['available', 'discontinued'];
       </div>
 </div>
 
+<div class="modal fade" id="adjustIngredientModal" tabindex="-1" aria-labelledby="adjustIngredientModalLabel" aria-hidden="true">
+     <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="adjustIngredientModalLabel">Adjust Ingredient Stock</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form action="inventory_management.php" method="POST">
+            <div class="modal-body">
+                <input type="hidden" name="action" value="adjust_ingredient">
+                <input type="hidden" name="active_tab" value="ingredients"> 
+                <input type="hidden" name="ingredient_id" id="adjust_ingredient_id">
+                <p>Adjusting: <strong id="adjust_ingredient_name"></strong> (<span id="adjust_ingredient_unit"></span>)</p>
+                
+                <div class="mb-3">
+                    <label for="adjust_ing_type" class="form-label">Adjustment Type</label>
+                    <select class="form-select" id="adjust_ing_type" name="adjustment_type">
+                        <option value="Restock" selected>Restock (Add Stock)</option>
+                        <option value="Spoilage">Spoilage (Remove Stock)</option>
+                        <option value="Correction">Correction (Add/Remove Stock)</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="adjust_ing_qty" class="form-label">Adjustment Quantity</label>
+                    <input type="number" step="0.01" class="form-control" id="adjust_ing_qty" name="adjustment_qty" required>
+                    <div class="form-text" id="adjust_ing_qty_helper">
+                        </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="adjust_ing_reason_note" class="form-label">Reason / Note</label>
+                    <input type="text" class="form-control" id="adjust_ing_reason_note" name="reason_note" placeholder="e.g., New delivery, Damaged bag, Stock count" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-warning">Save Adjustment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+</div>
+
 <div class="modal fade" id="adjustProductModal" tabindex="-1" aria-labelledby="adjustProductModalLabel" aria-hidden="true">
      <div class="modal-dialog">
         <div class="modal-content">
@@ -807,37 +1138,32 @@ $product_status_options = ['available', 'discontinued'];
           <form action="inventory_management.php" method="POST">
             <div class="modal-body">
                 <input type="hidden" name="action" value="adjust_product">
-                <input type="hidden" name="active_tab" value="products"> <input type="hidden" name="product_id" id="adjust_product_id">
+                <input type="hidden" name="active_tab" value="products"> 
+                <input type="hidden" name="product_id" id="adjust_product_id">
                 <p>Adjusting: <strong id="adjust_product_name"></strong></p>
+                
+                <div class="mb-3">
+                    <label for="adjust_type" class="form-label">Adjustment Type</label>
+                    <select class="form-select" id="adjust_type" name="adjustment_type">
+                        <option value="Production" selected>Production (Add Stock, Deduct Ingredients)</option>
+                        <option value="Spoilage">Spoilage (Remove Stock)</option>
+                        <option value="Recall">Recall (Remove Stock)</option>
+                        <option value="Correction">Correction (Add/Remove Stock & Ingredients)</option>
+                    </select>
+                </div>
+                
                 <div class="mb-3">
                     <label for="adjust_adjustment_qty" class="form-label">Adjustment Quantity</label>
-                    <input type="number" step="1" class="form-control" id="adjust_adjustment_qty" name="adjustment_qty" required placeholder="e.g., -5 or 10">
-                    
-                    <div class="form-text">
-                        <strong>Positive (e.g., 10):</strong> Adds stock AND deducts ingredients (for Production).
-                        <br>
-                        <strong>Negative (e.g., -5):</strong> Removes stock. Does NOT affect ingredients (for Spoilage/Recall).
-                    </div>
-                    </div>
+                    <input type="number" step="1" class="form-control" id="adjust_adjustment_qty" name="adjustment_qty" required>
+                    <div class="form-text" id="adjust_qty_helper">
+                        </div>
+                </div>
+
                 <div class="mb-3">
-                    <label for="adjust_reason" class="form-label">Reason for Adjustment</label>
-                    <input type="text" class="form-control" id="adjust_reason" name="reason" placeholder="e.g., Production, Spoilage, Correction" required>
-                    <div class="form-text text-warning">
-                        To add back ingredients from a mistake, use a <strong>negative number</strong> and include the word "<strong>Correction</strong>" in the reason.
-                        <br>
-                        <br>
-                        To deduct recalled products, use a <strong>negative number</strong> and include the word "<strong>recall</strong>" in the reason.
-                    </div>
-                    </div>
+                    <label for="adjust_reason_note" class="form-label">Reason / Note</label>
+                    <input type="text" class="form-control" id="adjust_reason_note" name="reason_note" placeholder="e.g., Daily bake, Expired items, Batch #123" required>
+                </div>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-warning">Save Adjustment</button>
-            </div>
-          </form>
-        </div>
-      </div>
-</div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
               <button type="submit" class="btn btn-warning">Save Adjustment</button>
@@ -867,7 +1193,11 @@ $product_status_options = ['available', 'discontinued'];
                     <label for="edit_ingredient_unit" class="form-label">Unit</label>
                     <select class="form-select" name="unit" id="edit_ingredient_unit" required>
                         <?php foreach ($unit_options as $unit): ?>
-                            <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
+                            <option value="<?php echo htmlspecialchars(
+                                $unit
+                            ); ?>"><?php echo htmlspecialchars(
+    $unit
+); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -909,7 +1239,11 @@ $product_status_options = ['available', 'discontinued'];
                     <select class="form-select" name="status" id="edit_product_status" required>
                         <option value="" disabled>Select status...</option>
                         <?php foreach ($product_status_options as $status): ?>
-                            <option value="<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars(ucfirst($status)); ?></option>
+                            <option value="<?php echo htmlspecialchars(
+                                $status
+                            ); ?>"><?php echo htmlspecialchars(
+    ucfirst($status)
+); ?></option>
                         <?php endforeach; ?>
                     </select>
                     <div class="form-text">Setting to "Discontinued" will move it to the Discontinued tab and remove it from POS.</div>

@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     let cart = []; // Stores cart items as { id, name, price, quantity, maxStock }
+    let discountPercent = 0; // Global state for discount
 
     // DOM References
     const orderItemsContainer = document.getElementById('order-items-container');
@@ -8,16 +9,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearButton = document.getElementById('clear-button');
     const productListContainer = document.getElementById('product-list');
     
-    // --- ADDED: Search Bar References ---
     const searchInput = document.getElementById('product-search');
+    const searchTypeSelect = document.getElementById('search-type'); // Get the search dropdown
+    const sortTypeSelect = document.getElementById('sort-type');   // NEW: Get the sort dropdown
     const noResultsMessage = document.getElementById('no-results-message');
-    // ------------------------------------
 
-    // --- Core Cart Functions ---
+    // --- Discount DOM References ---
+    const discountModalEl = document.getElementById('discountModal');
+    const discountModal = discountModalEl ? new bootstrap.Modal(discountModalEl) : null;
+    const discountInput = document.getElementById('discount-input');
+    const applyDiscountBtn = document.getElementById('apply-discount-btn-modal'); 
+    const removeDiscountBtn = document.getElementById('remove-discount-btn-modal'); 
+    
+    const subtotalLine = document.getElementById('subtotal-line');
+    const discountLine = document.getElementById('discount-line');
+    const subtotalPriceEl = document.getElementById('subtotal-price');
+    const discountAmountEl = document.getElementById('discount-amount');
+    const discountLineText = document.querySelector('#discount-line .text-discount');
+    // ------------------------------------
 
     /**
      * Called when a product card is clicked.
-     * Adds item to cart or increments quantity, respecting stock limits.
      */
     window.addToCart = function(cardElement) {
         const productId = parseInt(cardElement.dataset.id);
@@ -28,15 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const existingItem = cart.find(item => item.id === productId);
 
         if (existingItem) {
-            // Check if adding one more exceeds stock
             if (existingItem.quantity + 1 > maxStock) {
                 Swal.fire('Out of Stock', `Cannot add more ${name}. Only ${maxStock} available.`, 'warning');
                 return;
             }
-            // --- MODIFIED: Use setQuantity ---
             setQuantity(productId, existingItem.quantity + 1);
         } else {
-            // Check stock before adding new item
             if (1 > maxStock) {
                 Swal.fire('Out of Stock', `Cannot add ${name}. This item is out of stock.`, 'warning');
                 return;
@@ -46,84 +55,80 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- NEW FUNCTION ---
     /**
      * Sets an item's quantity to a specific value.
-     * Handles validation, stock limits, and item removal.
      */
     function setQuantity(productId, newQuantity) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
 
-        // Validate newQuantity
         if (isNaN(newQuantity) || newQuantity < 0) {
-            newQuantity = 0; // Default to 0 if invalid input (e.g., empty string)
+            newQuantity = 0;
         }
         
-        // Remove item if quantity is set to 0 or less
         if (newQuantity === 0) {
             cart = cart.filter(item => item.id !== productId);
         } else if (newQuantity > item.maxStock) {
-            // Handle exceeding max stock
             newQuantity = item.maxStock;
             Swal.fire('Stock Limit', `Only ${item.maxStock} ${item.name} available.`, 'warning');
             item.quantity = newQuantity;
         } else {
-            // Set the new quantity
             item.quantity = newQuantity;
         }
         renderCart();
     }
-    // --- END NEW FUNCTION ---
 
     /**
-     * Updates an item's quantity or removes it from the cart.
+     * Updates an item's quantity (from + / - buttons).
      */
     window.updateQuantity = function(productId, change) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
         
-        // --- MODIFIED: Use setQuantity for all logic ---
         const newQuantity = item.quantity + change;
         setQuantity(productId, newQuantity);
     }
 
-    /**
-     * Clears the cart and re-renders it.
-     */
     if(clearButton) {
         clearButton.addEventListener('click', () => {
             cart = [];
-            renderCart();
+            
+            // --- FIX: EXPLICITLY RESET DISCOUNT ---
+            discountPercent = 0; // Set the variable to 0
+            if (discountInput) discountInput.value = ''; // Clear the modal input
+            
+            renderCart(); // This will now call renderCart to show the P0.00 state
         });
     }
 
-    /**
-     * Re-draws the entire cart UI based on the `cart` array.
-     */
+
     function renderCart() {
-        // Clear previous items
         orderItemsContainer.innerHTML = '';
+        let subTotal = 0;
+        let finalTotal = 0;
+        let discountAmount = 0;
 
         if (cart.length === 0) {
             orderItemsContainer.innerHTML = '<p class="text-center text-muted mt-5">Select products to begin</p>';
             totalPriceEl.textContent = 'P0.00';
             payButton.disabled = true;
-            return;
-        }
-
-        let total = 0;
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            total += itemTotal;
             
-            const itemEl = document.createElement('div');
-            itemEl.className = 'cart-item';
+            subTotal = 0;
+            finalTotal = 0;
+            discountAmount = 0;
             
-            // --- MODIFIED: Replaced <span> with <input> for quantity ---
-            itemEl.innerHTML = `
+        } else {
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                subTotal += itemTotal;
+                
+                const itemEl = document.createElement('div');
+                itemEl.className = 'cart-item';
+                
+                // --- MODIFICATION IS HERE ---
+                itemEl.innerHTML = `
                 <div class="cart-item-details">
-                    <strong>${item.name}</strong>
+                    <div class="text-muted">(ID: ${item.id})</div> <strong>${item.name}</strong>
                     <div class="text-muted">${item.quantity} x P${item.price.toFixed(2)} = P${itemTotal.toFixed(2)}</div>
                 </div>
                 <div class="cart-item-controls">
@@ -131,38 +136,61 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="number" class="form-control form-control-sm cart-quantity-input mx-1" 
                            value="${item.quantity}" data-id="${item.id}" min="0" max="${item.maxStock}">
                     <button class="btn btn-outline-secondary btn-sm btn-inc" data-id="${item.id}">+</button>
+                    <button class="btn btn-outline-danger btn-sm btn-remove" data-id="${item.id}"><i class="bi bi-dash"></i></button>
                 </div>
             `;
-            orderItemsContainer.appendChild(itemEl);
-        });
-
-        // Add event listeners to new buttons
-        orderItemsContainer.querySelectorAll('.btn-dec').forEach(btn => {
-            btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), -1));
-        });
-        orderItemsContainer.querySelectorAll('.btn-inc').forEach(btn => {
-            btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), 1));
-        });
-
-        // --- ADDED: Event listener for new quantity inputs ---
-        orderItemsContainer.querySelectorAll('.cart-quantity-input').forEach(input => {
-            // 'change' event fires when user clicks away or presses Enter
-            input.addEventListener('change', (e) => {
-                const newQty = parseInt(e.target.value, 10);
-                const productId = parseInt(e.target.dataset.id, 10);
-                setQuantity(productId, newQty);
+                // --- END MODIFICATION ---
+                
+                orderItemsContainer.appendChild(itemEl);
             });
-            // Optional: Prevent typing non-integer characters
-            input.addEventListener('keydown', (e) => {
-                if (['e', '+', '-', '.'].includes(e.key)) {
-                    e.preventDefault();
-                }
-            });
-        });
 
-        // Update total price and enable pay button
-        totalPriceEl.textContent = `P${total.toFixed(2)}`;
-        payButton.disabled = false;
+            // Add event listeners to new buttons
+            orderItemsContainer.querySelectorAll('.btn-dec').forEach(btn => {
+                btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), -1));
+            });
+            orderItemsContainer.querySelectorAll('.btn-inc').forEach(btn => {
+                btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), 1));
+            });
+
+            // --- ADD THIS BLOCK ---
+            orderItemsContainer.querySelectorAll('.btn-remove').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const productId = parseInt(btn.dataset.id);
+                    setQuantity(productId, 0); // Calling setQuantity with 0 removes the item
+                });
+            });
+            // --- END OF ADDED BLOCK ---
+
+            orderItemsContainer.querySelectorAll('.cart-quantity-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const newQty = parseInt(e.target.value, 10);
+                    const productId = parseInt(e.target.dataset.id, 10);
+                    setQuantity(productId, newQty);
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (['e', '+', '-', '.'].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                });
+            });
+
+            // --- Calculate discount ---
+            discountAmount = subTotal * (discountPercent / 100);
+            finalTotal = subTotal - discountAmount;
+            payButton.disabled = false;
+        }
+        
+        // Always show all summary lines
+        subtotalLine.style.display = 'flex';
+        discountLine.style.display = 'flex';
+        
+        // Update the text content
+        subtotalPriceEl.textContent = `P${subTotal.toFixed(2)}`;
+        discountLineText.textContent = `Discount (${discountPercent}%):`;
+        discountAmountEl.textContent = `-P${discountAmount.toFixed(2)}`;
+        
+        // Update total price
+        totalPriceEl.textContent = `P${finalTotal.toFixed(2)}`;
     }
 
     /**
@@ -172,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
         payButton.addEventListener('click', () => {
             if (cart.length === 0) return;
             
-            // Confirm the sale with the user
             Swal.fire({
                 title: 'Confirm Sale',
                 text: `Total amount is ${totalPriceEl.textContent}. Proceed?`,
@@ -181,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 confirmButtonColor: '#198754',
                 confirmButtonText: 'Yes, complete it!'
             }).then((result) => {
-                // If user confirmed, proceed to payment
                 if (result.isConfirmed) {
                     processSale();
                 }
@@ -193,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * Sends the cart data to the server (pos.php) to be processed.
      */
     function processSale() {
-        // Show a loading popup
         Swal.fire({
             title: 'Processing Sale...',
             text: 'Please wait.',
@@ -203,26 +228,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Send the cart data to the PHP backend
         fetch('pos.php', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'Accept': 'application/json' 
             },
-            body: JSON.stringify(cart)
+            body: JSON.stringify({
+                cart: cart,
+                discount: discountPercent 
+            })
         })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // Show success message and reload the page
                 Swal.fire('Success!', data.message, 'success')
                 .then(() => {
-                    // Reload the page to show new stock levels
                     location.reload(); 
                 });
             } else {
-                // Show the specific error message from the server
                 Swal.fire('Error!', data.message, 'error');
             }
         })
@@ -237,29 +261,172 @@ document.addEventListener('DOMContentLoaded', () => {
         card.addEventListener('click', () => addToCart(card));
     });
 
-    // --- ADDED: Search Filter Logic ---
-    if (searchInput) {
-        searchInput.addEventListener('keyup', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            let itemsFound = 0;
+    // --- MODIFIED: Search Filter Logic ---
+    const searchHandler = () => { // Create a reusable handler
+        const searchTerm = searchInput.value.toLowerCase();
+        const searchType = searchTypeSelect.value; // Get selected search type: 'name' or 'code'
+        let itemsFound = 0;
 
-            // Loop through all product columns in the grid
-            productListContainer.querySelectorAll('.col[data-product-name]').forEach(col => {
-                const productName = col.dataset.productName; // Get name from data attribute
+        // Loop through all .col elements
+        productListContainer.querySelectorAll('.col[data-product-name]').forEach(col => {
+            let dataToSearch = '';
+            
+            // Check which data attribute to use
+            if (searchType === 'name') {
+                dataToSearch = col.dataset.productName || '';
+            } else { // searchType === 'code'
+                dataToSearch = col.dataset.productCode || '';
+            }
 
-                // Use startsWith() as requested
-                if (productName.startsWith(searchTerm)) {
-                    col.style.display = ''; // Show column
-                    itemsFound++;
-                } else {
-                    col.style.display = 'none'; // Hide column
-                }
-            });
-
-            // Show or hide the 'no results' message
-            if (noResultsMessage) {
-                noResultsMessage.style.display = itemsFound === 0 ? '' : 'none';
+            // Use startsWith for the "search as you type" feel
+            if (dataToSearch.startsWith(searchTerm)) {
+                col.style.display = '';
+                itemsFound++;
+            } else {
+                col.style.display = 'none';
             }
         });
+
+        if (noResultsMessage) {
+            noResultsMessage.style.display = itemsFound === 0 ? '' : 'none';
+        }
+    };
+
+    if (searchInput && searchTypeSelect && productListContainer) {
+        // Add listeners to *both* the input and the select dropdown
+        searchInput.addEventListener('keyup', searchHandler);
+        searchTypeSelect.addEventListener('change', searchHandler); // Re-filter when dropdown changes
     }
+    // --- END MODIFIED: Search Filter Logic ---
+
+
+    // --- ::: NEW SORTING LOGIC ::: ---
+    
+    /**
+     * Gets a comparable value from a product card's data attribute.
+     * @param {HTMLElement} col - The .col element
+     * @param {string} sortBy - The data attribute key (e.g., 'productPrice')
+     */
+    function getSortableValue(col, sortBy) {
+        let value = col.dataset[sortBy]; // e.g., col.dataset['productPrice']
+        
+        // Handle different data types
+        switch (sortBy) {
+            case 'productName':
+                return value || ''; // Already a string
+            case 'productPrice':
+            case 'productStock':
+            case 'productCode':
+                return parseFloat(value) || 0; // Convert to number
+            default:
+                return value || '';
+        }
+    }
+
+    /**
+     * Sorts the product cards in the grid based on the sort dropdown.
+     */
+    function sortProducts() {
+        if (!sortTypeSelect || !productListContainer) return;
+
+        const sortValue = sortTypeSelect.value; // e.g., "name-asc"
+        const [sortKey, sortDir] = sortValue.split('-'); // ["name", "asc"]
+        
+        // Map the simple key to the full dataset attribute name
+        const sortByMap = {
+            'name': 'productName',
+            'price': 'productPrice',
+            'stock': 'productStock',
+            'code': 'productCode'
+        };
+        const sortBy = sortByMap[sortKey]; // e.g., "productName"
+
+        if (!sortBy) return; // Exit if sortKey is invalid
+
+        // Get all .col elements from the container
+        const allProductCols = Array.from(productListContainer.querySelectorAll('.col[data-product-name]'));
+
+        // Sort the array
+        allProductCols.sort((a, b) => {
+            const valA = getSortableValue(a, sortBy);
+            const valB = getSortableValue(b, sortBy);
+
+            if (valA < valB) {
+                return sortDir === 'asc' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return sortDir === 'asc' ? 1 : -1;
+            }
+            return 0; // They are equal
+        });
+
+        // Re-append the sorted elements back into the container
+        // This physically moves the DOM elements
+        allProductCols.forEach(col => {
+            productListContainer.appendChild(col);
+        });
+    }
+
+    // Add event listener for the sort dropdown
+    if (sortTypeSelect) {
+        sortTypeSelect.addEventListener('change', sortProducts);
+    }
+
+    // Apply initial default sort on page load
+    sortProducts();
+    
+    // --- ::: END NEW SORTING LOGIC ::: ---
+
+
+    // --- New Discount Modal Event Listeners ---
+    
+    // Listener for the "Apply" button INSIDE the modal
+    if (applyDiscountBtn && discountModal) {
+        applyDiscountBtn.addEventListener('click', () => {
+            let percent = parseFloat(discountInput.value);
+            if (isNaN(percent) || percent < 0) {
+                percent = 0;
+            } else if (percent > 100) {
+                percent = 100;
+            }
+            
+            discountPercent = percent;
+            discountInput.value = percent; 
+            
+            renderCart();
+            discountModal.hide(); 
+        });
+    }
+    
+    // Listener for the "No Discount" button INSIDE the modal
+    if (removeDiscountBtn && discountModal) {
+        removeDiscountBtn.addEventListener('click', () => {
+            // 1. Set the discount value to 0
+            discountPercent = 0;
+            
+            // 2. Clear the input box
+            discountInput.value = ''; 
+            
+            // 3. Re-calculate the total and update the UI
+            renderCart();
+            
+            // 4. Hide the modal
+            discountModal.hide(); 
+        });
+    }
+    
+    // (Optional) Set the input value when modal is shown
+    if (discountModalEl) {
+        discountModalEl.addEventListener('show.bs.modal', () => {
+            if (discountPercent === 0) {
+                discountInput.value = '';
+            } else {
+                discountInput.value = discountPercent;
+            }
+            setTimeout(() => {
+                if(discountInput) discountInput.focus();
+            }, 100);
+        });
+    }
+
 });

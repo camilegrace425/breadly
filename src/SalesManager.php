@@ -18,5 +18,17 @@ class SalesManager {
             return [];
         }
     }
+
+    public function getReturnHistory() {
+        try {
+            // This now calls the new procedure that reads from the 'returns' table
+            $stmt = $this->conn->prepare("CALL ReportGetReturnHistory()");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error fetching return history: " . $e->getMessage());
+            return [];
+        }
+    }
 }
 ?>
