@@ -90,6 +90,13 @@ $date_end = $_GET['date_end'] ?? date('Y-m-d');
 
 // --- MODIFIED: Fetch data based on date range ---
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
+
+// --- ::: ADDED: Calculate Net Revenue ::: ---
+$grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
+$totalReturns = $dateRangeSummary['totalReturns'] ?? 0.00;
+$netRevenue = $grossRevenue - $totalReturns;
+// --- ::: END ::: ---
+
 $topProducts = $dashboardManager->getTopSellingProducts($date_start, $date_end, 5);
 // --- (These are not date-specific, so they remain the same) ---
 // --- MODIFIED: Pass date range to getRecalledStockValue ---
@@ -187,7 +194,7 @@ if (!empty($priorityAlert)) {
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="sales_history.php">
-                        <i class="bi bi-clock-history me-2"></i> Sales History
+                        <i class="bi bi-clock-history me-2"></i> Sales & Transactions
                     </a>
                 </li>
                 <li class="nav-item">
@@ -257,9 +264,13 @@ if (!empty($priorityAlert)) {
             <div class="row">
                 <div class="col-xl-3 col-md-6">
                     <div class="stat-card" style="background-color: var(--card-bg-1);">
-                        <h1 style="color: green">₱<?php echo number_format($dateRangeSummary['totalRevenue'], 2); ?></h1>
-                        <p>Total Sales Revenue</p>
-                        <span class="percent-change text-muted"><?php echo $date_range_text; ?></span>
+                        <h1 style="color: green">₱<?php echo number_format($netRevenue, 2); ?></h1>
+                        <p>Net Sales Revenue</p>
+                        <span class="percent-change text-muted">
+                            <?php echo $date_range_text; ?>
+                            <br>
+                            <small>(₱<?php echo number_format($grossRevenue, 2); ?> Gross - ₱<?php echo number_format($totalReturns, 2); ?> Returns)</small>
+                        </span>
                     </div>
                 </div>
                 <div class="col-xl-3 col-md-6">
@@ -432,8 +443,6 @@ if (!empty($priorityAlert)) {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <?php 
-    // This PHP code adds the file's last modified time to the script URL
-    // This forces the browser to re-download the file if it has changed.
     $js_version = filemtime('../js/script_dashboard.js'); 
 ?>
 <script src="../js/script_dashboard.js?v=<?php echo $js_version; ?>"></script>

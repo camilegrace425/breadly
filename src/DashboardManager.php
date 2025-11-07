@@ -1,15 +1,21 @@
 <?php
 require_once '../db_connection.php';
+require_once '../src/SalesManager.php'; // --- ::: ADDED THIS LINE ::: ---
 
 // Manages all data fetching for the manager dashboard.
 class DashboardManager {
     private $conn;
     private $api_token = '4882e7a9d4704d5afc136eebb463d298d1f15c20'; 
     private $api_send_sms_url = 'https://sms.iprogtech.com/api/v1/sms_messages';
+    
+    // --- ::: ADDED THIS PROPERTY ::: ---
+    private $salesManager;
 
     public function __construct() {
         $db = new Database();
         $this->conn = $db->getConnection();
+        // --- ::: ADDED THIS LINE ::: ---
+        $this->salesManager = new SalesManager(); 
     }
     
     private function formatPhoneNumberForAPI($phone_number) {
@@ -35,21 +41,63 @@ class DashboardManager {
         return $phone_number;
     }
 
-    public function getSalesSummaryByDateRange($date_start, $date_end) {
+    // --- ::: MODIFIED: This function now filters in PHP ::: ---
+    private function getTotalReturnsByDateRange($date_start, $date_end) {
         try {
+            // 1. Get ALL returns using the existing SalesManager
+            $all_returns = $this->salesManager->getReturnHistory();
+            
+            $totalReturnValue = 0.00;
+            
+            // 2. Prepare date range for comparison
+            // Set time to cover the entire day
+            $startDateObj = new DateTime($date_start . ' 00:00:00');
+            $endDateObj = new DateTime($date_end . ' 23:59:59');
+
+            // 3. Filter in PHP
+            foreach ($all_returns as $return) {
+                $returnDateObj = new DateTime($return['timestamp']);
+                
+                // Check if the return date is within the selected range
+                if ($returnDateObj >= $startDateObj && $returnDateObj <= $endDateObj) {
+                    $totalReturnValue += $return['return_value'] ?? 0.00;
+                }
+            }
+            
+            return $totalReturnValue;
+            
+        } catch (Exception $e) {
+            // Catch any errors (like from DateTime)
+            error_log("Error in getTotalReturnsByDateRange: " . $e->getMessage());
+            return 0.00;
+        }
+    }
+    // --- ::: END MODIFICATION ::: ---
+
+    public function getSalesSummaryByDateRange($date_start, $date_end) {
+        // --- ::: MODIFIED: To call two separate procedures ::: ---
+        $summary = ['totalSales' => 0, 'totalRevenue' => 0.00];
+        
+        try {
+            // 1. Get Gross Sales and Revenue
             $stmt = $this->conn->prepare("CALL DashboardGetSalesSummaryByDateRange(?, ?)");
             $stmt->execute([$date_start, $date_end]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $stmt->closeCursor(); 
             
-            return [
-                'totalSales' => $row['totalSales'] ?? 0,
-                'totalRevenue' => $row['totalRevenue'] ?? 0.00
-            ];
+            $summary['totalSales'] = $row['totalSales'] ?? 0;
+            $summary['totalRevenue'] = $row['totalRevenue'] ?? 0.00;
             
         } catch (PDOException $e) {
-            return ['totalSales' => 0, 'totalRevenue' => 0.00];
+             // Log this error but continue, as we can still try to get returns
+             error_log("DashboardManager Error (SalesSummary): " . $e->getMessage());
         }
+        
+        // 2. Get Total Returns from new private function
+        $summary['totalReturns'] = $this->getTotalReturnsByDateRange($date_start, $date_end);
+        
+        return $summary;
+        // --- ::: END MODIFICATION ::: ---
     }
 
     public function getLowStockAlertsCount() {

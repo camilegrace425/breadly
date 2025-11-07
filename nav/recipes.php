@@ -159,7 +159,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="sales_history.php">
-                        <i class="bi bi-clock-history me-2"></i> Sales History
+                        <i class="bi bi-clock-history me-2"></i> Sales & Transactions
                     </a>
                 </li>
                 <li class="nav-item">

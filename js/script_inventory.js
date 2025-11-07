@@ -1,12 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- ::: NEW Reusable Table Filter Function ::: ---
-    /**
-     * Adds a live search filter to a table.
-     * @param {string} inputId The ID of the search <input> element.
-     * @param {string} tableBodyId The ID of the <tbody> element to filter.
-     * @param {string} noResultsRowId The ID of the <tr> to show when no results are found.
-     */
     function addTableFilter(inputId, tableBodyId, noResultsRowId) {
         const searchInput = document.getElementById(inputId);
         const tableBody = document.getElementById(tableBodyId);
@@ -20,17 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('keyup', (e) => {
             const searchTerm = e.target.value.toLowerCase();
             let itemsFound = 0;
-            
-            // Get all data rows (tr) in the table body
-            // We select all TRs that do NOT have an ID ending in '-no-results'
-            const rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])'); 
-            
+
+            const rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
+
             rows.forEach(row => {
-                // Only search the first cell (Product/Ingredient Name)
-                const cell = row.cells[0]; 
+                const cell = row.cells[0];
                 if (cell) {
                     const cellText = cell.innerText.toLowerCase();
-                    // Use startsWith for a "search-as-you-type" feel
                     if (cellText.startsWith(searchTerm)) {
                         row.style.display = ''; // Show row
                         itemsFound++;
@@ -39,52 +29,197 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-
-            // Show or hide the 'no results' message
             noResultsRow.style.display = itemsFound === 0 ? '' : 'none';
         });
     }
     // --- ::: END NEW FUNCTION ::: ---
 
+    // --- ::: NEW Reusable Table Pagination Function (REWRITTEN) ::: ---
+    function addTablePagination(selectId, tableBodyId) {
+        const select = document.getElementById(selectId);
+        const tableBody = document.getElementById(tableBodyId);
 
-    const restockModal = document.getElementById('restockModal');
-    if (restockModal) {
-        restockModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const label = restockModal.querySelector('.modal-title'); // Get title element
-            if(label) label.textContent = 'Restock ' + button.dataset.ingredientName; // Use Label ID
-            document.getElementById('restock_ingredient_id').value = button.dataset.ingredientId;
-            document.getElementById('restock_ingredient_name').textContent = button.dataset.ingredientName;
-            document.getElementById('restock_ingredient_unit').textContent = button.dataset.ingredientUnit;
-            
-            // --- ADDED: Clear the quantity input field ---
-            document.getElementById('restock_added_qty').value = '';
+        // --- ::: MODIFICATION: Get button IDs from selectId ::: ---
+        const baseId = selectId.replace('-rows-select', ''); // e.g., "product"
+        const prevBtn = document.getElementById(`${baseId}-prev-btn`);
+        const nextBtn = document.getElementById(`${baseId}-next-btn`);
+
+        if (!select || !tableBody || !prevBtn || !nextBtn) {
+            // console.warn('Pagination elements not found for:', selectId, tableBodyId);
+            return;
+        }
+
+        let currentPage = 0; // 0-indexed page
+
+        const updateTableRows = () => {
+            const selectedValue = select.value;
+
+            // Get all rows, but ONLY count those visible by the search filter
+            // (Search filter sets style.display = 'none')
+            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
+            const visibleRows = [];
+            all_rows.forEach(row => {
+                // Check if row is hidden by search
+                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
+                if (!isHiddenBySearch) {
+                    // If it's not hidden by search (or only hidden by us), consider it
+                    visibleRows.push(row);
+                }
+            });
+
+            // Reset all rows we manage to be visible (so search filter can re-hide them)
+            visibleRows.forEach(row => {
+                row.style.display = '';
+                row.dataset.paginatedHidden = 'false';
+            });
+
+            if (selectedValue === 'all') {
+                // "Show All" is selected, disable buttons and exit
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                // Re-apply search filter visibility
+                const searchInputId = select.id.replace('-rows-select', '-search-input');
+                const searchInput = document.getElementById(searchInputId);
+                if (searchInput && searchInput.value !== '') {
+                    searchInput.dispatchEvent(new Event('keyup'));
+                }
+                return;
+            }
+
+            const limit = parseInt(selectedValue, 10);
+            const totalRows = visibleRows.length;
+            const totalPages = Math.ceil(totalRows / limit);
+
+            // --- Apply pagination ---
+            const start = currentPage * limit;
+            const end = start + limit;
+
+            visibleRows.forEach((row, index) => {
+                if (index >= start && index < end) {
+                    row.style.display = ''; // Show
+                    row.dataset.paginatedHidden = 'false';
+                } else {
+                    row.style.display = 'none'; // Hide
+                    row.dataset.paginatedHidden = 'true';
+                }
+            });
+
+            // --- Update button states ---
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
+        };
+
+        // --- ::: ADDED: Event Listeners for buttons ::: ---
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                updateTableRows();
+            }
         });
+
+        nextBtn.addEventListener('click', () => {
+            const selectedValue = select.value;
+            if (selectedValue === 'all') return;
+
+            const limit = parseInt(selectedValue, 10);
+            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
+            const visibleRows = [];
+            all_rows.forEach(row => {
+                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
+                if (!isHiddenBySearch) {
+                    visibleRows.push(row);
+                }
+            });
+            const totalRows = visibleRows.length;
+            const totalPages = Math.ceil(totalRows / limit);
+
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                updateTableRows();
+            }
+        });
+
+        // Re-apply pagination when search happens
+        const searchInputId = select.id.replace('-rows-select', '-search-input');
+        const searchInput = document.getElementById(searchInputId);
+        if (searchInput) {
+            searchInput.addEventListener('keyup', () => {
+                currentPage = 0; // Reset to first page on search
+                updateTableRows();
+            });
+        }
+
+        // Add event listener for changes
+        select.addEventListener('change', () => {
+            currentPage = 0; // Reset to first page on limit change
+            updateTableRows();
+        });
+
+        // Call once on initial load
+        updateTableRows();
     }
+    // --- ::: END NEW PAGINATION FUNCTION ::: ---
+
+    // ::: REMOVED restockModal listener :::
+
 
     // Populate Adjust Product Stock Modal
     const adjustProductModal = document.getElementById('adjustProductModal');
     if (adjustProductModal) {
-        adjustProductModal.addEventListener('show.bs.modal', function (event) {
+        adjustProductModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-            const label = adjustProductModal.querySelector('.modal-title'); // Get title element
-             if(label) label.textContent = 'Adjust Stock for ' + button.dataset.productName; // Use Label ID
+            const label = adjustProductModal.querySelector('.modal-title');
+            if (label) label.textContent = 'Adjust Stock for ' + button.dataset.productName;
             document.getElementById('adjust_product_id').value = button.dataset.productId;
             document.getElementById('adjust_product_name').textContent = button.dataset.productName;
 
-            // --- ADDED: Clear the quantity and reason fields ---
             document.getElementById('adjust_adjustment_qty').value = '';
-            document.getElementById('adjust_reason').value = '';
+            document.getElementById('adjust_type').value = 'Production'; // Set default
+            document.getElementById('adjust_reason_note').value = '';
+
+            setTimeout(() => {
+                const adjustTypeSelect = document.getElementById('adjust_type');
+                if (adjustTypeSelect) {
+                    adjustTypeSelect.dispatchEvent(new Event('change'));
+                }
+            }, 100);
         });
     }
+
+    // ::: NEW: Populate Adjust Ingredient Stock Modal :::
+    const adjustIngredientModal = document.getElementById('adjustIngredientModal');
+    if (adjustIngredientModal) {
+        adjustIngredientModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const label = adjustIngredientModal.querySelector('.modal-title');
+            if (label) label.textContent = 'Adjust Stock for ' + button.dataset.ingredientName;
+            document.getElementById('adjust_ingredient_id').value = button.dataset.ingredientId;
+            document.getElementById('adjust_ingredient_name').textContent = button.dataset.ingredientName;
+            document.getElementById('adjust_ingredient_unit').textContent = button.dataset.ingredientUnit;
+
+            // Clear fields
+            document.getElementById('adjust_ing_qty').value = '';
+            document.getElementById('adjust_ing_type').value = 'Restock'; // Set default
+            document.getElementById('adjust_ing_reason_note').value = '';
+
+            // Trigger change to set helper text
+            setTimeout(() => {
+                const adjustIngTypeSelect = document.getElementById('adjust_ing_type');
+                if (adjustIngTypeSelect) {
+                    adjustIngTypeSelect.dispatchEvent(new Event('change'));
+                }
+            }, 100);
+        });
+    }
+    // ::: END NEW LISTENER :::
 
     // Populate Edit Ingredient Modal
     const editIngredientModal = document.getElementById('editIngredientModal');
     if (editIngredientModal) {
-        editIngredientModal.addEventListener('show.bs.modal', function (event) {
+        editIngredientModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-             const label = editIngredientModal.querySelector('.modal-title'); // Get title element
-             if(label) label.textContent = 'Edit ' + button.dataset.ingredientName; // Use Label ID
+            const label = editIngredientModal.querySelector('.modal-title');
+            if (label) label.textContent = 'Edit ' + button.dataset.ingredientName;
             document.getElementById('edit_ingredient_id').value = button.dataset.ingredientId;
             document.getElementById('edit_ingredient_name').value = button.dataset.ingredientName;
             document.getElementById('edit_ingredient_unit').value = button.dataset.ingredientUnit;
@@ -95,25 +230,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Populate Edit Product Modal
     const editProductModal = document.getElementById('editProductModal');
     if (editProductModal) {
-        editProductModal.addEventListener('show.bs.modal', function (event) {
+        editProductModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-            const label = editProductModal.querySelector('.modal-title'); // Get title element
-             if(label) label.textContent = 'Edit ' + button.dataset.productName; // Use Label ID
+            const label = editProductModal.querySelector('.modal-title');
+            if (label) label.textContent = 'Edit ' + button.dataset.productName;
             document.getElementById('edit_product_id').value = button.dataset.productId;
             document.getElementById('edit_product_name').value = button.dataset.productName;
             document.getElementById('edit_product_price').value = button.dataset.productPrice;
             document.getElementById('edit_product_status').value = button.dataset.productStatus;
 
-            // Determine active tab based on button's parent tab-pane
             const currentTabPane = button.closest('.tab-pane');
             let activeTabValue = 'products'; // Default
             if (currentTabPane) {
                 if (currentTabPane.id === 'discontinued-pane') {
                     activeTabValue = 'discontinued';
-                } 
-                // --- REMOVED 'recalled-pane' check ---
+                }
             }
-            
+
             const activeTabInput = document.getElementById('edit_product_active_tab');
             if (activeTabInput) {
                 activeTabInput.value = activeTabValue;
@@ -124,10 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Populate Delete Ingredient Modal
     const deleteIngredientModal = document.getElementById('deleteIngredientModal');
     if (deleteIngredientModal) {
-        deleteIngredientModal.addEventListener('show.bs.modal', function (event) {
+        deleteIngredientModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-            const label = deleteIngredientModal.querySelector('.modal-title'); // Get title element
-             if(label) label.textContent = 'Delete ' + button.dataset.ingredientName + '?'; // Use Label ID
+            const label = deleteIngredientModal.querySelector('.modal-title');
+            if (label) label.textContent = 'Delete ' + button.dataset.ingredientName + '?';
             document.getElementById('delete_ingredient_id').value = button.dataset.ingredientId;
             document.getElementById('delete_ingredient_name').textContent = button.dataset.ingredientName;
         });
@@ -136,200 +269,344 @@ document.addEventListener('DOMContentLoaded', () => {
     // Populate Delete Product Modal
     const deleteProductModal = document.getElementById('deleteProductModal');
     if (deleteProductModal) {
-        deleteProductModal.addEventListener('show.bs.modal', function (event) {
+        deleteProductModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-             const label = deleteProductModal.querySelector('.modal-title'); // Get title element
-            if(label) label.textContent = 'Delete ' + button.dataset.productName + '?'; // Use Label ID
+            const label = deleteProductModal.querySelector('.modal-title');
+            if (label) label.textContent = 'Delete ' + button.dataset.productName + '?';
             document.getElementById('delete_product_id').value = button.dataset.productId;
             document.getElementById('delete_product_name').textContent = button.dataset.productName;
 
-            // Determine active tab based on button's parent tab-pane
             const currentTabPane = button.closest('.tab-pane');
             let activeTabValue = 'products'; // Default
             if (currentTabPane) {
                 if (currentTabPane.id === 'discontinued-pane') {
                     activeTabValue = 'discontinued';
                 }
-                // --- REMOVED 'recalled-pane' check ---
             }
-            
-             const activeTabInput = document.getElementById('delete_product_active_tab');
+
+            const activeTabInput = document.getElementById('delete_product_active_tab');
             if (activeTabInput) {
                 activeTabInput.value = activeTabValue;
             }
         });
     }
 
-    // --- ::: REMOVED recordBakingModal listener ::: ---
-
     // --- ::: NEWLY ADDED: Initialize table filters ::: ---
     addTableFilter('product-search-input', 'product-table-body', 'product-no-results');
     addTableFilter('ingredient-search-input', 'ingredient-table-body', 'ingredient-no-results');
     // --- ::: END ::: ---
 
+    // --- ::: NEWLY ADDED: Initialize table pagination ::: ---
+    addTablePagination('product-rows-select', 'product-table-body');
+    addTablePagination('ingredient-rows-select', 'ingredient-table-body');
+    addTablePagination('discontinued-rows-select', 'discontinued-table-body');
+    addTablePagination('recall-rows-select', 'recall-table-body');
+    addTablePagination('history-rows-select', 'history-table-body');
+    // --- ::: END ::: ---
+
 
     // --- JavaScript for Active Tab Persistence ---
     const allTabButtons = document.querySelectorAll('#inventoryTabs .nav-link');
-    
-    // -- ADDED: Check for URL query params to set active tab --
+
     const urlParams = new URLSearchParams(window.location.search);
     const tabFromUrl = urlParams.get('active_tab');
     if (tabFromUrl) {
         const tabButton = document.querySelector(`[data-bs-target="#${tabFromUrl}-pane"]`);
         if (tabButton) {
-            // Deactivate all
             allTabButtons.forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
-            
-            // Activate the one from the URL
+
             tabButton.classList.add('active');
             const paneToShow = document.getElementById(`${tabFromUrl}-pane`);
-            if(paneToShow) {
+            if (paneToShow) {
                 paneToShow.classList.add('active', 'show');
             }
         }
     }
-    // --- END: URL query param check ---
 
 
     allTabButtons.forEach(tabButton => {
         tabButton.addEventListener('click', function(event) {
-            const paneId = event.target.dataset.bsTarget; // e.g., #products-pane
+            const paneId = event.target.dataset.bsTarget;
             let activeTabValue = 'products'; // Default
 
+            // --- MODIFIED: Added 'recall-pane' ---
             if (paneId === '#ingredients-pane') {
                 activeTabValue = 'ingredients';
-            } else if (paneId === '#recall-log-pane') { // <-- MODIFIED
-                 activeTabValue = 'recall_log';
             } else if (paneId === '#discontinued-pane') {
-                 activeTabValue = 'discontinued';
+                activeTabValue = 'discontinued';
+            } else if (paneId === '#recall-pane') {
+                activeTabValue = 'recall';
             } else if (paneId === '#history-pane') {
-                 activeTabValue = 'history';
+                activeTabValue = 'history';
             }
+            // --- END MODIFICATION ---
 
             document.querySelectorAll('form input[name="active_tab"]').forEach(input => {
-                 if (!input.id || (input.id !== 'edit_product_active_tab' && input.id !== 'delete_product_active_tab')) {
-                      input.value = activeTabValue;
-                 }
+                if (!input.id || (input.id !== 'edit_product_active_tab' && input.id !== 'delete_product_active_tab')) {
+                    input.value = activeTabValue;
+                }
             });
         });
     });
 
-    // --- THIS IS THE SORTING LOGIC THAT WAS OMITTED ---
-
-    // ---
-    // --- FIXED SORTING FUNCTION
-    // ---
+    // --- THIS IS THE SORTING LOGIC ---
     function getSortableValue(value, type = 'text') {
-        if (value === null || value === undefined) return ''; // Handle null/undefined
+        if (value === null || value === undefined) return '';
 
-        let cleaned = value.trim(); // Start by just trimming
+        let cleaned = value.trim();
 
         switch (type) {
             case 'number':
-                // Now, do the aggressive cleaning only for numbers
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, ''); // Remove units and '+'
-                cleaned = cleaned.replace(/,/g, ''); // Remove thousands separator
+                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
+                cleaned = cleaned.replace(/,/g, '');
                 const num = parseFloat(cleaned);
-                return isNaN(num) ? 0 : num; // Return 0 if parsing fails
-            
-            case 'date':
-                // Use the *original* trimmed value (e.g., "Nov 04, 2025 09:43 AM")
-                // Do not run the .replace() logic on it, which was breaking "AM/PM"
-                let dateVal = Date.parse(cleaned);
-                return isNaN(dateVal) ? 0 : dateVal; // Return 0 if parsing fails
-            
-            default: // 'text'
-                // Do the aggressive cleaning for text as well
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, ''); // Remove units and '+'
-                cleaned = cleaned.replace(/,/g, ''); // Remove thousands separator
+                return isNaN(num) ? 0 : num;
 
-                // Special sort order for status strings
+            case 'date':
+                let dateVal = Date.parse(cleaned);
+                return isNaN(dateVal) ? 0 : dateVal;
+
+            default: // 'text'
+                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
+                cleaned = cleaned.replace(/,/g, '');
+
                 const lowerVal = cleaned.toLowerCase();
-                // Ingredient Status
-                if (lowerVal.includes('low stock')) return 'a_low_stock'; // Prefix to ensure correct alphabetical sort
+                if (lowerVal.includes('low stock')) return 'a_low_stock';
                 if (lowerVal.includes('in stock')) return 'b_in_stock';
-                 // Adjustment History Type
                 if (lowerVal.includes('ingredient')) return 'a_ingredient';
                 if (lowerVal.includes('product')) return 'b_product';
-                return lowerVal; // Default alphabetical sort
+                return lowerVal;
         }
     }
 
     function sortTableByDropdown(sortLink) {
-        const { sortBy, sortDir, sortType } = sortLink.dataset; // Get sorting parameters from data attributes
+        const {
+            sortBy,
+            sortDir,
+            sortType
+        } = sortLink.dataset;
 
-        // Find the table associated with the clicked dropdown
         const table = sortLink.closest('.card').querySelector('table');
-        if (!table) return; // Exit if no table found
+        if (!table) return;
         const tbody = table.querySelector('tbody');
-        if (!tbody) return; // Exit if no table body found
+        if (!tbody) return;
 
-        // Find the header cell (TH) corresponding to the column to sort by
         const th = table.querySelector(`thead th[data-sort-by="${sortBy}"]`);
         if (!th) {
             console.error(`Sort Error: No table header found with data-sort-by="${sortBy}"`);
-            return; // Exit if the header isn't found
+            return;
         }
-        // Determine the index of the column to sort
         const colIndex = Array.from(th.parentNode.children).indexOf(th);
 
-        // Get all rows from the table body and convert to an array for sorting
-        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])')); // Exclude no-results row
 
-        // Sort the rows array
         rows.sort((a, b) => {
-            // Basic check for valid cells
             if (!a.cells[colIndex] || !b.cells[colIndex]) return 0;
 
-            // Get the cleaned, comparable values from the cells
             const valA = getSortableValue(a.cells[colIndex].innerText, sortType);
             const valB = getSortableValue(b.cells[colIndex].innerText, sortType);
 
-            // Perform comparison based on sort direction
             if (valA < valB) {
                 return sortDir === 'asc' ? -1 : 1;
             }
             if (valA > valB) {
                 return sortDir === 'asc' ? 1 : -1;
             }
-            return 0; // Values are equal
+            return 0;
         });
 
-        // Re-append the sorted rows back into the table body
         tbody.append(...rows);
 
-        // --- Update UI ---
-        // Update the text of the dropdown button to show the current sort
-        const buttonTextSpan = sortLink.closest('.dropdown').querySelector('.current-sort-text');
-        if (buttonTextSpan) {
-            buttonTextSpan.innerText = sortLink.innerText; // Set button text to the clicked link's text
+        // After sorting, re-apply pagination
+        const paginationSelectId = table.querySelector('select[id$="-rows-select"]')?.id;
+        if (paginationSelectId) {
+            const tableBodyId = tbody.id;
+            // Find the select element and trigger its change event to re-apply pagination
+            const paginationSelect = document.getElementById(paginationSelectId);
+            if (paginationSelect) {
+                paginationSelect.dispatchEvent(new Event('change'));
+            }
         }
 
-        // Update the 'active' class on dropdown items
+
+        const buttonTextSpan = sortLink.closest('.dropdown').querySelector('.current-sort-text');
+        if (buttonTextSpan) {
+            buttonTextSpan.innerText = sortLink.innerText;
+        }
         const dropdownItems = sortLink.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
-        dropdownItems.forEach(item => item.classList.remove('active')); // Remove active from all items
-        sortLink.classList.add('active'); // Add active to the clicked item
+        dropdownItems.forEach(item => item.classList.remove('active'));
+        sortLink.classList.add('active');
     }
 
-    // --- Attach Event Listeners ---
-    // Find all dropdown links with the class 'sort-trigger' and attach the sort function
     document.querySelectorAll('.sort-trigger').forEach(link => {
         link.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent the link from navigating
-            sortTableByDropdown(e.target); // Call the sort function
+            e.preventDefault();
+            sortTableByDropdown(e.target);
         });
     });
 
-    // --- Initial Sort on Page Load ---
-    // Find each sort dropdown and trigger a click on its initially 'active' item
     document.querySelectorAll('.card .dropdown').forEach(dropdown => {
-        // Find the link that should be active by default (could be the first or one marked 'active')
         const defaultSortLink = dropdown.querySelector('.dropdown-item.active') || dropdown.querySelector('.dropdown-item');
         if (defaultSortLink) {
-            sortTableByDropdown(defaultSortLink); // Apply the default sort
+            // Sort, but don't apply pagination here, let the initial load do it
+            sortTableByDropdown(defaultSortLink);
         }
     });
     // --- END OF SORTING LOGIC ---
+
+
+    // --- ::: MODIFIED: Dynamic Helper & Validation for Adjust Product Stock Modal ::: ---
+    const adjustProdModal = document.getElementById('adjustProductModal');
+    if (adjustProdModal) {
+        const adjustTypeSelect = document.getElementById('adjust_type');
+        const adjustQtyInput = document.getElementById('adjust_adjustment_qty');
+        const adjustQtyHelper = document.getElementById('adjust_qty_helper');
+        const adjustForm = adjustProdModal.querySelector('form');
+
+        const updateAdjustHelperAndValidation = () => {
+            const selectedType = adjustTypeSelect.value;
+            const qtyValue = adjustQtyInput.value;
+            const qty = parseFloat(qtyValue);
+
+            adjustQtyInput.classList.remove('is-invalid', 'is-valid');
+            adjustQtyHelper.classList.remove('text-success', 'text-danger', 'text-warning');
+
+            let isValid = false;
+
+            switch (selectedType) {
+                case 'Production':
+                    adjustQtyInput.placeholder = "e.g., 10 (Must be POSITIVE)";
+                    adjustQtyHelper.innerHTML = "<strong>Positive number:</strong> Adds stock AND deducts ingredients.";
+                    adjustQtyHelper.classList.add('text-success');
+                    if (!isNaN(qty) && qty > 0) isValid = true;
+                    break;
+                case 'Correction':
+                    adjustQtyInput.placeholder = "e.g., 5 or -5 (Cannot be 0)";
+                    adjustQtyHelper.innerHTML = "<strong>Positive:</strong> Adds stock, deducts ingredients.<br><strong>Negative:</strong> Removes stock, adds ingredients back.";
+                    adjustQtyHelper.classList.add('text-warning');
+                    if (!isNaN(qty) && qty !== 0) isValid = true;
+                    break;
+                case 'Spoilage':
+                    adjustQtyInput.placeholder = "e.g., -2 (Must be NEGATIVE)";
+                    adjustQtyHelper.innerHTML = "<strong>Negative number:</strong> Removes stock. Does NOT affect ingredients.";
+                    adjustQtyHelper.classList.add('text-danger');
+                    if (!isNaN(qty) && qty < 0) isValid = true;
+                    break;
+                case 'Recall':
+                    adjustQtyInput.placeholder = "e.g., -10 (Must be NEGATIVE)";
+                    adjustQtyHelper.innerHTML = "<strong>Negative number:</strong> Removes stock. Does NOT affect ingredients. Logs to Recall Report.";
+                    adjustQtyHelper.classList.add('text-danger');
+                    if (!isNaN(qty) && qty < 0) isValid = true;
+                    break;
+            }
+
+            if (qtyValue !== '') {
+                if (isValid) {
+                    adjustQtyInput.classList.add('is-valid');
+                } else {
+                    adjustQtyInput.classList.add('is-invalid');
+                }
+            }
+
+            return isValid;
+        };
+
+        adjustTypeSelect.addEventListener('change', updateAdjustHelperAndValidation);
+        adjustQtyInput.addEventListener('keyup', updateAdjustHelperAndValidation);
+
+        if (adjustForm) {
+            adjustForm.addEventListener('submit', (e) => {
+                const isValid = updateAdjustHelperAndValidation();
+
+                if (!isValid) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    adjustQtyInput.classList.add('is-invalid');
+                    adjustQtyInput.classList.remove('is-valid');
+                    adjustQtyInput.focus();
+                }
+            });
+        }
+
+        adjustProdModal.addEventListener('show.bs.modal', () => {
+            setTimeout(updateAdjustHelperAndValidation, 100);
+        });
+    }
+    // --- ::: END MODIFIED DYNAMIC HELPER ::: ---
+
+
+    // --- ::: NEW: Dynamic Helper & Validation for Adjust Ingredient Stock Modal ::: ---
+    const adjustIngModal = document.getElementById('adjustIngredientModal');
+    if (adjustIngModal) {
+        const adjustTypeSelect = document.getElementById('adjust_ing_type');
+        const adjustQtyInput = document.getElementById('adjust_ing_qty');
+        const adjustQtyHelper = document.getElementById('adjust_ing_qty_helper');
+        const adjustForm = adjustIngModal.querySelector('form');
+
+        const updateAdjustHelperAndValidation = () => {
+            const selectedType = adjustTypeSelect.value;
+            const qtyValue = adjustQtyInput.value;
+            const qty = parseFloat(qtyValue);
+
+            adjustQtyInput.classList.remove('is-invalid', 'is-valid');
+            adjustQtyHelper.classList.remove('text-success', 'text-danger', 'text-warning');
+
+            let isValid = false;
+
+            switch (selectedType) {
+                case 'Restock':
+                    adjustQtyInput.placeholder = "e.g., 10 (Must be POSITIVE)";
+                    adjustQtyHelper.innerHTML = "<strong>Positive number:</strong> Adds stock to inventory.";
+                    adjustQtyHelper.classList.add('text-success');
+                    if (!isNaN(qty) && qty > 0) isValid = true;
+                    break;
+                case 'Correction':
+                    adjustQtyInput.placeholder = "e.g., 5.5 or -2 (Cannot be 0)";
+                    adjustQtyHelper.innerHTML = "<strong>Positive or Negative number:</strong> Corrects stock count.";
+                    adjustQtyHelper.classList.add('text-warning');
+                    if (!isNaN(qty) && qty !== 0) isValid = true;
+                    break;
+                case 'Spoilage':
+                    adjustQtyInput.placeholder = "e.g., -2.5 (Must be NEGATIVE)";
+                    adjustQtyHelper.innerHTML = "<strong>Negative number:</strong> Removes stock from inventory.";
+                    adjustQtyHelper.classList.add('text-danger');
+                    if (!isNaN(qty) && qty < 0) isValid = true;
+                    break;
+            }
+
+            if (qtyValue !== '') {
+                if (isValid) {
+                    adjustQtyInput.classList.add('is-valid');
+                } else {
+                    adjustQtyInput.classList.add('is-invalid');
+                }
+            }
+
+            return isValid;
+        };
+
+        adjustTypeSelect.addEventListener('change', updateAdjustHelperAndValidation);
+        adjustQtyInput.addEventListener('keyup', updateAdjustHelperAndValidation);
+
+        if (adjustForm) {
+            adjustForm.addEventListener('submit', (e) => {
+                const isValid = updateAdjustHelperAndValidation();
+                if (!isValid) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    adjustQtyInput.classList.add('is-invalid');
+                    adjustQtyInput.classList.remove('is-valid');
+                    adjustQtyInput.focus();
+                }
+            });
+        }
+
+        adjustIngModal.addEventListener('show.bs.modal', () => {
+            setTimeout(updateAdjustHelperAndValidation, 100);
+        });
+    }
+    // --- ::: END NEW DYNAMIC HELPER ::: ---
+
 
 }); // End DOMContentLoaded
