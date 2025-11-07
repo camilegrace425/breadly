@@ -1,5 +1,52 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- ::: NEW Reusable Table Filter Function ::: ---
+    /**
+     * Adds a live search filter to a table.
+     * @param {string} inputId The ID of the search <input> element.
+     * @param {string} tableBodyId The ID of the <tbody> element to filter.
+     * @param {string} noResultsRowId The ID of the <tr> to show when no results are found.
+     */
+    function addTableFilter(inputId, tableBodyId, noResultsRowId) {
+        const searchInput = document.getElementById(inputId);
+        const tableBody = document.getElementById(tableBodyId);
+        const noResultsRow = document.getElementById(noResultsRowId);
+
+        if (!searchInput || !tableBody || !noResultsRow) {
+            console.warn('Filter elements not found for:', inputId, tableBodyId, noResultsRowId);
+            return;
+        }
+
+        searchInput.addEventListener('keyup', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            let itemsFound = 0;
+            
+            // Get all data rows (tr) in the table body
+            // We select all TRs that do NOT have an ID ending in '-no-results'
+            const rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])'); 
+            
+            rows.forEach(row => {
+                // Only search the first cell (Product/Ingredient Name)
+                const cell = row.cells[0]; 
+                if (cell) {
+                    const cellText = cell.innerText.toLowerCase();
+                    // Use startsWith for a "search-as-you-type" feel
+                    if (cellText.startsWith(searchTerm)) {
+                        row.style.display = ''; // Show row
+                        itemsFound++;
+                    } else {
+                        row.style.display = 'none'; // Hide row
+                    }
+                }
+            });
+
+            // Show or hide the 'no results' message
+            noResultsRow.style.display = itemsFound === 0 ? '' : 'none';
+        });
+    }
+    // --- ::: END NEW FUNCTION ::: ---
+
+
     const restockModal = document.getElementById('restockModal');
     if (restockModal) {
         restockModal.addEventListener('show.bs.modal', function (event) {
@@ -112,6 +159,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- ::: REMOVED recordBakingModal listener ::: ---
+
+    // --- ::: NEWLY ADDED: Initialize table filters ::: ---
+    addTableFilter('product-search-input', 'product-table-body', 'product-no-results');
+    addTableFilter('ingredient-search-input', 'ingredient-table-body', 'ingredient-no-results');
+    // --- ::: END ::: ---
 
 
     // --- JavaScript for Active Tab Persistence ---

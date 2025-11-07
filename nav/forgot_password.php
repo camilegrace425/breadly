@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>Forgot Password</title>
-
+    <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -154,10 +154,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                   type="text"
                   class="form-control"
                   id="identifier"
-                  name="identifier" placeholder="Enter your email or phone"
+                  name="identifier" placeholder="Enter your Phone Number"
                   required
                 />
-                <label for="identifier">Email or Phone Number</label>
+                <label for="identifier">Phone Number</label>
               </div>
 
               <div class="text-center">

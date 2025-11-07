@@ -81,13 +81,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             case 'adjust_product':
                 $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
-                $result = $bakeryManager->adjustProductStock($_POST['product_id'], $user_id_to_pass, $_POST['adjustment_qty'], $_POST['reason']);
-                if ($result) {
-                    $success_message = 'Successfully adjusted product stock!';
+                
+                // --- ::: MODIFIED LOGIC ::: ---
+                // This function now returns a status message from the stored procedure
+                $status = $bakeryManager->adjustProductStock($_POST['product_id'], $user_id_to_pass, $_POST['adjustment_qty'], $_POST['reason']);
+                
+                if (strpos($status, 'Success') !== false) {
+                    $success_message = $status;
                 } else {
-                    $error_message = 'Failed to execute stock adjustment. Please check input or contact support.';
+                    $error_message = $status; // Pass the error message from the procedure
                 }
+                // --- ::: END MODIFIED LOGIC ::: ---
                 break;
+
+            // --- ::: REMOVED 'record_baking' CASE ::: ---
 
             case 'edit_ingredient':
                 $bakeryManager->ingredientUpdate($_POST['ingredient_id'], $_POST['name'], $_POST['unit'], $_POST['reorder_level']);
@@ -180,6 +187,7 @@ $product_status_options = ['available', 'discontinued'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Management</title>
+    <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../styles/global.css"> 
@@ -192,7 +200,7 @@ $product_status_options = ['available', 'discontinued'];
             <div class="sidebar-brand">
                 <img src="../images/kzklogo.png" alt="BREADLY Logo">
                 <h5>BREADLY</h5>
-                <p>Kz & Rhyne's Bakery</p>
+                <p>Kz & Khyle's Bakery</p>
             </div>
             <ul class="nav flex-column sidebar-nav">
                 <li class="nav-item">
@@ -203,6 +211,11 @@ $product_status_options = ['available', 'discontinued'];
                 <li class="nav-item">
                     <a class="nav-link active" href="inventory_management.php">
                         <i class="bi bi-box me-2"></i> Inventory
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="recipes.php">
+                        <i class="bi bi-journal-bookmark me-2"></i> Recipes
                     </a>
                 </li>
                 <li class="nav-item">
@@ -274,10 +287,13 @@ $product_status_options = ['available', 'discontinued'];
 
                 <div class="tab-pane fade <?php echo ($active_tab === 'products') ? 'show active' : ''; ?>" id="products-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span>Active Products</span>
-                            <div>
-                                <div class="dropdown d-inline-block me-2">
+                        <div class="card-header d-flex justify-content-between align-items-center gap-3">
+                            <span class="fs-5">Active Products</span>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="product-search-input" class="form-control" placeholder="Search products...">
+                            </div>
+                            <div class="d-flex gap-2 flex-shrink-0"> <div class="dropdown d-inline-block">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
                                     </button>
@@ -307,7 +323,7 @@ $product_status_options = ['available', 'discontinued'];
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="product-table-body">
                                         <?php foreach ($products as $product): ?>
                                         <tr>
                                             <td><?php echo htmlspecialchars($product['name']); ?></td>
@@ -331,6 +347,7 @@ $product_status_options = ['available', 'discontinued'];
                                                         data-product-name="<?php echo htmlspecialchars($product['name']); ?>">
                                                     Adjust Stock
                                                 </button>
+                                                
                                                 <button class="btn btn-outline-danger btn-sm"
                                                         data-bs-toggle="modal" data-bs-target="#deleteProductModal"
                                                         data-product-id="<?php echo $product['product_id']; ?>"
@@ -343,6 +360,9 @@ $product_status_options = ['available', 'discontinued'];
                                         <?php if (empty($products)): ?>
                                             <tr><td colspan="5" class="text-center text-muted">No active products found.</td></tr>
                                         <?php endif; ?>
+                                        <tr id="product-no-results" style="display: none;">
+                                            <td colspan="5" class="text-center text-muted">No products match your search.</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -352,10 +372,13 @@ $product_status_options = ['available', 'discontinued'];
 
                 <div class="tab-pane fade <?php echo ($active_tab === 'ingredients') ? 'show active' : ''; ?>" id="ingredients-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span>All Ingredients</span>
-                            <div>
-                                <div class="dropdown d-inline-block me-2">
+                        <div class="card-header d-flex justify-content-between align-items-center gap-3">
+                            <span class="fs-5">All Ingredients</span>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="ingredient-search-input" class="form-control" placeholder="Search ingredients...">
+                            </div>
+                            <div class="d-flex gap-2 flex-shrink-0"> <div class="dropdown d-inline-block">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
                                     </button>
@@ -388,7 +411,7 @@ $product_status_options = ['available', 'discontinued'];
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="ingredient-table-body">
                                         <?php foreach ($ingredients as $ing): ?>
                                         <tr class="<?php echo ($ing['stock_surplus'] <= 0) ? 'table-danger' : ''; // Highlight low stock rows ?>">
                                             <td><?php echo htmlspecialchars($ing['name']); ?></td>
@@ -430,6 +453,9 @@ $product_status_options = ['available', 'discontinued'];
                                          <?php if (empty($ingredients)): ?>
                                             <tr><td colspan="6" class="text-center text-muted">No ingredients found. Add one to get started!</td></tr>
                                         <?php endif; ?>
+                                        <tr id="ingredient-no-results" style="display: none;">
+                                            <td colspan="6" class="text-center text-muted">No ingredients match your search.</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -760,7 +786,7 @@ $product_status_options = ['available', 'discontinued'];
                     <label for="add_prod_price" class="form-label">Price (PHP)</label>
                     <input type="number" step="0.01" class="form-control" id="add_prod_price" name="price" required min="0">
                 </div>
-                <p class="text-muted small">Note: Initial stock is 0. You must record a production run or use "Adjust Stock" to add inventory.</p>
+                <p class="text-muted small">Note: Initial stock is 0. Use "Adjust Stock" to add inventory and consume ingredients.</p>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -786,14 +812,32 @@ $product_status_options = ['available', 'discontinued'];
                 <div class="mb-3">
                     <label for="adjust_adjustment_qty" class="form-label">Adjustment Quantity</label>
                     <input type="number" step="1" class="form-control" id="adjust_adjustment_qty" name="adjustment_qty" required placeholder="e.g., -5 or 10">
-                    <div class="form-text">Use a negative number to remove stock (e.g., -5 for spoilage) or a positive number to add stock.</div>
-                </div>
+                    
+                    <div class="form-text">
+                        <strong>Positive (e.g., 10):</strong> Adds stock AND deducts ingredients (for Production).
+                        <br>
+                        <strong>Negative (e.g., -5):</strong> Removes stock. Does NOT affect ingredients (for Spoilage/Recall).
+                    </div>
+                    </div>
                 <div class="mb-3">
                     <label for="adjust_reason" class="form-label">Reason for Adjustment</label>
-                    <input type="text" class="form-control" id="adjust_reason" name="reason" placeholder="e.g., Spoilage, Recall batch, Correction" required>
-                    <div class="form-text text-warning">To log a recall, enter a negative quantity and include the word "recall" in the reason.</div>
-                </div>
+                    <input type="text" class="form-control" id="adjust_reason" name="reason" placeholder="e.g., Production, Spoilage, Correction" required>
+                    <div class="form-text text-warning">
+                        To add back ingredients from a mistake, use a <strong>negative number</strong> and include the word "<strong>Correction</strong>" in the reason.
+                        <br>
+                        <br>
+                        To deduct recalled products, use a <strong>negative number</strong> and include the word "<strong>recall</strong>" in the reason.
+                    </div>
+                    </div>
             </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-warning">Save Adjustment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+</div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
               <button type="submit" class="btn btn-warning">Save Adjustment</button>
