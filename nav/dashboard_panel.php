@@ -13,7 +13,7 @@ if ($_SESSION['role'] !== 'manager') {
 }
 
 $dashboardManager = new DashboardManager();
-$userManager = new UserManager(); // --- ADDED: Instantiate UserManager ---
+$userManager = new UserManager(); // --- ADDED: I nstantiate UserManager ---
 $current_user_id = $_SESSION['user_id'];
 
 // --- Handle POST request for sending NEW report ---
@@ -142,30 +142,12 @@ if (!empty($priorityAlert)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bakery Admin Dashboard</title>
+    <title>Manager Dashboard</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../styles/global.css"> 
     <link rel="stylesheet" href="../styles/dashboard.css"> 
-    <style>
-        .chart-container {
-            position: relative;
-            height: 40vh;
-            min-height: 300px;
-        }
-        .low-stock-card a {
-            text-decoration: none;
-            color: inherit;
-        }
-        .low-stock-card a:hover {
-            text-decoration: underline;
-        }
-        .stat-card .fs-4 {
-            font-size: 1.75rem !important;
-             line-height: 1.2;
-        }
-    </style>
 </head>
 <body class="dashboard">
 <div class="container-fluid">

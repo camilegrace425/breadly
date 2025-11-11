@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Point of Sale - Bakery System</title>
+    <title>Point of Sale</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -104,26 +104,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <option value="code-desc">Sort: Code (Desc)</option>
             </select>
         </div>
-        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3" id="product-list">
+        
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3" id="product-list">
             <?php foreach ($products as $product): ?>
             <div class="col" 
                  data-product-name="<?= htmlspecialchars(strtolower($product['name'])) ?>"
                  data-product-code="<?= htmlspecialchars($product['product_id']) ?>"
                  data-product-price="<?= htmlspecialchars($product['price']) ?>"
-                 data-product-stock="<?= htmlspecialchars($product['stock_qty']) ?>">
+                 data-product-stock="<?= htmlspecialchars($product['stock_qty']) ?>"
+                 data-product-image="<?= htmlspecialchars($product['image_url'] ?? '') ?>">
+                
                 <div class="product-card" 
                      data-id="<?= htmlspecialchars($product['product_id']) ?>"
                      data-name="<?= htmlspecialchars($product['name']) ?>"
                      data-price="<?= htmlspecialchars($product['price']) ?>"
-                     data-stock="<?= htmlspecialchars($product['stock_qty']) ?>">
+                     data-stock="<?= htmlspecialchars($product['stock_qty']) ?>"
+                     data-image="<?= htmlspecialchars($product['image_url'] ?? '') ?>">
                      
-                     <small class="text-muted" style="font-size: 0.8rem; font-weight: bold; text-align: left; width: 100%;"><?= htmlspecialchars($product['product_id']) ?></small>
-                     
-                     <div class="product-name"><?= htmlspecialchars($product['name']) ?></div>
-                    <div class="product-price">P<?= htmlspecialchars(number_format($product['price'], 2)) ?></div>
-                    <small class="text-muted">Stock: <?= htmlspecialchars($product['stock_qty']) ?></small>
+                    <?php 
+                    // Use a placeholder if no image is set
+                    $image_path = !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : '../images/breadlylogo.png'; 
+                    ?>
+                    <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['name']) ?>" class="product-image">
+                    
+                    <div class="product-details">
+                        <small class="product-code"><?= htmlspecialchars($product['product_id']) ?></small>
+                        <div class="product-name"><?= htmlspecialchars($product['name']) ?></div>
+                        <div class="product-price">P<?= htmlspecialchars(number_format($product['price'], 2)) ?></div>
+                        <small class="text-muted">Stock: <?= htmlspecialchars($product['stock_qty']) ?></small>
+                    </div>
                 </div>
-            </div>
+                </div>
             <?php endforeach; ?>
 
             <?php if (empty($products)): ?>

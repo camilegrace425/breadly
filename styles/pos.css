@@ -47,19 +47,48 @@ height: 100%;
 overflow-y: auto; 
 }
 
+/* --- ::: ALL MODIFICATIONS ARE HERE ::: --- */
 .product-card {
-border: 1px solid #eee;
-border-radius: 0.5rem;
-text-align: center;
-padding: 1rem;
-cursor: pointer;
-transition: transform 0.2s, box-shadow 0.2s;
-height: 100%; /* Make cards in a row same height */
-display: flex;
-flex-direction: column;
-justify-content: space-between;
-background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 0.5rem;
+    padding: 0.75rem; /* Reduced padding */
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 110px; /* Set a fixed height */
+    width: 300px;
+    display: flex;
+    flex-direction: row; /* This is the main change */
+    align-items: center; /* Vertically center content */
+    gap: 1rem; /* Space between image and text block */
+    background-color: #fff;
+    text-align: left; /* Align all text to the left */
 }
+
+.product-image {
+    width: 80px; /* Fixed small width */
+    height: 80px; /* Fixed small height */
+    object-fit: cover; 
+    border-radius: 0.25rem;
+    border: 1px solid #eee;
+    flex-shrink: 0; /* Prevent image from shrinking */
+    margin-bottom: 0; /* Remove old margin */
+}
+
+/* New container for all text */
+.product-details {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Take remaining space */
+    min-width: 0; /* Fix for flexbox text overflow */
+}
+
+.product-card .product-name {
+    flex-grow: 1; /* Pushes price/stock to bottom */
+    white-space: nowrap; /* Prevent long names from wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add '...' for very long names */
+}
+
 .product-card:hover {
 transform: translateY(-5px);
 box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -67,12 +96,24 @@ box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 .product-name { 
 font-weight: 600; 
 color: var(--text-dark, #6a381f);
-font-size: 1rem;
+font-size: 1.05rem;
+margin-top: 0;
 }
 .product-price { 
 color: var(--text-secondary, #7a7a7a); 
-font-size: 0.9rem;
+font-size: 0.95rem;
+font-weight: 600;
+margin-top: 0;
 }
+
+.product-code {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--text-secondary, #7a7a7a);
+    text-align: right;
+}
+/* --- ::: END OF MODIFICATIONS ::: --- */
+
 
 .order-items {
 flex-grow: 1; /* This makes the item list take up available space */

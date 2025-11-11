@@ -109,12 +109,15 @@ function getSortLink(
 
 function getCurrentSortText($sort_column, $sort_direction)
 {
+    // --- MODIFIED MAP ---
     $column_map = [
         "sale_id" => "Sale ID",
         "date" => "Timestamp",
         "product" => "Product Name",
         "qty" => "Quantity",
-        "price" => "Total Price",
+        "subtotal" => "Subtotal",
+        "discount_amt" => "Discount",
+        "price" => "Net Total",
         "cashier" => "Cashier",
     ];
     $direction_text = $sort_direction == "ASC" ? "Ascending" : "Descending";
@@ -122,27 +125,29 @@ function getCurrentSortText($sort_column, $sort_direction)
     return "{$column_text} ({$direction_text})";
 }
 
-// --- Data Fetching ---
 $sales = $salesManager->getSalesHistory(
     $date_start,
     $date_end,
     $sort_column,
     $sort_direction
 );
-// --- REMOVED: $recall_history ---
 $return_history = $salesManager->getReturnHistory();
 
-// --- ::: MODIFIED: Calculate Totals ---
 $total_sales_revenue = 0;
 foreach ($sales as $sale) {
     $total_sales_revenue += $sale["total_price"];
 }
 
-// --- REMOVED: $total_recall_value ---
-
 $total_return_value = 0;
+$start_date_obj = new DateTime($date_start . ' 00:00:00');
+$end_date_obj = new DateTime($date_end . ' 23:59:59');
+
 foreach ($return_history as $log) {
-    $total_return_value += $log["return_value"];
+    $return_date_obj = new DateTime($log['timestamp']);
+    
+    if ($return_date_obj >= $start_date_obj && $return_date_obj <= $end_date_obj) {
+        $total_return_value += $log["return_value"];
+    }
 }
 
 // --- ::: NEW: Calculate Net Revenue ::: ---
@@ -297,92 +302,32 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                                 ); ?>
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="sortDropdown">
-                                                <li><a class="dropdown-item <?php if (
-                                                    $sort_column == "sale_id"
-                                                ) {
-                                                    echo "active";
-                                                } ?>" href="<?php echo getSortLink(
-                                                    "sale_id",
-                                                    $sort_column,
-                                                    $sort_direction,
-                                                    $date_start,
-                                                    $date_end,
-                                                    "sales"
-                                                ); ?>">Sale ID <?php if ($sort_column == "sale_id") {
-                                                    echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)";
-                                                } ?></a></li>
-                                                <li><a class="dropdown-item <?php if (
-                                                    $sort_column == "date"
-                                                ) {
-                                                    echo "active";
-                                                } ?>" href="<?php echo getSortLink(
-                                                    "date",
-                                                    $sort_column,
-                                                    $sort_direction,
-                                                    $date_start,
-                                                    $date_end,
-                                                    "sales"
-                                                ); ?>">Timestamp <?php if ($sort_column == "date") {
-                                                    echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)";
-                                                } ?></a></li>
-                                                <li><a class="dropdown-item <?php if (
-                                                    $sort_column == "product"
-                                                ) {
-                                                    echo "active";
-                                                } ?>" href="<?php echo getSortLink(
-                                                    "product",
-                                                    $sort_column,
-                                                    $sort_direction,
-                                                    $date_start,
-                                                    $date_end,
-                                                    "sales"
-                                                ); ?>">Product <?php if ($sort_column == "product") {
-                                                    echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)";
-                                                } ?></a></li>
-                                                <li><a class="dropdown-item <?php if (
-                                                    $sort_column == "qty"
-                                                ) {
-                                                    echo "active";
-                                                } ?>" href="<?php echo getSortLink(
-                                                    "qty",
-                                                    $sort_column,
-                                                    $sort_direction,
-                                                    $date_start,
-                                                    $date_end,
-                                                    "sales"
-                                                ); ?>">Quantity <?php if ($sort_column == "qty") {
-                                                    echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)";
-                                                } ?></a></li>
-                                                <li><a class="dropdown-item <?php if (
-                                                    $sort_column == "price"
-                                                ) {
-                                                    echo "active";
-                                                } ?>" href="<?php echo getSortLink(
-                                                    "price",
-                                                    $sort_column,
-                                                    $sort_direction,
-                                                    $date_start,
-                                                    $date_end,
-                                                    "sales"
-                                                ); ?>">Total Price <?php if ($sort_column == "price") {
-                                                    echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)";
-                                                } ?></a></li>
-                                                <li><a class="dropdown-item <?php if (
-                                                    $sort_column == "cashier"
-                                                ) {
-                                                    echo "active";
-                                                } ?>" href="<?php echo getSortLink(
-                                                    "cashier",
-                                                    $sort_column,
-                                                    $sort_direction,
-                                                    $date_start,
-                                                    $date_end,
-                                                    "sales"
-                                                ); ?>">Cashier <?php if ($sort_column == "cashier") {
-                                                    echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)";
-                                                } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "date") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("date", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Timestamp <?php if ($sort_column == "date") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "product") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("product", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Product <?php if ($sort_column == "product") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "qty") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("qty", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Quantity <?php if ($sort_column == "qty") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "subtotal") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("subtotal", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Subtotal <?php if ($sort_column == "subtotal") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "discount_amt") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("discount_amt", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Discount <?php if ($sort_column == "discount_amt") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "price") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("price", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Net Total <?php if ($sort_column == "price") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "cashier") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("cashier", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Cashier <?php if ($sort_column == "cashier") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
+                                                <li><a class="dropdown-item <?php if ($sort_column == "sale_id") { echo "active"; } ?>" 
+                                                       href="<?php echo getSortLink("sale_id", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
+                                                       Sale ID <?php if ($sort_column == "sale_id") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
                                             </ul>
-                                        </div>
+                                            </div>
                                     </div>
                                 </div>
                                 </form>
@@ -396,7 +341,9 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                             <th>Timestamp</th>
                                             <th>Product</th>
                                             <th>Quantity</th>
-                                            <th>Total Price</th>
+                                            <th>Subtotal</th>
+                                            <th>Discount</th>
+                                            <th>Net Total</th>
                                             <th>Cashier</th>
                                             <th>Actions</th>
                                         </tr>
@@ -404,8 +351,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                     <tbody id="sales-table-body">
                                         <?php if (empty($sales)): ?>
                                             <tr>
-                                                <td colspan="7" class="text-center text-muted">No sales found for this period.</td>
-                                            </tr>
+                                                <td colspan="9" class="text-center text-muted">No sales found for this period.</td> </tr>
                                         <?php else: ?>
                                             <?php foreach ($sales as $sale): ?>
                                             <?php $qty_available_to_return =
@@ -437,12 +383,27 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                                         ]; ?> returned</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td>₱<?php echo htmlspecialchars(
+                                                
+                                                <td class="text-muted">₱<?php echo htmlspecialchars(
+                                                    number_format(
+                                                        $sale["subtotal"],
+                                                        2
+                                                    )
+                                                ); ?></td>
+                                                <td class="text-danger">
+                                                    <?php if (isset($sale["discount_amount"]) && $sale["discount_amount"] > 0.005): ?>
+                                                        (₱<?php echo htmlspecialchars(number_format($sale["discount_amount"], 2)); ?>)
+                                                        <span class="badge bg-danger ms-1"><?php echo htmlspecialchars($sale["discount_percent"]); ?>%</span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted">₱0.00</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><strong>₱<?php echo htmlspecialchars(
                                                     number_format(
                                                         $sale["total_price"],
                                                         2
                                                     )
-                                                ); ?></td>
+                                                ); ?></strong></td>
                                                 <td><?php echo htmlspecialchars(
                                                     $sale["cashier_username"]
                                                 ); ?></td>
@@ -620,14 +581,6 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="d-flex justify-content-end fw-bold fs-5">
-                                <span class="me-3 text-info">Total Value Returned:</span>
-                                <span class="text-info">₱<?php echo htmlspecialchars(
-                                    number_format($total_return_value, 2)
-                                ); ?></span>
                             </div>
                         </div>
                     </div>
