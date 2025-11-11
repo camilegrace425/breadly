@@ -65,18 +65,20 @@ class BakeryManager {
         return $stmt->execute();
     }
 
-    // Adds a new finished product. Calls: ProductAdd(?, ?)
-    public function addProduct($name, $price) {
-        $stmt = $this->conn->prepare("CALL ProductAdd(?, ?)");
-        $success = $stmt->execute([$name, $price]);
+    // --- MODIFIED: Added $image_url ---
+    // Adds a new finished product. Calls: ProductAdd(?, ?, ?)
+    public function addProduct($name, $price, $image_url) {
+        $stmt = $this->conn->prepare("CALL ProductAdd(?, ?, ?)");
+        $success = $stmt->execute([$name, $price, $image_url]);
         $stmt->closeCursor();
         return $success;
     }
 
-    // Updates an existing product's details. Calls: ProductUpdate(?, ?, ?, ?)
-    public function productUpdate($product_id, $name, $price, $status) {
-        $stmt = $this->conn->prepare("CALL ProductUpdate(?, ?, ?, ?)");
-        $success = $stmt->execute([$product_id, $name, $price, $status]);
+    // --- MODIFIED: Added $image_url ---
+    // Updates an existing product's details. Calls: ProductUpdate(?, ?, ?, ?, ?)
+    public function productUpdate($product_id, $name, $price, $status, $image_url) {
+        $stmt = $this->conn->prepare("CALL ProductUpdate(?, ?, ?, ?, ?)");
+        $success = $stmt->execute([$product_id, $name, $price, $status, $image_url]);
         $stmt->closeCursor();
         return $success;
     }

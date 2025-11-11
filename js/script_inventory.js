@@ -238,6 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('edit_product_name').value = button.dataset.productName;
             document.getElementById('edit_product_price').value = button.dataset.productPrice;
             document.getElementById('edit_product_status').value = button.dataset.productStatus;
+            
+            // --- ::: ADD THIS LINE ::: ---
+            document.getElementById('edit_product_current_image').value = button.dataset.productImage;
 
             const currentTabPane = button.closest('.tab-pane');
             let activeTabValue = 'products'; // Default

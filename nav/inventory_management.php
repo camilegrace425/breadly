@@ -43,6 +43,54 @@ if (isset($_POST["active_tab"])) {
 
 // --- POST Request Handling ---
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    // --- ::: ADD THIS HELPER FUNCTION ::: ---
+    function handleProductImageUpload($file_input_name) {
+        $target_dir = "../uploads/products/"; // The directory we created
+
+        // Check if the directory exists, if not, create it
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+
+        // Check if file was uploaded without errors
+        if (isset($_FILES[$file_input_name]) && $_FILES[$file_input_name]['error'] == 0) {
+            $file = $_FILES[$file_input_name];
+            $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            
+            // Create a unique filename
+            $safe_filename = uniqid('prod_', true) . '.' . $file_extension;
+            $target_file = $target_dir . $safe_filename;
+
+            // 1. Check if it's a real image
+            $check = getimagesize($file["tmp_name"]);
+            if ($check === false) {
+                return [null, "File is not an image."];
+            }
+
+            // 2. Check file size (e.g., 5MB limit)
+            if ($file["size"] > 20000000) {
+                return [null, "Sorry, your file is too large (20MB limit)."];
+            }
+
+            // 3. Allow certain file formats
+            $allowed_types = ['jpg', 'png', 'jpeg', 'gif'];
+            if (!in_array($file_extension, $allowed_types)) {
+                return [null, "Sorry, only JPG, JPEG, PNG & GIF files are allowed."];
+            }
+
+            // 4. Try to move the file
+            if (move_uploaded_file($file["tmp_name"], $target_file)) {
+                return [$target_file, null]; // Return the path and no error
+            } else {
+                return [null, "Sorry, there was an error uploading your file."];
+            }
+        }
+        // No file uploaded
+        return [null, null]; 
+    }
+    // --- ::: END HELPER FUNCTION ::: ---
+
     $action = $_POST["action"] ?? "";
     $form_active_tab = $_POST["active_tab"] ?? "products"; // Get tab from form submission
 
@@ -85,8 +133,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
                 break;
 
+            // --- MODIFIED: To handle image upload ---
             case "add_product":
-                $bakeryManager->addProduct($_POST["name"], $_POST["price"]);
+                list($image_path, $upload_error) = handleProductImageUpload('product_image');
+                if ($upload_error) {
+                    $error_message = $upload_error;
+                    break;
+                }
+    
+                $bakeryManager->addProduct($_POST["name"], $_POST["price"], $image_path);
                 $success_message = "Successfully added new product!";
                 break;
 
@@ -123,14 +178,50 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $success_message = "Successfully updated ingredient!";
                 break;
 
+            // --- ::: MODIFIED: To handle image upload AND deletion of old file ::: ---
             case "edit_product":
-                $bakeryManager->productUpdate(
+                // Get the old image path *before* doing anything else
+                $old_image_path = $_POST['current_image_path'] ?? null;
+                
+                list($image_path, $upload_error) = handleProductImageUpload('edit_product_image');
+                if ($upload_error) {
+                    $error_message = $upload_error;
+                    break;
+                }
+                // image_path will be the new path, or NULL if no file was uploaded.
+                
+                // Call the database update
+                $success = $bakeryManager->productUpdate(
                     $_POST["product_id"],
                     $_POST["name"],
                     $_POST["price"],
-                    $_POST["status"]
+                    $_POST["status"],
+                    $image_path // Pass the new image path or NULL
                 );
-                $success_message = "Successfully updated product!";
+
+                // --- Check for success and delete old file ---
+                if ($success) {
+                    $success_message = "Successfully updated product!";
+                    
+                    // Check if a new image was uploaded AND an old one existed
+                    if ($image_path && $old_image_path) {
+                        // $image_path is not null, so a new file was uploaded.
+                        // $old_image_path is not null, so an old file existed.
+                        // Now, safely delete the old file.
+                        if (file_exists($old_image_path)) {
+                            @unlink($old_image_path); // Use @ to suppress errors if it fails
+                        }
+                    }
+                } else {
+                    // The DB update failed.
+                    $error_message = "Error: Could not update product in database.";
+                    
+                    // If the DB update failed, we must delete the *new* file we just uploaded.
+                    if ($image_path && file_exists($image_path)) {
+                        @unlink($image_path);
+                    }
+                }
+                // --- ::: END MODIFICATION ::: ---
                 break;
 
             case "delete_ingredient":
@@ -425,7 +516,8 @@ $product_status_options = ["available", "discontinued"];
                                                         ]; ?>"
                                                         data-product-status="<?php echo $product[
                                                             "status"
-                                                        ]; ?>">
+                                                        ]; ?>"
+                                                        data-product-image="<?php echo htmlspecialchars($product["image_url"] ?? ''); // <-- MODIFIED: Added this line ?>">
                                                     <i class="bi bi-pencil-square"></i> Edit
                                                 </button>
                                                 <button class="btn btn-outline-secondary btn-sm"
@@ -1061,7 +1153,7 @@ $product_status_options = ["available", "discontinued"];
             <h5 class="modal-title" id="addProductModalLabel">Add New Product</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <form action="inventory_management.php" method="POST">
+          <form action="inventory_management.php" method="POST" enctype="multipart/form-data">
             <div class="modal-body">
                 <input type="hidden" name="action" value="add_product">
                 <input type="hidden" name="active_tab" value="products">
@@ -1072,6 +1164,11 @@ $product_status_options = ["available", "discontinued"];
                 <div class="mb-3">
                     <label for="add_prod_price" class="form-label">Price (PHP)</label>
                     <input type="number" step="0.01" class="form-control" id="add_prod_price" name="price" required min="0">
+                </div>
+    
+                <div class="mb-3">
+                    <label for="add_prod_image" class="form-label">Product Image (Optional)</label>
+                    <input type="file" class="form-control" id="add_prod_image" name="product_image" accept="image/*">
                 </div>
                 <p class="text-muted small">Note: Initial stock is 0. Use "Adjust Stock" to add inventory and consume ingredients.</p>
             </div>
@@ -1222,7 +1319,7 @@ $product_status_options = ["available", "discontinued"];
             <h5 class="modal-title" id="editProductModalLabel">Edit Product</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <form action="inventory_management.php" method="POST">
+          <form action="inventory_management.php" method="POST" enctype="multipart/form-data">
             <div class="modal-body">
                 <input type="hidden" name="action" value="edit_product">
                 <input type="hidden" name="active_tab" id="edit_product_active_tab" value="products"> <input type="hidden" name="product_id" id="edit_product_id">
@@ -1248,7 +1345,14 @@ $product_status_options = ["available", "discontinued"];
                     </select>
                     <div class="form-text">Setting to "Discontinued" will move it to the Discontinued tab and remove it from POS.</div>
                 </div>
-            </div>
+    
+                <div class="mb-3">
+                    <label for="edit_product_image" class="form-label">Upload New Image (Optional)</label>
+                    <input type="file" class="form-control" id="edit_product_image" name="edit_product_image" accept="image/*">
+                    <div class="form-text">Leave blank to keep the current image.</div>
+                    <input type="hidden" name="current_image_path" id="edit_product_current_image">
+                </div>
+                </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
               <button type="submit" class="btn btn-primary">Save Changes</button>

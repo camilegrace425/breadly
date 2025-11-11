@@ -77,3 +77,37 @@ html, body {
     height: 100%;
     width: 100%;
 }
+.content-box form {
+    margin-bottom: 1rem;
+}
+.content-box .btn {
+    width: 100%;
+    max-width: 350px; /* Prevent buttons from being too wide */
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+.btn-pos {
+    background-color: #198754; border-color: #198754; color: white;
+}
+.btn-pos:hover {
+    background-color: #157347; border-color: #146c43; color: white;
+}
+.btn-dash {
+    background-color: #0d6efd; border-color: #0d6efd; color: white;
+}
+.btn-dash:hover {
+    background-color: #0b5ed7; border-color: #0a58ca; color: white;
+}
+.btn-logout {
+    background-color: transparent;
+    border: 2px solid #dc3545;
+    color: #dc3545;
+}
+.btn-logout:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}

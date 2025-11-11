@@ -1,0 +1,52 @@
+.product-grid {
+    height: 80vh; /* Make grid scrollable */
+    overflow-y: auto;
+}
+
+/* Original styles for .product-card */
+.product-card {
+    text-decoration: none;
+    color: var(--text-dark, #6a381f);
+}
+.product-card.active {
+    border-width: 2px;
+    border-color: var(--bs-primary);
+    background-color: #f0f8ff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+/* Override default <a> behavior */
+a.product-card:hover {
+    color: var(--text-dark, #6a381f);
+}
+
+/* --- NEW STYLES TO MAKE CARDS SMALLER --- */
+#recipe-product-list .product-card {
+    /* Override pos.css styles */
+    height: auto; /* Remove fixed height */
+    width: auto; /* Remove fixed width */
+    flex-direction: column; /* Stack text vertically */
+    align-items: flex-start; /* Align text left */
+    padding: 0.5rem 0.75rem; /* Reduce padding */
+    gap: 0; /* Remove gap */
+    text-align: left;
+    border: 1px solid #eee;
+    border-radius: 0.375rem;
+    background-color: #fff;
+    box-shadow: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#recipe-product-list .product-card:hover {
+     transform: translateY(-2px);
+     box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+#recipe-product-list .product-card .product-name {
+    font-size: 0.9rem; /* Make font smaller */
+    font-weight: 600;
+    white-space: normal; /* Allow wrapping */
+}
+
+#recipe-product-list .product-card small {
+    font-size: 0.75rem; /* Make batch text smaller */
+}

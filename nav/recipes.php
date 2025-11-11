@@ -110,27 +110,8 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
     <link rel="stylesheet" href="../styles/global.css"> 
     <link rel="stylesheet" href="../styles/dashboard.css"> 
     <link rel="stylesheet" href="../styles/pos.css"> 
-    
-    <style>
-        .product-grid {
-            height: 80vh; /* Make grid scrollable */
-            overflow-y: auto;
-        }
-        .product-card {
-            text-decoration: none;
-            color: var(--text-dark, #6a381f);
-        }
-        .product-card.active {
-            border-width: 2px;
-            border-color: var(--bs-primary);
-            background-color: #f0f8ff;
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
-        }
-        /* Override default <a> behavior */
-        a.product-card:hover {
-            color: var(--text-dark, #6a381f);
-        }
-    </style>
+    <link rel="stylesheet" href="../styles/recipes.css"> 
+
 </head>
 <body class="dashboard">
 <div class="container-fluid">
