@@ -2,11 +2,20 @@
 require_once '../db_connection.php';
 require_once '../src/SalesManager.php'; // --- ::: ADDED THIS LINE ::: ---
 
+// --- ADDED: Include config file if not already loaded ---
+if (!defined('SMS_API_TOKEN')) {
+    // Adjust path as this file is in /src/
+    require_once __DIR__ . '../config.php'; 
+}
+
 // Manages all data fetching for the manager dashboard.
 class DashboardManager {
     private $conn;
-    private $api_token = '4882e7a9d4704d5afc136eebb463d298d1f15c20'; 
-    private $api_send_sms_url = 'https://sms.iprogtech.com/api/v1/sms_messages';
+    
+    // --- MODIFIED: Use constants from config.php ---
+    private $api_token = SMS_API_TOKEN; 
+    private $api_send_sms_url = SMS_SEND_URL;
+    // --- END MODIFICATION ---
     
     // --- ::: ADDED THIS PROPERTY ::: ---
     private $salesManager;

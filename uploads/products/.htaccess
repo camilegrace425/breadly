@@ -1,0 +1,17 @@
+# --- NEW FILE ---
+# This file helps secure the uploads directory by preventing 
+# the server from executing scripts (e.g., PHP, Perl, Python).
+
+<FilesMatch "\.(php|phtml|php[3-7]|pl|py|cgi)$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+# For even stronger security, you can uncomment the lines below.
+# This tells the server to treat ALL files in this directory 
+# and its subdirectories as plain text, preventing them from being
+# rendered as HTML or executed.
+#
+# <Files *.*>
+#   ForceType text/plain
+# </Files>
