@@ -39,7 +39,10 @@ class BakeryManager {
 
             return $result['status'] ?? 'Error: Unknown status.';
         } catch (PDOException $e) {
-            return 'Error: ' . $e->getMessage();
+            // --- MODIFIED: Harden error reporting ---
+            error_log("Error in ingredientDelete: " . $e->getMessage());
+            return 'Error: A database error occurred during deletion.';
+            // --- END MODIFICATION ---
         }
     }
 
@@ -52,10 +55,12 @@ class BakeryManager {
             $stmt->closeCursor();
             return "Success: Ingredient stock adjusted."; // Return a success string
         } catch (PDOException $e) {
+            // --- MODIFIED: Harden error reporting ---
             // Log the actual database error for debugging
             error_log("Error in adjustIngredientStock: " . $e->getMessage());
-            // Return an error string for the controller
+            // Return a user-friendly error (the procedure message is safe to show)
             return "Error: " . $e->getMessage();
+            // --- END MODIFICATION ---
         }
     }
 
@@ -96,7 +101,10 @@ class BakeryManager {
 
             return $result['status'] ?? 'Error: Unknown status.';
         } catch (PDOException $e) {
-            return 'Error: Could not delete product. ' . $e->getMessage();
+            // --- MODIFIED: Harden error reporting ---
+            error_log("Error in productDelete: " . $e->getMessage());
+            return 'Error: Could not delete product. A database error occurred.';
+            // --- END MODIFICATION ---
         }
     }
 
@@ -115,8 +123,10 @@ class BakeryManager {
             return $result['status'] ?? 'Error: Unknown status.';
         
         } catch (PDOException $e) {
+            // --- MODIFIED: Harden error reporting ---
             error_log("Error adjusting stock: " . $e->getMessage());
             return 'Error: ' . $e->getMessage();
+            // --- END MODIFICATION ---
         }
     }
 
@@ -138,7 +148,10 @@ class BakeryManager {
             return $result['status'] ?? 'Error: Unknown status.';
 
         } catch (PDOException $e) {
+            // --- MODIFIED: Harden error reporting ---
+            error_log("Error in recordSale: " . $e->getMessage());
             return 'Error: ' . $e->getMessage();
+            // --- END MODIFICATION ---
         }
     }
     
@@ -151,8 +164,10 @@ class BakeryManager {
             return "Success: Return processed. Stock has been updated.";
         
         } catch (PDOException $e) {
+            // --- MODIFIED: Harden error reporting ---
             error_log("Error processing sale return: " . $e->getMessage());
             return 'Error: ' . $e->getMessage();
+            // --- END MODIFICATION ---
         }
     }
 

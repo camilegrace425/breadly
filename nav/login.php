@@ -44,6 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
 
+            // --- ADDED: Prevent Session Hijacking ---
+            // Regenerate the session ID to prevent session fixation.
+            session_regenerate_id(true);
+            // --- END ADDITION ---
+
             // UPDATED: Redirect to correct page based on role
             if ($user['role'] === 'manager') {
                  header('Location: index.php');
@@ -61,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BREADLY Login</title>
@@ -75,12 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="form-side">
             <div class="form-container" id="formContainer">
                 
-                <!-- Admin Login Form -->
                 <div class="login-form admin-form active" id="adminLoginForm">
                     <h2>Admin Login</h2>
-                    <!-- Form posts to itself -->
                     <form action="login.php" method="POST">
-                        <!-- ADDED: Hidden field to identify this as the manager form -->
                         <input type="hidden" name="login_type" value="manager">
 
                         <?php 
@@ -93,7 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           } 
                         ?>
                         <div class="input-box">
-                            <!-- Input name changed to "username" for PHP backend -->
                             <input type="text" name="username" placeholder="Username" required>
                         </div>
                         <div class="input-box password-box">
@@ -102,18 +103,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
                         <button type="submit" class="btn">LOGIN</button>
                         <div class="forgot-link">
-                            <!-- Link updated to point to PHP file -->
                             <a href="forgot_password.php">Forgot password?</a>
                         </div>
                     </form>
                 </div>
 
-                <!-- Cashier Login Form -->
                 <div class="login-form cashier-form" id="cashierLoginForm">
                     <h2>Cashier Login</h2>
-                    <!-- Form posts to itself -->
                     <form action="login.php" method="POST">
-                        <!-- ADDED: Hidden field to identify this as the cashier form -->
                         <input type="hidden" name="login_type" value="cashier">
 
                         <?php 
@@ -126,8 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           } 
                         ?>
                         <div class="input-box">
-                             <!-- Input name changed to "username" for PHP backend -->
-                            <input type="text" name="username" placeholder="Username" required>
+                             <input type="text" name="username" placeholder="Username" required>
                         </div>
                         <div class="input-box password-box">
                             <input type="password" name="password" id="cashierPassword" placeholder="Password" required>
@@ -135,8 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
                         <button type="submit" class="btn">LOGIN</button>
                         <div class="forgot-link">
-                             <!-- Link updated to point to PHP file -->
-                            <a href="forgot_password.php">Forgot password?</a>
+                             <a href="forgot_password.php">Forgot password?</a>
                         </div>
                     </form>
                 </div>
@@ -147,7 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="brand-content">
                 <h1 class="welcome-text">WELCOME TO <br>BREADLY</h1>
                 <div class="logo-wrapper">
-                    <!-- Image path updated -->
                     <img src="../images/kzklogo.png" alt="Kz & Khyle's Logo" class="bakery-logo">
                 </div>
                 <button type="button" class="btn switch-btn" id="switch-btn">Cashier Login?</button>
@@ -155,7 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 
-    <!-- Script path updated -->
     <script src="../js/script_login.js"></script>
     <script>
         // --- This script ensures the correct error message is shown on the correct tab ---

@@ -1,9 +1,14 @@
 <?php
+// --- MODIFIED ---
+// Include the secure config file located one level up.
+require_once __DIR__ . '../config.php';
+
 class Database {
-    private $host = 'localhost';
-    private $db_name = 'bakery';
-    private $username = 'root';
-    private $password = '';
+    // --- MODIFIED: Use constants from config.php ---
+    private $host = DB_HOST;
+    private $db_name = DB_NAME;
+    private $username = DB_USER;
+    private $password = DB_PASS;
     private $conn;
 
     public function __construct() {
@@ -19,7 +24,12 @@ class Database {
             );
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $e) {
-            die("Connection failed: " . $e->getMessage());
+            // --- MODIFIED: Harden error reporting ---
+            // Log the real error for the developer (to the server's error log)
+            error_log("Database Connection Failed: " . $e->getMessage());
+            // Show a generic message to the user
+            die("A critical database connection error occurred. Please contact support.");
+            // --- END MODIFICATION ---
         }
     }
 
