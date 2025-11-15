@@ -1,0 +1,35 @@
+:root {
+    --color-background-page: #F8F1E7;
+    --color-card-background: #ffffff;
+    --color-panel: #E4A26C;
+    --color-login-btn: #af6223;
+    --color-text-dark: #333333;
+    --color-text-light: #ffffff;
+    --color-input-bg: #F0F0F0;
+    
+    /* Define color palette from the image */
+    --bg-light-cream: #FFFBF5;
+    --sidebar-bg: #FDEEDC;
+    --card-bg-1: #FEE8D0; /* Sales card */
+    --card-bg-2: #FBF3D5; /* Orders card */
+    --card-bg-3: #FBF3D5; /* Best Selling card */
+    --card-bg-4: #F8DFAA; /* Inventory/Low stock card */
+    --text-dark: #6a381f;
+    --text-secondary: #7a7a7a;
+    --bar-color-1: #E5A26A;
+    --bar-color-2: #F5C6A5;
+    --bar-color-3: #D3D3D3; /* Light gray for Choco German bar */
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Georgia:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+    text-decoration: none;
+    list-style: none;
+}
