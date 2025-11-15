@@ -1,0 +1,113 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.page-landing .landing-page {
+    height: 100vh; 
+    padding: 0;
+}
+
+.page-landing .landing-page .row {
+    height: 100%;
+    margin: 0; /* Added to remove default row margins */
+}
+
+.page-landing {
+    /* FIXED: Using the CSS variable for the background color */
+    background-color: var(--color-background-page); 
+}
+
+.page-landing .text-column {
+    padding: 3rem 5rem; 
+}
+
+.page-landing .content-box h1 {
+    font-family: 'Lora', serif; 
+    color: #333; 
+    font-size: 4rem; 
+    line-height: 1.1;
+    margin-bottom: 1.5rem !important; 
+}
+
+.page-landing .description-text {
+    font-size: 1.1rem;
+    color: #444;
+    line-height: 1.6;
+    margin-bottom: 1.5rem !important;
+}
+
+.page-landing .powered-by-text {
+    font-size: 1.1rem;
+    color: #555; 
+    margin-bottom: 3rem !important; 
+}
+
+.page-landing .powered-by-brand {
+    color: var(--color-panel); /* Using variable */
+}
+
+.page-landing .login-btn {
+    background-color: var(--color-login-btn); /* Using variable */
+    border-color: var(--color-login-btn); /* Using variable */
+    color: #1a1515;
+    padding: 0.75rem 3rem; 
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+    font-size: 1.125rem; 
+    transition: all 0.3s ease;
+}
+
+.page-landing .login-btn:hover {
+    background-color: #b9662b;
+    border-color: #98582b;
+    color: #fff;
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* Right Image Column Styling */
+.page-landing .bakery-column {
+    padding: 0;
+    height: 100vh; 
+}
+
+.page-landing .bakery-img {
+    object-fit: cover;
+    height: 100%;
+    width: 100%;
+}
+.content-box form {
+    margin-bottom: 1rem;
+}
+.content-box .btn {
+    width: 100%;
+    max-width: 350px; /* Prevent buttons from being too wide */
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+.btn-pos {
+    background-color: #198754; border-color: #198754; color: white;
+}
+.btn-pos:hover {
+    background-color: #157347; border-color: #146c43; color: white;
+}
+.btn-dash {
+    background-color: #0d6efd; border-color: #0d6efd; color: white;
+}
+.btn-dash:hover {
+    background-color: #0b5ed7; border-color: #0a58ca; color: white;
+}
+.btn-logout {
+    background-color: transparent;
+    border: 2px solid #dc3545;
+    color: #dc3545;
+}
+.btn-logout:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
