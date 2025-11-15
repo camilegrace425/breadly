@@ -1,0 +1,212 @@
+body.dashboard {
+    background-color: var(--bg-light-cream);
+    color: var(--text-dark);
+    height: auto; /* Override 100% height for dashboard */
+    min-height: 100vh;
+}
+
+.sidebar {
+    background-color: var(--sidebar-bg);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    display: flex; /* ADDED: For sticky footer */
+    flex-direction: column; /* ADDED: For sticky footer */
+}
+.sidebar-brand {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.sidebar-brand img {
+    max-width: 50px;
+    margin-bottom: 0.5rem;
+}
+.sidebar-brand h5 {
+    font-weight: bold;
+    color: var(--text-dark);
+}
+.sidebar-brand p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.sidebar-nav {
+    flex-grow: 1; /* ADDED: Pushes user menu down */
+}
+.sidebar-nav .nav-link {
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.sidebar-nav .nav-link.active {
+    background-color: var(--text-dark);
+    color: #fff;
+}
+.sidebar-nav .nav-link:hover {
+    background-color: #f8e5d0;
+}
+
+.main-content {
+    padding: 2rem;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+.header h1 {
+    font-weight: bold;
+    color: var(--text-dark);
+}
+
+.stat-card {
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    border: none;
+    margin-bottom: 1.5rem;
+}
+.stat-card h1 {
+    font-weight: 700;
+    color: var(--text-dark);
+}
+.stat-card p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+.stat-card .percent-change {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.chart-container, .low-stock-card {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
+}
+
+h3.chart-title {
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+/* Horizontal Bar Chart Simulation */
+.bar-chart-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.bar-label {
+    width: 100px; /* Fixed width for labels */
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    flex-shrink: 0; /* Prevents label from shrinking */
+}
+.bar-wrapper {
+    flex-grow: 1;
+    background-color: #f3f3f3;
+    border-radius: 4px;
+}
+.bar {
+    height: 18px;
+    border-radius: 4px;
+}
+
+/* Low Stock / Best Seller Card */
+.low-stock-card {
+    background-color: var(--card-bg-4);
+}
+.low-stock-card h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.low-stock-card .best-seller-name {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 1.5rem;
+}
+.low-stock-card .low-stock-warning {
+    color: #d9534f; /* Red warning color */
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+.low-stock-card .low-stock-details {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+.low-stock-card a {
+    color: var(--text-dark);
+    font-weight: 500;
+    text-decoration: none;
+}
+.low-stock-card a:hover {
+    text-decoration: underline;
+}
+
+/* ADDED: Styles for new inventory page (Preserved) */
+.sidebar-user {
+  margin-top: 1rem;
+}
+.main-content .nav-tabs .nav-link {
+  color: var(--text-secondary);
+}
+.main-content .nav-tabs .nav-link.active {
+  color: var(--text-dark);
+  font-weight: 500;
+  background-color: #fff;
+  border-bottom-color: #fff;
+}
+.table-responsive {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* --- Sortable Table Styles (Preserved) --- */
+.sortable-header {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+.sortable-header::after {
+  content: '\25B2'; /* Up arrow */
+  position: absolute;
+  right: 0.5rem;
+  opacity: 0.3;
+}
+.sortable-header[data-sort-dir="desc"]::after {
+  content: '\25BC'; /* Down arrow */
+}
+.sortable-header[data-sort-dir="asc"]::after,
+.sortable-header[data-sort-dir="desc"]::after {
+  opacity: 1;
+}
+
+/* Make links in sortable headers in sales history blend in */
+.sortable-header a {
+  color: inherit;
+  text-decoration: none;
+}
+.sortable-header a:hover {
+  color: inherit;
+}
+.chart-container {
+    position: relative;
+    height: 40vh;
+    min-height: 300px;
+}
+.low-stock-card a {
+    text-decoration: none;
+    color: inherit;
+}
+.low-stock-card a:hover {
+    text-decoration: underline;
+}
+.stat-card .fs-4 {
+    font-size: 1.75rem !important;
+     line-height: 1.2;
+}
