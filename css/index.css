@@ -1,7 +1,3 @@
-/*
-  MODIFIED: index.css
-  - Updated to use the new global color variables.
-*/
 html, body {
     height: 100%;
     margin: 0;
@@ -15,11 +11,12 @@ html, body {
 
 .page-landing .landing-page .row {
     height: 100%;
-    margin: 0;
+    margin: 0; /* Added to remove default row margins */
 }
 
 .page-landing {
-    background-color: var(--color-bg); /* MODIFIED */
+    /* FIXED: Using the CSS variable for the background color */
+    background-color: var(--color-background-page); 
 }
 
 .page-landing .text-column {
@@ -28,7 +25,7 @@ html, body {
 
 .page-landing .content-box h1 {
     font-family: 'Lora', serif; 
-    color: var(--color-text-primary); /* MODIFIED */
+    color: #333; 
     font-size: 4rem; 
     line-height: 1.1;
     margin-bottom: 1.5rem !important; 
@@ -48,13 +45,13 @@ html, body {
 }
 
 .page-landing .powered-by-brand {
-    color: var(--color-accent); /* MODIFIED */
+    color: var(--color-panel); /* Using variable */
 }
 
 .page-landing .login-btn {
-    background-color: var(--color-accent); /* MODIFIED */
-    border-color: var(--color-accent); /* MODIFIED */
-    color: var(--color-text-light); /* MODIFIED */
+    background-color: var(--color-login-btn); /* Using variable */
+    border-color: var(--color-login-btn); /* Using variable */
+    color: #1a1515;
     padding: 0.75rem 3rem; 
     border-radius: 0.5rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
@@ -63,8 +60,8 @@ html, body {
 }
 
 .page-landing .login-btn:hover {
-    background-color: var(--color-accent-dark); /* MODIFIED */
-    border-color: var(--color-accent-dark); /* MODIFIED */
+    background-color: #b9662b;
+    border-color: #98582b;
     color: #fff;
     box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
 }
@@ -85,7 +82,7 @@ html, body {
 }
 .content-box .btn {
     width: 100%;
-    max-width: 350px;
+    max-width: 350px; /* Prevent buttons from being too wide */
     padding: 0.75rem;
     border-radius: 0.5rem;
     font-size: 1.1rem;
@@ -93,32 +90,24 @@ html, body {
     transition: all 0.3s ease;
 }
 .btn-pos {
-    background-color: var(--color-status-green); /* MODIFIED */
-    border-color: var(--color-status-green); /* MODIFIED */
-    color: white;
+    background-color: #198754; border-color: #198754; color: white;
 }
 .btn-pos:hover {
-    background-color: #157347; 
-    border-color: #146c43; 
-    color: white;
+    background-color: #157347; border-color: #146c43; color: white;
 }
 .btn-dash {
-    background-color: #0d6efd; 
-    border-color: #0d6efd; 
-    color: white;
+    background-color: #0d6efd; border-color: #0d6efd; color: white;
 }
 .btn-dash:hover {
-    background-color: #0b5ed7; 
-    border-color: #0a58ca; 
-    color: white;
+    background-color: #0b5ed7; border-color: #0a58ca; color: white;
 }
 .btn-logout {
     background-color: transparent;
-    border: 2px solid var(--color-status-red); /* MODIFIED */
-    color: var(--color-status-red); /* MODIFIED */
+    border: 2px solid #dc3545;
+    color: #dc3545;
 }
 .btn-logout:hover {
-    background-color: var(--color-status-red); /* MODIFIED */
-    border-color: var(--color-status-red); /* MODIFIED */
+    background-color: #dc3545;
+    border-color: #dc3545;
     color: white;
 }

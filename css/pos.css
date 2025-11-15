@@ -1,9 +1,3 @@
-/*
-  MODIFIED: pos.css
-  - Re-styled .product-card to be VERTICAL to match Screenshot (10).png.
-  - Added styles for the "Current Order" panel header.
-  - Updated colors to use new global variables.
-*/
 .product-list {
   -webkit-user-select: none; 
   -ms-user-select: none;    
@@ -11,208 +5,153 @@
 }
 
 body.pos-page {
-  background-color: var(--color-bg);
-  height: 100vh;
-  overflow: hidden; 
+background-color: var(--bg-light-cream, #fdfaf6);
+height: 100vh;
+overflow: hidden; /* Prevent scrolling of the whole page */
 }
 .pos-container {
-  display: grid;
-  grid-template-columns: 1fr;
-  height: calc(100vh - 2rem); 
-  gap: 1rem;
-  padding: 1rem;
+display: grid;
+/* Responsive grid: 1 column on small screens, 2 on medium+ */
+grid-template-columns: 1fr;
+/* We use 100vh (viewport height) minus padding */
+height: calc(100vh - 2rem); 
+gap: 1rem;
+padding: 1rem;
 }
 
+/* Apply 2-column layout on screens 768px and wider */
 @media (min-width: 768px) {
-  .pos-container {
-    grid-template-columns: 2fr 1fr;
-  }
+.pos-container {
+  grid-template-columns: 2fr 1fr;
+}
 }
 
 .product-grid {
-  background-color: var(--color-card);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  height: 100%;
+background-color: #fff;
+border-radius: 0.75rem;
+padding: 1.5rem;
+overflow-y: auto; /* Allow product grid to scroll */
+box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+/* Ensure it doesn't collapse and has a scrollbar */
+height: 100%;
 }
 .order-panel {
-  background-color: var(--color-card);
-  border-radius: 0.75rem;
-  padding: 0; /* Remove padding to make header full-width */
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  height: 100%;
-  overflow: hidden; /* Prevent scrolling of whole panel */
+background-color: #fff;
+border-radius: 0.75rem;
+padding: 1.5rem;
+display: flex;
+flex-direction: column;
+box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+/* Allow panel to scroll if content overflows */
+height: 100%;
+overflow-y: auto; 
 }
 
-/* --- ::: MODIFIED PRODUCT CARD ::: --- */
-/* This now matches the vertical card in Screenshot (10).png */
+/* --- ::: ALL MODIFICATIONS ARE HERE ::: --- */
 .product-card {
-    border: 1px solid #f0f0f0;
+    border: 1px solid #eee;
     border-radius: 0.5rem;
-    padding: 0; /* Remove padding, will add internally */
+    padding: 0.75rem; /* Reduced padding */
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
-    height: auto; /* Let content define height */
-    width: auto; /* Let grid define width */
+    height: 110px; /* Set a fixed height */
+    width: 300px;
     display: flex;
-    flex-direction: column; /* VERTICAL layout */
-    align-items: stretch; /* Stretch items to full width */
-    background-color: var(--color-card);
-    text-align: left;
-    overflow: hidden; /* Keep rounded corners */
+    flex-direction: row; /* This is the main change */
+    align-items: center; /* Vertically center content */
+    gap: 1rem; /* Space between image and text block */
+    background-color: #fff;
+    text-align: left; /* Align all text to the left */
 }
 
-.product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+.product-image {
+    width: 80px; /* Fixed small width */
+    height: 80px; /* Fixed small height */
+    object-fit: cover; 
+    border-radius: 0.25rem;
+    border: 1px solid #eee;
+    flex-shrink: 0; /* Prevent image from shrinking */
+    margin-bottom: 0; /* Remove old margin */
 }
 
-/* Placeholder for image */
-.product-image-placeholder {
-    width: 100%;
-    height: 140px;
-    background-color: var(--color-accent-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* You would add an icon here */
-}
-
-/* Container for text content */
+/* New container for all text */
 .product-details {
     display: flex;
     flex-direction: column;
-    padding: 0.75rem;
+    flex-grow: 1; /* Take remaining space */
+    min-width: 0; /* Fix for flexbox text overflow */
 }
 
 .product-card .product-name {
-    font-weight: 600; 
-    color: var(--color-text-primary);
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-    white-space: nowrap;
+    flex-grow: 1; /* Pushes price/stock to bottom */
+    white-space: nowrap; /* Prevent long names from wrapping */
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: ellipsis; /* Add '...' for very long names */
 }
 
-/* Flex container for price and stock */
-.product-info-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.product-card:hover {
+transform: translateY(-5px);
+box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.product-name { 
+font-weight: 600; 
+color: var(--text-dark, #6a381f);
+font-size: 1.05rem;
+margin-top: 0;
+}
+.product-price { 
+color: var(--text-secondary, #7a7a7a); 
+font-size: 0.95rem;
+font-weight: 600;
+margin-top: 0;
 }
 
-.product-card .product-price { 
-    color: var(--color-text-secondary); 
-    font-size: 0.95rem;
-    font-weight: 600;
-}
-
-.product-card .product-stock-tag {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 99px;
-    display: inline-block;
-}
-.product-stock-tag.in-stock {
-    background-color: var(--color-status-green-bg);
-    color: var(--color-status-green);
-}
-.product-stock-tag.low-stock {
-    background-color: var(--color-status-red-bg);
-    color: var(--color-status-red);
+.product-code {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--text-secondary, #7a7a7a);
+    text-align: right;
 }
 /* --- ::: END OF MODIFICATIONS ::: --- */
 
 
-/* --- Order Panel Styling --- */
-.order-panel-header {
-  background-color: var(--color-accent-light);
-  border-bottom: 1px solid #e0e0e0;
-  padding: 1rem 1.5rem;
-  flex-shrink: 0;
-}
-.order-panel-header h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
-}
-.order-panel-header p {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-
-/* This part scrolls */
 .order-items {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 1rem;
+flex-grow: 1; /* This makes the item list take up available space */
+overflow-y: auto; /* Allows just this section to scroll */
+min-height: 200px; /* Ensures it has some height even when empty */
+padding: 0.5rem;
+background-color: #fafafa;
+border-radius: 0.5rem;
 }
-/* Empty cart state from screenshot */
-.order-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 1rem;
-    text-align: center;
-}
-.order-empty-state i { /* Assuming you use an icon font */
-    font-size: 3rem;
-    color: #e0e0e0;
-}
-.order-empty-state h4 {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    margin-top: 1rem;
-}
-.order-empty-state p {
-    font-size: 0.9rem;
-    color: var(--color-text-secondary);
-}
-
-
-/* This part is fixed at the bottom */
 .order-total {
-  border-top: 1px solid #f0f0f0;
-  padding: 1.5rem;
-  flex-shrink: 0;
-  background-color: #fafafa;
+border-top: 2px dashed #ddd;
+padding-top: 1rem;
+margin-top: 1rem;
+flex-shrink: 0; /* Prevent this from shrinking */
 }
-
 .cart-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  background-color: #fff;
-  border: 1px solid #eee;
-  border-radius: 0.5rem;
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 0.75rem;
+margin-bottom: 0.5rem;
+background-color: #fff;
+border: 1px solid #eee;
+border-radius: 0.5rem;
 }
 .cart-item-details { 
-  flex-grow: 1;
-  font-size: 0.9rem;
+flex-grow: 1;
+font-size: 0.9rem;
 }
 .cart-item-controls { 
-  display: flex; 
-  align-items: center;
-  flex-shrink: 0;
-  margin-left: 1rem;
+display: flex; 
+align-items: center;
+flex-shrink: 0;
+margin-left: 1rem;
 }
 .cart-item-controls .btn { 
-  padding: 0.1rem 0.5rem; 
-  font-size: 0.9rem; 
+padding: 0.1rem 0.5rem; 
+font-size: 0.9rem; 
 }
 
 .cart-item-controls .btn-remove {
@@ -230,22 +169,26 @@ body.pos-page {
 }
 
 .cart-item-controls .cart-quantity-input {
-  width: 55px;
-  text-align: center;
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
-}
-.cart-item-controls .cart-quantity-input::-webkit-outer-spin-button,
-.cart-item-controls .cart-quantity-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+width: 55px; /* Give it a fixed small width */
+text-align: center;
+padding-left: 0.25rem;
+padding-right: 0.25rem;
 }
 
-.order-summary-line {
-  font-size: 0.95rem;
-  margin-bottom: 0.25rem;
+/* Hide spinners on Chrome, Safari, Edge */
+.cart-item-controls .cart-quantity-input::-webkit-outer-spin-button,
+.cart-item-controls .cart-quantity-input::-webkit-inner-spin-button {
+-webkit-appearance: none;
+margin: 0;
 }
+
+/* --- ADDED: New Discount Styles --- */
+.order-summary-line {
+font-size: 0.95rem;
+margin-bottom: 0.25rem;
+}
+
 .text-discount {
-  color: var(--color-status-red);
-  font-weight: 500;
+color: #d9534f; /* Red warning color */
+font-weight: 500;
 }
