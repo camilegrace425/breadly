@@ -1,615 +1,564 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- ::: NEW Reusable Table Filter Function ::: ---
-    function addTableFilter(inputId, tableBodyId, noResultsRowId) {
-        const searchInput = document.getElementById(inputId);
-        const tableBody = document.getElementById(tableBodyId);
-        const noResultsRow = document.getElementById(noResultsRowId);
-
-        if (!searchInput || !tableBody || !noResultsRow) {
-            console.warn('Filter elements not found for:', inputId, tableBodyId, noResultsRowId);
-            return;
-        }
-
-        searchInput.addEventListener('keyup', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            let itemsFound = 0;
-
-            const rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-
-            rows.forEach(row => {
-                const cell = row.cells[0];
-                if (cell) {
-                    const cellText = cell.innerText.toLowerCase();
-                    if (cellText.startsWith(searchTerm)) {
-                        row.style.display = ''; // Show row
-                        itemsFound++;
-                    } else {
-                        row.style.display = 'none'; // Hide row
-                    }
-                }
-            });
-            noResultsRow.style.display = itemsFound === 0 ? '' : 'none';
-        });
-    }
-    // --- ::: END NEW FUNCTION ::: ---
-
-    // --- ::: NEW Reusable Table Pagination Function (REWRITTEN) ::: ---
-    function addTablePagination(selectId, tableBodyId) {
-        const select = document.getElementById(selectId);
-        const tableBody = document.getElementById(tableBodyId);
-
-        // --- ::: MODIFICATION: Get button IDs from selectId ::: ---
-        const baseId = selectId.replace('-rows-select', ''); // e.g., "product"
-        const prevBtn = document.getElementById(`${baseId}-prev-btn`);
-        const nextBtn = document.getElementById(`${baseId}-next-btn`);
-
-        if (!select || !tableBody || !prevBtn || !nextBtn) {
-            // console.warn('Pagination elements not found for:', selectId, tableBodyId);
-            return;
-        }
-
-        let currentPage = 0; // 0-indexed page
-
-        const updateTableRows = () => {
-            const selectedValue = select.value;
-
-            // Get all rows, but ONLY count those visible by the search filter
-            // (Search filter sets style.display = 'none')
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const visibleRows = [];
-            all_rows.forEach(row => {
-                // Check if row is hidden by search
-                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
-                if (!isHiddenBySearch) {
-                    // If it's not hidden by search (or only hidden by us), consider it
-                    visibleRows.push(row);
-                }
-            });
-
-            // Reset all rows we manage to be visible (so search filter can re-hide them)
-            visibleRows.forEach(row => {
-                row.style.display = '';
-                row.dataset.paginatedHidden = 'false';
-            });
-
-            if (selectedValue === 'all') {
-                // "Show All" is selected, disable buttons and exit
-                prevBtn.disabled = true;
-                nextBtn.disabled = true;
-                // Re-apply search filter visibility
-                const searchInputId = select.id.replace('-rows-select', '-search-input');
-                const searchInput = document.getElementById(searchInputId);
-                if (searchInput && searchInput.value !== '') {
-                    searchInput.dispatchEvent(new Event('keyup'));
-                }
-                return;
-            }
-
-            const limit = parseInt(selectedValue, 10);
-            const totalRows = visibleRows.length;
-            const totalPages = Math.ceil(totalRows / limit);
-
-            // --- Apply pagination ---
-            const start = currentPage * limit;
-            const end = start + limit;
-
-            visibleRows.forEach((row, index) => {
-                if (index >= start && index < end) {
-                    row.style.display = ''; // Show
-                    row.dataset.paginatedHidden = 'false';
-                } else {
-                    row.style.display = 'none'; // Hide
-                    row.dataset.paginatedHidden = 'true';
-                }
-            });
-
-            // --- Update button states ---
-            prevBtn.disabled = currentPage === 0;
-            nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
-        };
-
-        // --- ::: ADDED: Event Listeners for buttons ::: ---
-        prevBtn.addEventListener('click', () => {
-            if (currentPage > 0) {
-                currentPage--;
-                updateTableRows();
-            }
-        });
-
-        nextBtn.addEventListener('click', () => {
-            const selectedValue = select.value;
-            if (selectedValue === 'all') return;
-
-            const limit = parseInt(selectedValue, 10);
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const visibleRows = [];
-            all_rows.forEach(row => {
-                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
-                if (!isHiddenBySearch) {
-                    visibleRows.push(row);
-                }
-            });
-            const totalRows = visibleRows.length;
-            const totalPages = Math.ceil(totalRows / limit);
-
-            if (currentPage < totalPages - 1) {
-                currentPage++;
-                updateTableRows();
-            }
-        });
-
-        // Re-apply pagination when search happens
-        const searchInputId = select.id.replace('-rows-select', '-search-input');
-        const searchInput = document.getElementById(searchInputId);
-        if (searchInput) {
-            searchInput.addEventListener('keyup', () => {
-                currentPage = 0; // Reset to first page on search
-                updateTableRows();
-            });
-        }
-
-        // Add event listener for changes
-        select.addEventListener('change', () => {
-            currentPage = 0; // Reset to first page on limit change
-            updateTableRows();
-        });
-
-        // Call once on initial load
-        updateTableRows();
-    }
-    // --- ::: END NEW PAGINATION FUNCTION ::: ---
-
-    // ::: REMOVED restockModal listener :::
-
-
-    // Populate Adjust Product Stock Modal
-    const adjustProductModal = document.getElementById('adjustProductModal');
-    if (adjustProductModal) {
-        adjustProductModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const label = adjustProductModal.querySelector('.modal-title');
-            if (label) label.textContent = 'Adjust Stock for ' + button.dataset.productName;
-            document.getElementById('adjust_product_id').value = button.dataset.productId;
-            document.getElementById('adjust_product_name').textContent = button.dataset.productName;
-
-            document.getElementById('adjust_adjustment_qty').value = '';
-            document.getElementById('adjust_type').value = 'Production'; // Set default
-            document.getElementById('adjust_reason_note').value = '';
-
-            setTimeout(() => {
-                const adjustTypeSelect = document.getElementById('adjust_type');
-                if (adjustTypeSelect) {
-                    adjustTypeSelect.dispatchEvent(new Event('change'));
-                }
-            }, 100);
+    // --- Modal Event Listeners ---
+    // (Ensure these IDs match your HTML file exactly)
+    
+    // Add Ingredient Modal
+    const addIngredientModal = document.getElementById('addIngredientModal');
+    if (addIngredientModal) {
+        addIngredientModal.addEventListener('show.bs.modal', function (event) {
+            // Nothing to pre-fill here, but good to have the hook
         });
     }
 
-    // ::: NEW: Populate Adjust Ingredient Stock Modal :::
+    // Add Product Modal
+    const addProductModal = document.getElementById('addProductModal');
+    if (addProductModal) {
+        addProductModal.addEventListener('show.bs.modal', function (event) {
+            // Nothing to pre-fill
+        });
+    }
+    
+    // Adjust Ingredient Modal
     const adjustIngredientModal = document.getElementById('adjustIngredientModal');
     if (adjustIngredientModal) {
-        adjustIngredientModal.addEventListener('show.bs.modal', function(event) {
+        adjustIngredientModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            const label = adjustIngredientModal.querySelector('.modal-title');
-            if (label) label.textContent = 'Adjust Stock for ' + button.dataset.ingredientName;
-            document.getElementById('adjust_ingredient_id').value = button.dataset.ingredientId;
-            document.getElementById('adjust_ingredient_name').textContent = button.dataset.ingredientName;
-            document.getElementById('adjust_ingredient_unit').textContent = button.dataset.ingredientUnit;
+            if (!button) return;
+            const ingredientId = button.dataset.ingredientId;
+            const ingredientName = button.dataset.ingredientName;
+            const ingredientUnit = button.dataset.ingredientUnit;
 
-            // Clear fields
-            document.getElementById('adjust_ing_qty').value = '';
-            document.getElementById('adjust_ing_type').value = 'Restock'; // Set default
-            document.getElementById('adjust_ing_reason_note').value = '';
-
-            // Trigger change to set helper text
-            setTimeout(() => {
-                const adjustIngTypeSelect = document.getElementById('adjust_ing_type');
-                if (adjustIngTypeSelect) {
-                    adjustIngTypeSelect.dispatchEvent(new Event('change'));
+            adjustIngredientModal.querySelector('#adjust_ingredient_id').value = ingredientId;
+            adjustIngredientModal.querySelector('#adjust_ingredient_name').textContent = ingredientName;
+            adjustIngredientModal.querySelector('#adjust_ingredient_unit').textContent = ingredientUnit;
+            
+            // --- Helper text for adjustment quantity ---
+            const qtyInput = adjustIngredientModal.querySelector('#adjust_ing_qty');
+            const qtyHelper = adjustIngredientModal.querySelector('#adjust_ing_qty_helper');
+            qtyInput.value = ''; // Clear previous input
+            
+            const typeSelect = adjustIngredientModal.querySelector('#adjust_ing_type');
+            
+            const updateHelperText = () => {
+                const qty = parseFloat(qtyInput.value);
+                const type = typeSelect.value;
+                if (!qty || isNaN(qty)) {
+                    qtyHelper.textContent = 'Enter a positive or negative quantity.';
+                    qtyHelper.className = 'form-text';
+                    return;
                 }
-            }, 100);
+                
+                if(type === 'Restock' && qty < 0) {
+                     qtyHelper.textContent = 'Restock quantity should be positive.';
+                     qtyHelper.className = 'form-text text-danger';
+                } else if (type === 'Spoilage' && qty > 0) {
+                     qtyHelper.textContent = 'Spoilage quantity should be negative (e.g., -1.5).';
+                     qtyHelper.className = 'form-text text-danger';
+                } else {
+                     qtyHelper.textContent = (qty > 0) ? `This will ADD ${qty} ${ingredientUnit} to stock.` : `This will REMOVE ${Math.abs(qty)} ${ingredientUnit} from stock.`;
+                     qtyHelper.className = (qty > 0) ? 'form-text text-success' : 'form-text text-danger';
+                }
+            };
+            
+            qtyInput.addEventListener('input', updateHelperText);
+            typeSelect.addEventListener('change', updateHelperText);
+            updateHelperText(); // Initial call
         });
     }
-    // ::: END NEW LISTENER :::
 
-    // Populate Edit Ingredient Modal
+    // Adjust Product Modal
+    const adjustProductModal = document.getElementById('adjustProductModal');
+    if (adjustProductModal) {
+        adjustProductModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            if (!button) return;
+            const productId = button.dataset.productId;
+            const productName = button.dataset.productName;
+            
+            adjustProductModal.querySelector('#adjust_product_id').value = productId;
+            adjustProductModal.querySelector('#adjust_product_name').textContent = productName;
+
+            // --- Helper text for adjustment quantity ---
+            const qtyInput = adjustProductModal.querySelector('#adjust_adjustment_qty');
+            const qtyHelper = adjustProductModal.querySelector('#adjust_qty_helper');
+            qtyInput.value = ''; // Clear previous input
+            
+            const typeSelect = adjustProductModal.querySelector('#adjust_type');
+
+            const updateHelperText = () => {
+                const qty = parseInt(qtyInput.value, 10);
+                const type = typeSelect.value;
+
+                if (!qty || isNaN(qty)) {
+                    qtyHelper.textContent = 'Enter a positive (add) or negative (remove) whole number.';
+                    qtyHelper.className = 'form-text';
+                    return;
+                }
+
+                if (type === 'Production' && qty < 0) {
+                    qtyHelper.textContent = 'Production quantity should be positive.';
+                    qtyHelper.className = 'form-text text-danger';
+                } else if ((type === 'Spoilage' || type === 'Recall') && qty > 0) {
+                    qtyHelper.textContent = 'Spoilage/Recall quantity should be negative (e.g., -5).';
+                    qtyHelper.className = 'form-text text-danger';
+                } else {
+                    let actionText = '';
+                    if (type === 'Production') {
+                        actionText = `ADD ${qty} pcs to stock and DEDUCT ingredients.`;
+                    } else if (type === 'Spoilage' || type === 'Recall') {
+                        actionText = `REMOVE ${Math.abs(qty)} pcs from stock.`;
+                    } else if (type === 'Correction') {
+                        actionText = (qty > 0) ? `ADD ${qty} pcs to stock.` : `REMOVE ${Math.abs(qty)} pcs from stock.`;
+                    }
+                    qtyHelper.textContent = actionText;
+                    qtyHelper.className = (qty > 0) ? 'form-text text-success' : 'form-text text-danger';
+                }
+            };
+
+            qtyInput.addEventListener('input', updateHelperText);
+            typeSelect.addEventListener('change', updateHelperText);
+            updateHelperText(); // Initial call
+        });
+    }
+
+    // Edit Ingredient Modal
     const editIngredientModal = document.getElementById('editIngredientModal');
     if (editIngredientModal) {
-        editIngredientModal.addEventListener('show.bs.modal', function(event) {
+        editIngredientModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            const label = editIngredientModal.querySelector('.modal-title');
-            if (label) label.textContent = 'Edit ' + button.dataset.ingredientName;
-            document.getElementById('edit_ingredient_id').value = button.dataset.ingredientId;
-            document.getElementById('edit_ingredient_name').value = button.dataset.ingredientName;
-            document.getElementById('edit_ingredient_unit').value = button.dataset.ingredientUnit;
-            document.getElementById('edit_ingredient_reorder').value = button.dataset.ingredientReorder;
+            if (!button) return;
+            editIngredientModal.querySelector('#edit_ingredient_id').value = button.dataset.ingredientId;
+            editIngredientModal.querySelector('#edit_ingredient_name').value = button.dataset.ingredientName;
+            editIngredientModal.querySelector('#edit_ingredient_unit').value = button.dataset.ingredientUnit;
+            editIngredientModal.querySelector('#edit_ingredient_reorder').value = button.dataset.ingredientReorder;
         });
     }
 
-    // Populate Edit Product Modal
+    // Edit Product Modal
     const editProductModal = document.getElementById('editProductModal');
     if (editProductModal) {
-        editProductModal.addEventListener('show.bs.modal', function(event) {
+        editProductModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            const label = editProductModal.querySelector('.modal-title');
-            if (label) label.textContent = 'Edit ' + button.dataset.productName;
-            document.getElementById('edit_product_id').value = button.dataset.productId;
-            document.getElementById('edit_product_name').value = button.dataset.productName;
-            document.getElementById('edit_product_price').value = button.dataset.productPrice;
-            document.getElementById('edit_product_status').value = button.dataset.productStatus;
+            if (!button) return;
+            editProductModal.querySelector('#edit_product_id').value = button.dataset.productId;
+            editProductModal.querySelector('#edit_product_name').value = button.dataset.productName;
+            editProductModal.querySelector('#edit_product_price').value = button.dataset.productPrice;
+            editProductModal.querySelector('#edit_product_status').value = button.dataset.productStatus;
             
-            // --- ::: ADD THIS LINE ::: ---
-            document.getElementById('edit_product_current_image').value = button.dataset.productImage;
+            // --- ADDED: Handle image path ---
+            editProductModal.querySelector('#edit_product_current_image').value = button.dataset.productImage || '';
 
-            const currentTabPane = button.closest('.tab-pane');
-            let activeTabValue = 'products'; // Default
-            if (currentTabPane) {
-                if (currentTabPane.id === 'discontinued-pane') {
-                    activeTabValue = 'discontinued';
-                }
-            }
-
-            const activeTabInput = document.getElementById('edit_product_active_tab');
-            if (activeTabInput) {
-                activeTabInput.value = activeTabValue;
+            // Set the "active_tab" hidden input based on the product status
+            const status = button.dataset.productStatus;
+            const activeTabInput = editProductModal.querySelector('#edit_product_active_tab');
+            if (status === 'discontinued') {
+                activeTabInput.value = 'discontinued';
+            } else {
+                activeTabInput.value = 'products';
             }
         });
     }
-
-    // Populate Delete Ingredient Modal
+    
+    // Delete Ingredient Modal
     const deleteIngredientModal = document.getElementById('deleteIngredientModal');
     if (deleteIngredientModal) {
-        deleteIngredientModal.addEventListener('show.bs.modal', function(event) {
+        deleteIngredientModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            const label = deleteIngredientModal.querySelector('.modal-title');
-            if (label) label.textContent = 'Delete ' + button.dataset.ingredientName + '?';
-            document.getElementById('delete_ingredient_id').value = button.dataset.ingredientId;
-            document.getElementById('delete_ingredient_name').textContent = button.dataset.ingredientName;
+            if (!button) return;
+            deleteIngredientModal.querySelector('#delete_ingredient_id').value = button.dataset.ingredientId;
+            deleteIngredientModal.querySelector('#delete_ingredient_name').textContent = button.dataset.ingredientName;
         });
     }
-
-    // Populate Delete Product Modal
+    
+    // Delete Product Modal
     const deleteProductModal = document.getElementById('deleteProductModal');
     if (deleteProductModal) {
-        deleteProductModal.addEventListener('show.bs.modal', function(event) {
+        deleteProductModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            const label = deleteProductModal.querySelector('.modal-title');
-            if (label) label.textContent = 'Delete ' + button.dataset.productName + '?';
-            document.getElementById('delete_product_id').value = button.dataset.productId;
-            document.getElementById('delete_product_name').textContent = button.dataset.productName;
-
-            const currentTabPane = button.closest('.tab-pane');
-            let activeTabValue = 'products'; // Default
-            if (currentTabPane) {
-                if (currentTabPane.id === 'discontinued-pane') {
-                    activeTabValue = 'discontinued';
-                }
-            }
-
-            const activeTabInput = document.getElementById('delete_product_active_tab');
-            if (activeTabInput) {
-                activeTabInput.value = activeTabValue;
+            if (!button) return;
+            deleteProductModal.querySelector('#delete_product_id').value = button.dataset.productId;
+            deleteProductModal.querySelector('#delete_product_name').textContent = button.dataset.productName;
+            
+            // Set the "active_tab" hidden input
+            const activeTabInput = deleteProductModal.querySelector('#delete_product_active_tab');
+            // Check the button's ancestor for the tab pane
+            const pane = button.closest('.tab-pane');
+            if (pane && pane.id === 'discontinued-pane') {
+                activeTabInput.value = 'discontinued';
+            } else {
+                activeTabInput.value = 'products';
             }
         });
     }
 
-    // --- ::: NEWLY ADDED: Initialize table filters ::: ---
-    addTableFilter('product-search-input', 'product-table-body', 'product-no-results');
-    addTableFilter('ingredient-search-input', 'ingredient-table-body', 'ingredient-no-results');
-    // --- ::: END ::: ---
+    // --- Table/Grid Sorting & Pagination Logic ---
 
-    // --- ::: NEWLY ADDED: Initialize table pagination ::: ---
-    addTablePagination('product-rows-select', 'product-table-body');
-    addTablePagination('ingredient-rows-select', 'ingredient-table-body');
-    addTablePagination('discontinued-rows-select', 'discontinued-table-body');
-    addTablePagination('recall-rows-select', 'recall-table-body');
-    addTablePagination('history-rows-select', 'history-table-body');
-    // --- ::: END ::: ---
-
-
-    // --- JavaScript for Active Tab Persistence ---
-    const allTabButtons = document.querySelectorAll('#inventoryTabs .nav-link');
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabFromUrl = urlParams.get('active_tab');
-    if (tabFromUrl) {
-        const tabButton = document.querySelector(`[data-bs-target="#${tabFromUrl}-pane"]`);
-        if (tabButton) {
-            allTabButtons.forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
-
-            tabButton.classList.add('active');
-            const paneToShow = document.getElementById(`${tabFromUrl}-pane`);
-            if (paneToShow) {
-                paneToShow.classList.add('active', 'show');
-            }
-        }
-    }
-
-
-    allTabButtons.forEach(tabButton => {
-        tabButton.addEventListener('click', function(event) {
-            const paneId = event.target.dataset.bsTarget;
-            let activeTabValue = 'products'; // Default
-
-            // --- MODIFIED: Added 'recall-pane' ---
-            if (paneId === '#ingredients-pane') {
-                activeTabValue = 'ingredients';
-            } else if (paneId === '#discontinued-pane') {
-                activeTabValue = 'discontinued';
-            } else if (paneId === '#recall-pane') {
-                activeTabValue = 'recall';
-            } else if (paneId === '#history-pane') {
-                activeTabValue = 'history';
-            }
-            // --- END MODIFICATION ---
-
-            document.querySelectorAll('form input[name="active_tab"]').forEach(input => {
-                if (!input.id || (input.id !== 'edit_product_active_tab' && input.id !== 'delete_product_active_tab')) {
-                    input.value = activeTabValue;
-                }
-            });
-        });
-    });
-
-    // --- THIS IS THE SORTING LOGIC ---
-    function getSortableValue(value, type = 'text') {
-        if (value === null || value === undefined) return '';
-
-        let cleaned = value.trim();
-
-        switch (type) {
-            case 'number':
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
-                cleaned = cleaned.replace(/,/g, '');
-                const num = parseFloat(cleaned);
-                return isNaN(num) ? 0 : num;
-
-            case 'date':
-                let dateVal = Date.parse(cleaned);
-                return isNaN(dateVal) ? 0 : dateVal;
-
-            default: // 'text'
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
-                cleaned = cleaned.replace(/,/g, '');
-
-                const lowerVal = cleaned.toLowerCase();
-                if (lowerVal.includes('low stock')) return 'a_low_stock';
-                if (lowerVal.includes('in stock')) return 'b_in_stock';
-                if (lowerVal.includes('ingredient')) return 'a_ingredient';
-                if (lowerVal.includes('product')) return 'b_product';
-                return lowerVal;
-        }
-    }
-
-    function sortTableByDropdown(sortLink) {
-        const {
-            sortBy,
-            sortDir,
-            sortType
-        } = sortLink.dataset;
-
-        const table = sortLink.closest('.card').querySelector('table');
-        if (!table) return;
-        const tbody = table.querySelector('tbody');
-        if (!tbody) return;
-
-        const th = table.querySelector(`thead th[data-sort-by="${sortBy}"]`);
-        if (!th) {
-            console.error(`Sort Error: No table header found with data-sort-by="${sortBy}"`);
+    // --- NEW: Card Grid Sorter/Filter/Paginator ---
+    function setupCardGrid(gridId, searchInputId, rowsSelectId, prevBtnId, nextBtnId) {
+        const gridContainer = document.getElementById(gridId);
+        if (!gridContainer) {
+            // console.error('Failed to find card grid:', gridId);
             return;
         }
-        const colIndex = Array.from(th.parentNode.children).indexOf(th);
 
-        const rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])')); // Exclude no-results row
+        let allCards = Array.from(gridContainer.querySelectorAll('.product-item'));
+        let filteredCards = [...allCards];
+        let currentPage = 1;
 
-        rows.sort((a, b) => {
-            if (!a.cells[colIndex] || !b.cells[colIndex]) return 0;
+        const rowsSelect = document.getElementById(rowsSelectId);
+        let rowsPerPage = (rowsSelect && rowsSelect.value) ? (rowsSelect.value === 'all' ? 'all' : parseInt(rowsSelect.value, 10)) : 10;
+        
+        let currentSort = { by: 'productName', dir: 'asc', type: 'text' }; // Default sort
+        
+        const searchInput = document.getElementById(searchInputId);
+        const prevBtn = document.getElementById(prevBtnId);
+        const nextBtn = document.getElementById(nextBtnId);
+        const noResultsMessage = document.getElementById(gridId.replace('-list', '-no-results'));
+        
+        const parentCard = gridContainer.closest('.card');
 
-            const valA = getSortableValue(a.cells[colIndex].innerText, sortType);
-            const valB = getSortableValue(b.cells[colIndex].innerText, sortType);
+        function renderGrid() {
+            // 1. Sort
+            if (currentSort.by) {
+                filteredCards.sort((a, b) => {
+                    let valA = a.dataset[currentSort.by];
+                    let valB = b.dataset[currentSort.by];
 
-            if (valA < valB) {
-                return sortDir === 'asc' ? -1 : 1;
-            }
-            if (valA > valB) {
-                return sortDir === 'asc' ? 1 : -1;
-            }
-            return 0;
-        });
-
-        tbody.append(...rows);
-
-        // After sorting, re-apply pagination
-        const paginationSelectId = table.querySelector('select[id$="-rows-select"]')?.id;
-        if (paginationSelectId) {
-            const tableBodyId = tbody.id;
-            // Find the select element and trigger its change event to re-apply pagination
-            const paginationSelect = document.getElementById(paginationSelectId);
-            if (paginationSelect) {
-                paginationSelect.dispatchEvent(new Event('change'));
-            }
-        }
-
-
-        const buttonTextSpan = sortLink.closest('.dropdown').querySelector('.current-sort-text');
-        if (buttonTextSpan) {
-            buttonTextSpan.innerText = sortLink.innerText;
-        }
-        const dropdownItems = sortLink.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
-        dropdownItems.forEach(item => item.classList.remove('active'));
-        sortLink.classList.add('active');
-    }
-
-    document.querySelectorAll('.sort-trigger').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            sortTableByDropdown(e.target);
-        });
-    });
-
-    document.querySelectorAll('.card .dropdown').forEach(dropdown => {
-        const defaultSortLink = dropdown.querySelector('.dropdown-item.active') || dropdown.querySelector('.dropdown-item');
-        if (defaultSortLink) {
-            // Sort, but don't apply pagination here, let the initial load do it
-            sortTableByDropdown(defaultSortLink);
-        }
-    });
-    // --- END OF SORTING LOGIC ---
-
-
-    // --- ::: MODIFIED: Dynamic Helper & Validation for Adjust Product Stock Modal ::: ---
-    const adjustProdModal = document.getElementById('adjustProductModal');
-    if (adjustProdModal) {
-        const adjustTypeSelect = document.getElementById('adjust_type');
-        const adjustQtyInput = document.getElementById('adjust_adjustment_qty');
-        const adjustQtyHelper = document.getElementById('adjust_qty_helper');
-        const adjustForm = adjustProdModal.querySelector('form');
-
-        const updateAdjustHelperAndValidation = () => {
-            const selectedType = adjustTypeSelect.value;
-            const qtyValue = adjustQtyInput.value;
-            const qty = parseFloat(qtyValue);
-
-            adjustQtyInput.classList.remove('is-invalid', 'is-valid');
-            adjustQtyHelper.classList.remove('text-success', 'text-danger', 'text-warning');
-
-            let isValid = false;
-
-            switch (selectedType) {
-                case 'Production':
-                    adjustQtyInput.placeholder = "e.g., 10 (Must be POSITIVE)";
-                    adjustQtyHelper.innerHTML = "<strong>Positive number:</strong> Adds stock AND deducts ingredients.";
-                    adjustQtyHelper.classList.add('text-success');
-                    if (!isNaN(qty) && qty > 0) isValid = true;
-                    break;
-                case 'Correction':
-                    adjustQtyInput.placeholder = "e.g., 5 or -5 (Cannot be 0)";
-                    adjustQtyHelper.innerHTML = "<strong>Positive:</strong> Adds stock, deducts ingredients.<br><strong>Negative:</strong> Removes stock, adds ingredients back.";
-                    adjustQtyHelper.classList.add('text-warning');
-                    if (!isNaN(qty) && qty !== 0) isValid = true;
-                    break;
-                case 'Spoilage':
-                    adjustQtyInput.placeholder = "e.g., -2 (Must be NEGATIVE)";
-                    adjustQtyHelper.innerHTML = "<strong>Negative number:</strong> Removes stock. Does NOT affect ingredients.";
-                    adjustQtyHelper.classList.add('text-danger');
-                    if (!isNaN(qty) && qty < 0) isValid = true;
-                    break;
-                case 'Recall':
-                    adjustQtyInput.placeholder = "e.g., -10 (Must be NEGATIVE)";
-                    adjustQtyHelper.innerHTML = "<strong>Negative number:</strong> Removes stock. Does NOT affect ingredients. Logs to Recall Report.";
-                    adjustQtyHelper.classList.add('text-danger');
-                    if (!isNaN(qty) && qty < 0) isValid = true;
-                    break;
+                    if (currentSort.type === 'number') {
+                        valA = parseFloat(valA) || 0;
+                        valB = parseFloat(valB) || 0;
+                    } else {
+                        // Default to string comparison
+                        valA = valA ? valA.toLowerCase() : '';
+                        valB = valB ? valB.toLowerCase() : '';
+                    }
+                    
+                    if (valA < valB) return currentSort.dir === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSort.dir === 'asc' ? 1 : -1;
+                    return 0;
+                });
             }
 
-            if (qtyValue !== '') {
-                if (isValid) {
-                    adjustQtyInput.classList.add('is-valid');
+            // 2. Paginate
+            gridContainer.innerHTML = ''; // Clear grid
+            const totalPages = (rowsPerPage === 'all') ? 1 : Math.ceil(filteredCards.length / rowsPerPage);
+            currentPage = Math.max(1, Math.min(currentPage, totalPages));
+
+            const start = (rowsPerPage === 'all') ? 0 : (currentPage - 1) * rowsPerPage;
+            const end = (rowsPerPage === 'all') ? filteredCards.length : start + rowsPerPage;
+            const pageCards = filteredCards.slice(start, end);
+
+            pageCards.forEach(card => gridContainer.appendChild(card));
+            
+            // 3. Update Controls
+            if (prevBtn) prevBtn.disabled = (currentPage === 1);
+            if (nextBtn) nextBtn.disabled = (currentPage === totalPages || filteredCards.length === 0);
+            
+            // 4. Show 'no results' row if needed
+            if (noResultsMessage) {
+                if (filteredCards.length === 0) {
+                    gridContainer.appendChild(noResultsMessage);
+                    noResultsMessage.style.display = 'block';
                 } else {
-                    adjustQtyInput.classList.add('is-invalid');
+                    noResultsMessage.style.display = 'none';
                 }
             }
+        }
 
-            return isValid;
-        };
+        // --- Event Listeners ---
+        if (searchInput) {
+            searchInput.addEventListener('keyup', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                filteredCards = allCards.filter(card => {
+                    return card.dataset.productName.includes(searchTerm);
+                });
+                currentPage = 1;
+                renderGrid();
+            });
+        }
 
-        adjustTypeSelect.addEventListener('change', updateAdjustHelperAndValidation);
-        adjustQtyInput.addEventListener('keyup', updateAdjustHelperAndValidation);
-
-        if (adjustForm) {
-            adjustForm.addEventListener('submit', (e) => {
-                const isValid = updateAdjustHelperAndValidation();
-
-                if (!isValid) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    adjustQtyInput.classList.add('is-invalid');
-                    adjustQtyInput.classList.remove('is-valid');
-                    adjustQtyInput.focus();
+        if (rowsSelect) {
+            rowsSelect.addEventListener('change', () => {
+                const val = rowsSelect.value;
+                rowsPerPage = (val === 'all') ? 'all' : parseInt(val);
+                currentPage = 1;
+                renderGrid();
+            });
+        }
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderGrid();
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const totalPages = (rowsPerPage === 'all') ? 1 : Math.ceil(filteredCards.length / rowsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderGrid();
                 }
             });
         }
 
-        adjustProdModal.addEventListener('show.bs.modal', () => {
-            setTimeout(updateAdjustHelperAndValidation, 100);
-        });
+        if (parentCard) {
+            const sortTriggers = parentCard.querySelectorAll('.dropdown-menu .sort-trigger');
+            const sortText = parentCard.querySelector('.current-sort-text');
+
+            sortTriggers.forEach(trigger => {
+                trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Convert data-sort-by to data-product-xxx
+                    const sortBy = trigger.dataset.sortBy; // e.g., "name"
+                    // Creates "productName", "productPrice", etc.
+                    currentSort.by = 'product' + sortBy.charAt(0).toUpperCase() + sortBy.slice(1); 
+                    currentSort.dir = trigger.dataset.sortDir;
+                    currentSort.type = trigger.dataset.sortType || 'text';
+                    
+                    if (sortText) sortText.textContent = trigger.textContent;
+                    sortTriggers.forEach(t => t.classList.remove('active'));
+                    trigger.classList.add('active');
+                    
+                    currentPage = 1;
+                    renderGrid();
+                });
+            });
+        }
+        
+        // Initial render
+        const activeSort = parentCard ? parentCard.querySelector('.dropdown-menu .sort-trigger.active') : null;
+        if (activeSort) {
+            const sortBy = activeSort.dataset.sortBy;
+            currentSort.by = 'product' + sortBy.charAt(0).toUpperCase() + sortBy.slice(1);
+            currentSort.dir = activeSort.dataset.sortDir;
+            currentSort.type = activeSort.dataset.sortType || 'text';
+        }
+        renderGrid();
     }
-    // --- ::: END MODIFIED DYNAMIC HELPER ::: ---
 
 
-    // --- ::: NEW: Dynamic Helper & Validation for Adjust Ingredient Stock Modal ::: ---
-    const adjustIngModal = document.getElementById('adjustIngredientModal');
-    if (adjustIngModal) {
-        const adjustTypeSelect = document.getElementById('adjust_ing_type');
-        const adjustQtyInput = document.getElementById('adjust_ing_qty');
-        const adjustQtyHelper = document.getElementById('adjust_ing_qty_helper');
-        const adjustForm = adjustIngModal.querySelector('form');
+    // --- Helper function to get cell value for sorting TABLES ---
+    function getTableCellValue(row, dataLabel, sortType) {
+        let cell = row.querySelector(`td[data-label="${dataLabel}"]`);
+        
+        if (!cell) {
+             const headers = Array.from(row.closest('table').querySelectorAll('th'));
+             const simpleLabel = dataLabel.toLowerCase().replace(' ', '');
+             const index = headers.findIndex(th => {
+                const sortBy = th.dataset.sortBy;
+                if(sortBy) {
+                    return sortBy === simpleLabel || sortBy === dataLabel;
+                }
+                return th.textContent.trim().toLowerCase() === simpleLabel;
+             });
 
-        const updateAdjustHelperAndValidation = () => {
-            const selectedType = adjustTypeSelect.value;
-            const qtyValue = adjustQtyInput.value;
-            const qty = parseFloat(qtyValue);
+             if (index !== -1) {
+                cell = row.querySelectorAll('td')[index];
+             }
+        }
+        
+        if (!cell && (dataLabel === 'Name' || dataLabel === 'Item Name' || dataLabel === 'Product')) {
+             cell = row.querySelector('td:first-child');
+        }
 
-            adjustQtyInput.classList.remove('is-invalid', 'is-valid');
-            adjustQtyHelper.classList.remove('text-success', 'text-danger', 'text-warning');
+        let value = cell ? cell.textContent.trim() : '';
 
-            let isValid = false;
+        if (sortType === 'number') {
+            value = value.replace(/[₱(),]/g, '');
+            return parseFloat(value) || 0;
+        } else if (sortType === 'date') {
+            return new Date(value).getTime() || 0;
+        }
+        
+        return value.toLowerCase();
+    }
 
-            switch (selectedType) {
-                case 'Restock':
-                    adjustQtyInput.placeholder = "e.g., 10 (Must be POSITIVE)";
-                    adjustQtyHelper.innerHTML = "<strong>Positive number:</strong> Adds stock to inventory.";
-                    adjustQtyHelper.classList.add('text-success');
-                    if (!isNaN(qty) && qty > 0) isValid = true;
-                    break;
-                case 'Correction':
-                    adjustQtyInput.placeholder = "e.g., 5.5 or -2 (Cannot be 0)";
-                    adjustQtyHelper.innerHTML = "<strong>Positive or Negative number:</strong> Corrects stock count.";
-                    adjustQtyHelper.classList.add('text-warning');
-                    if (!isNaN(qty) && qty !== 0) isValid = true;
-                    break;
-                case 'Spoilage':
-                    adjustQtyInput.placeholder = "e.g., -2.5 (Must be NEGATIVE)";
-                    adjustQtyHelper.innerHTML = "<strong>Negative number:</strong> Removes stock from inventory.";
-                    adjustQtyHelper.classList.add('text-danger');
-                    if (!isNaN(qty) && qty < 0) isValid = true;
-                    break;
+    // --- Universal Table Paginator & Sorter (for other tabs) ---
+    function setupSortableTable(tableBodyId, searchInputId, rowsSelectId, prevBtnId, nextBtnId) {
+        const tableBody = document.getElementById(tableBodyId);
+        if (!tableBody) {
+             // This is not an error, it just means this tab isn't the card grid
+             // console.log('Skipping table setup for:', tableBodyId);
+            return;
+        }
+
+        let rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"])'));
+        let filteredRows = [...rows];
+        let currentPage = 1;
+        
+        const rowsSelect = document.getElementById(rowsSelectId);
+        let rowsPerPage = (rowsSelect && rowsSelect.value) ? (rowsSelect.value === 'all' ? 'all' : parseInt(rowsSelect.value, 10)) : 10;
+        
+        let currentSort = { by: 'name', dir: 'asc', type: 'text' }; // Default sort
+        
+        const searchInput = document.getElementById(searchInputId);
+        const prevBtn = document.getElementById(prevBtnId);
+        const nextBtn = document.getElementById(nextBtnId);
+        const noResultsRow = document.getElementById(tableBodyId.replace('-body', '-no-results'));
+
+        const parentCard = tableBody.closest('.card');
+        
+        function renderTable() {
+            // 1. Sort
+            if (currentSort.by) {
+                filteredRows.sort((a, b) => {
+                    const valA = getTableCellValue(a, currentSort.by, currentSort.type);
+                    const valB = getTableCellValue(b, currentSort.by, currentSort.type);
+                    
+                    if (valA < valB) return currentSort.dir === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSort.dir === 'asc' ? 1 : -1;
+                    return 0;
+                });
             }
 
-            if (qtyValue !== '') {
-                if (isValid) {
-                    adjustQtyInput.classList.add('is-valid');
+            // 2. Paginate
+            tableBody.innerHTML = ''; // Clear table
+            const totalPages = (rowsPerPage === 'all') ? 1 : Math.ceil(filteredRows.length / rowsPerPage);
+            currentPage = Math.max(1, Math.min(currentPage, totalPages));
+
+            const start = (rowsPerPage === 'all') ? 0 : (currentPage - 1) * rowsPerPage;
+            const end = (rowsPerPage === 'all') ? filteredRows.length : start + rowsPerPage;
+            const pageRows = filteredRows.slice(start, end);
+
+            pageRows.forEach(row => tableBody.appendChild(row));
+            
+            // 3. Update Controls
+            if (prevBtn) prevBtn.disabled = (currentPage === 1);
+            if (nextBtn) nextBtn.disabled = (currentPage === totalPages || filteredRows.length === 0);
+            
+            // 4. Show 'no results' row if needed
+            if (noResultsRow) {
+                if (filteredRows.length === 0) {
+                    tableBody.appendChild(noResultsRow);
+                    noResultsRow.style.display = ''; // Use default display (which is table-row)
                 } else {
-                    adjustQtyInput.classList.add('is-invalid');
+                    noResultsRow.style.display = 'none';
                 }
             }
+        }
 
-            return isValid;
-        };
+        // --- Event Listeners ---
+        
+        // Search
+        if (searchInput) {
+            searchInput.addEventListener('keyup', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                filteredRows = rows.filter(row => {
+                    // Check first cell (main data point) for search
+                    const firstCell = row.querySelector('td:first-child');
+                    return firstCell.textContent.toLowerCase().includes(searchTerm);
+                });
+                currentPage = 1;
+                renderTable();
+            });
+        }
 
-        adjustTypeSelect.addEventListener('change', updateAdjustHelperAndValidation);
-        adjustQtyInput.addEventListener('keyup', updateAdjustHelperAndValidation);
-
-        if (adjustForm) {
-            adjustForm.addEventListener('submit', (e) => {
-                const isValid = updateAdjustHelperAndValidation();
-                if (!isValid) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    adjustQtyInput.classList.add('is-invalid');
-                    adjustQtyInput.classList.remove('is-valid');
-                    adjustQtyInput.focus();
+        // Rows per page
+        if (rowsSelect) {
+            rowsSelect.addEventListener('change', () => {
+                const val = rowsSelect.value;
+                rowsPerPage = (val === 'all') ? 'all' : parseInt(val);
+                currentPage = 1;
+                renderTable();
+            });
+        }
+        
+        // Pagination buttons
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const totalPages = (rowsPerPage === 'all') ? 1 : Math.ceil(filteredRows.length / rowsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
                 }
             });
         }
 
-        adjustIngModal.addEventListener('show.bs.modal', () => {
-            setTimeout(updateAdjustHelperAndValidation, 100);
-        });
+        // Sorting
+        if (parentCard) {
+            const sortTriggers = parentCard.querySelectorAll('.dropdown-menu .sort-trigger');
+            const sortText = parentCard.querySelector('.current-sort-text');
+
+            sortTriggers.forEach(trigger => {
+                trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    const sortBy = trigger.dataset.sortBy;
+                    const sortDir = trigger.dataset.sortDir;
+                    const sortType = trigger.dataset.sortType || 'text';
+                    
+                    let labelForSort = sortBy;
+                    if(sortBy === 'name') labelForSort = 'Name';
+                    if(sortBy === 'item') labelForSort = 'Item Name';
+                    if(sortBy === 'timestamp') labelForSort = 'Timestamp';
+                    if(sortBy === 'price') labelForSort = 'Price';
+                    if(sortBy === 'stock') labelForSort = 'Current Stock';
+                    if(sortBy === 'status') labelForSort = 'Status';
+                    if(sortBy === 'unit') labelForSort = 'Unit';
+                    if(sortBy === 'reorder') labelForSort = 'Reorder Level';
+                    if(sortBy === 'type') labelForSort = 'Type';
+                    if(sortBy === 'qty') labelForSort = 'Quantity';
+                    if(sortBy === 'user') labelForSort = 'User';
+                    if(sortBy === 'reason') labelForSort = 'Reason';
+
+                    currentSort.by = labelForSort;
+                    currentSort.dir = sortDir;
+                    currentSort.type = sortType;
+                    
+                    if (sortText) sortText.textContent = trigger.textContent;
+                    sortTriggers.forEach(t => t.classList.remove('active'));
+                    trigger.classList.add('active');
+                    
+                    currentPage = 1;
+                    renderTable();
+                });
+            });
+        }
+        
+        // Initial render
+        const activeSort = parentCard ? parentCard.querySelector('.dropdown-menu .sort-trigger.active') : null;
+        if (activeSort) {
+            let labelForSort = activeSort.dataset.sortBy;
+            if(labelForSort === 'name') labelForSort = 'Name';
+            if(labelForSort === 'item') labelForSort = 'Item Name';
+            if(labelForSort === 'timestamp') labelForSort = 'Timestamp';
+
+            currentSort.by = labelForSort;
+            currentSort.dir = activeSort.dataset.sortDir;
+            currentSort.type = activeSort.dataset.sortType || 'text';
+        }
+        
+        renderTable();
     }
-    // --- ::: END NEW DYNAMIC HELPER ::: ---
+    
+    // --- Initialize ALL tabs ---
+    
+    // TAB 1: Products (uses NEW card grid)
+    setupCardGrid('product-card-list', 'product-search-input', 'product-rows-select', 'product-prev-btn', 'product-next-btn');
+    
+    // TAB 2: Ingredients (uses old table)
+    setupSortableTable('ingredient-table-body', 'ingredient-search-input', 'ingredient-rows-select', 'ingredient-prev-btn', 'ingredient-next-btn');
+    
+    // TAB 3: Discontinued (uses old table)
+    setupSortableTable('discontinued-table-body', null, 'discontinued-rows-select', 'discontinued-prev-btn', 'discontinued-next-btn');
+    
+    // TAB 4: Recall (uses old table)
+    setupSortableTable('recall-table-body', null, 'recall-rows-select', 'recall-prev-btn', 'recall-next-btn');
+    
+    // TAB 5: History (uses old table)
+    setupSortableTable('history-table-body', null, 'history-rows-select', 'history-prev-btn', 'history-next-btn');
 
-
-}); // End DOMContentLoaded
+});

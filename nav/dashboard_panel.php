@@ -148,63 +148,76 @@ if (!empty($priorityAlert)) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../styles/global.css"> 
     <link rel="stylesheet" href="../styles/dashboard.css"> 
+    <link rel="stylesheet" href="../styles/responsive.css"> 
+</head>
 </head>
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
-        <aside class="col-lg-2 col-md-3 sidebar">
-            <div class="sidebar-brand">
-                <img src="../images/kzklogo.png" alt="BREADLY Logo">
-                <h5>BREADLY</h5>
-                <p>Kz & Khyle's Bakery</p>
+        <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+            
+            <div class="offcanvas-header d-lg-none">
+                <h5 class="offcanvas-title" id="sidebarMenuLabel">BREADLY</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
             </div>
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link active" href="dashboard_panel.php">
-                        <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="inventory_management.php">
-                        <i class="bi bi-box me-2"></i> Inventory
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="recipes.php">
-                        <i class="bi bi-journal-bookmark me-2"></i> Recipes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="sales_history.php">
-                        <i class="bi bi-clock-history me-2"></i> Sales & Transactions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php">
-                        <i class="bi bi-arrow-left me-2"></i> Main Menu
-                    </a>
-                </li>
-            </ul>
-            <div class="sidebar-user">
-                <hr>
-                <div class="dropdown">
-                    <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-2 fs-4"></i>
-                        <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal">
-                            <i class="bi bi-gear me-2"></i>My Settings
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
-                    </ul>
+
+            <div class="offcanvas-body d-flex flex-column p-0"> 
+                <div class="sidebar-brand">
+                    <img src="../images/kzklogo.png" alt="BREADLY Logo">
+                    <h5>BREADLY</h5>
+                    <p>Kz & Khyle's Bakery</p>
                 </div>
-            </div>
-        </aside>
+                <ul class="nav flex-column sidebar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="dashboard_panel.php">
+                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="inventory_management.php">
+                            <i class="bi bi-box me-2"></i> Inventory
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="recipes.php">
+                            <i class="bi bi-journal-bookmark me-2"></i> Recipes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="sales_history.php">
+                            <i class="bi bi-clock-history me-2"></i> Sales & Transactions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.php">
+                            <i class="bi bi-arrow-left me-2"></i> Main Menu
+                        </a>
+                    </li>
+                </ul>
+                <div class="sidebar-user">
+                    <hr>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-2 fs-4"></i>
+                            <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                                <i class="bi bi-gear me-2"></i>My Settings
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div> </aside>
 
         <main class="col-lg-10 col-md-9 main-content">
             <div class="header d-flex justify-content-between align-items-center">
+                <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
+                    <i class="bi bi-list"></i>
+                </button>
+                
                 <h1>Dashboard</h1>
                 <div class="btn-group" role="group">
                     <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sendReportModal">

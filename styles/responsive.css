@@ -1,0 +1,269 @@
+/*
+ * This file contains all styles for a mobile-first responsive UI.
+ * It is loaded *after* dashboard.css to override styles.
+*/
+
+@media (max-width: 991.98px) { /* Below lg breakpoint */
+
+    /* --- 1. Fix Crowded Headers (Inventory, Sales, etc.) --- */
+    
+    /* Force card headers to stack vertically */
+    #inventoryTabContent .card-header,
+    #historyTabContent .card-header {
+        flex-direction: column;
+        gap: 1rem; /* Added a bit more space */
+        align-items: stretch; /* Make all items full-width */
+    }
+
+    /* Make search bar full-width */
+    #inventoryTabContent .card-header .input-group,
+    #historyTabContent .card-header .input-group {
+        width: 100%;
+        max-width: none !important; /* Override inline style */
+    }
+
+    /* Target the main controls group */
+    #inventoryTabContent .card-header > .d-flex,
+    #historyTabContent .card-header > .d-flex,
+    #historyTabContent .card-header form + .d-flex { /* Special selector for sales history */
+        flex-direction: column; /* Stack controls vertically */
+        width: 100%;
+        align-items: stretch !important; /* Make all controls full-width */
+        gap: 0.5rem; /* Add gap between stacked controls */
+    }
+    
+    /* Target the nested pagination group */
+    #inventoryTabContent .card-header > .d-flex .d-flex,
+    #historyTabContent .card-header > .d-flex .d-flex,
+    #historyTabContent .card-header form + .d-flex .d-flex {
+        justify-content: space-between; /* Space out "Show" and "Arrows" */
+        width: 100%;
+    }
+    
+    /* Ensure all buttons inside are full-width */
+    #inventoryTabContent .card-header > .d-flex .btn,
+    #historyTabContent .card-header > .d-flex .btn,
+    #inventoryTabContent .card-header > .d-flex .dropdown,
+    #historyTabContent .card-header > .d-flex .dropdown,
+    #historyTabContent .card-header form + .d-flex .btn,
+    #historyTabContent .card-header form + .d-flex .dropdown {
+        width: 100%;
+    }
+
+
+    /* --- 2. Transform Data Tables into "Card Lists" --- */
+
+    /* Target all dashboard tables, including the recipe ones */
+    #inventoryTabContent table,
+    #historyTabContent table,
+    .recipe-content-col table, 
+    #recipeModalBody table {
+        border: none;
+    }
+
+    /* Hide the desktop header */
+    #inventoryTabContent table thead,
+    #historyTabContent table thead,
+    .recipe-content-col table thead, 
+    #recipeModalBody table thead {
+        display: none;
+    }
+
+    /* Each <tr> becomes a card */
+    #inventoryTabContent table tr,
+    #historyTabContent table tr,
+    .recipe-content-col table tr, 
+    #recipeModalBody table tr {
+        display: block;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        background-color: #fff; /* Ensure cards are white */
+    }
+    
+    #inventoryTabContent table tr[style*="display: none"],
+    #historyTabContent table tr[style*="display: none"],
+    .recipe-content-col table tr[style*="display: none"], 
+    #recipeModalBody table tr[style*="display: none"] {
+        /* Ensure pagination/search can still hide them */
+        display: none !important;
+    }
+    
+    /* Handle empty table rows */
+    #inventoryTabContent table tr td[colspan],
+    #historyTabContent table tr td[colspan],
+    .recipe-content-col table tr td[colspan], 
+    #recipeModalBody table tr td[colspan] {
+        display: block;
+        width: 100%;
+        text-align: center;
+        border: none;
+        padding: 2rem 1rem;
+    }
+    #inventoryTabContent table tr td[colspan]::before,
+    #historyTabContent table tr td[colspan]::before,
+    .recipe-content-col table tr td[colspan]::before, 
+    #recipeModalBody table tr td[colspan]::before {
+        display: none;
+    }
+    
+
+    /* Each <td> becomes a full-width row */
+    #inventoryTabContent table td,
+    #historyTabContent table td,
+    .recipe-content-col table td, 
+    #recipeModalBody table td {
+        display: flex;
+        justify-content: space-between; /* Label on left, value on right */
+        width: 100%;
+        padding: 0.75rem 0.25rem;
+        border: none;
+        border-bottom: 1px dashed #eee;
+        text-align: right; /* Align value to the right */
+    }
+
+    #inventoryTabContent table td:last-child,
+    #historyTabContent table td:last-child,
+    .recipe-content-col table td:last-child, 
+    #recipeModalBody table td:last-child {
+        border-bottom: none; /* No border on the last item */
+        padding-bottom: 0;
+    }
+    
+    /* THIS IS THE "Name" ROW - ALIGNED CENTER
+    */
+    #inventoryTabContent table td:first-child,
+    #historyTabContent table td:first-child,
+    .recipe-content-col table td:first-child, 
+    #recipeModalBody table td:first-child {
+         /* Make the first cell (Name) a "header" for the card */
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: var(--text-dark);
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
+        
+        text-align: center; /* Center-aligns the text */
+        justify-content: center; /* Center-aligns the flex content */
+    }
+
+    /* Use ::before to add the data labels (CSS-only) */
+    #inventoryTabContent table td::before,
+    #historyTabContent table td::before,
+    .recipe-content-col table td::before, 
+    #recipeModalBody table td::before {
+        content: attr(data-label); /* Read label from data-label attribute */
+        font-weight: bold;
+        text-align: left;
+        padding-right: 1rem;
+        color: #555;
+    }
+
+    /* Don't show a label for the first cell (the header) */
+    #inventoryTabContent table td:first-child::before,
+    #historyTabContent table td:first-child::before,
+    .recipe-content-col table td:first-child::before, 
+    #recipeModalBody table td:first-child::before {
+        display: none;
+    }
+
+    /* THIS IS THE "Actions" ROW - STACKED BUTTONS 
+    */
+    #inventoryTabContent table td:last-child,
+    #historyTabContent table td:last-child,
+    .recipe-content-col table td:last-child, 
+    #recipeModalBody table td:last-child {
+        flex-direction: column; /* Stack buttons vertically */
+        align-items: stretch; /* Make items stretch full-width */
+        gap: 0.5rem;
+        padding-top: 1rem;
+    }
+
+    /* Make all buttons inside the action cell full-width */
+    #inventoryTabContent table td:last-child .btn,
+    #historyTabContent table td:last-child .btn,
+    .recipe-content-col table td:last-child .btn, 
+    #recipeModalBody table td:last-child .btn {
+        width: 100%;
+        margin: 0; /* Remove any default margins */
+    }
+
+    #inventoryTabContent table td:last-child::before,
+    #historyTabContent table td:last-child::before,
+    .recipe-content-col table td:last-child::before, 
+    #recipeModalBody table td:last-child::before {
+        display: none; /* No "Actions:" label */
+    }
+
+
+    /* --- 3. Fix POS Layout --- */
+
+    body.pos-page {
+        /* Add padding to the bottom so the fixed-footer doesn't hide content */
+        padding-bottom: 90px; 
+    }
+
+    .pos-container {
+        /* Ensure it's 1-column on mobile */
+        grid-template-columns: 1fr;
+    }
+
+    /* Hide the original desktop order panel on mobile */
+    @media (max-width: 767.98px) {
+        .pos-container .order-panel {
+            display: none;
+        }
+    }
+
+    /* New "Mobile Cart" button (Fixed Footer) */
+    .mobile-cart-summary {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border-top: 1px solid #ddd;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 1030; /* Above other content */
+    }
+
+    .mobile-cart-summary .cart-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .mobile-cart-summary .cart-info small {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+     .mobile-cart-summary .cart-info strong {
+        font-size: 1.2rem;
+        color: var(--text-dark);
+    }
+    
+    /* --- 4. Recipe Page Mobile UI --- */
+
+    /* Hide the desktop recipe column on mobile */
+    .recipe-content-col {
+        display: none;
+    }
+
+    /* On mobile, make the product list column take up the full width */
+    .recipe-products-col {
+        width: 100%;
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    /* Make the product grid on mobile shorter, as it's the only thing on screen */
+    .recipe-products-col .product-grid {
+        height: calc(100vh - 150px); /* Full height minus header/padding */
+    }
+
+} /* <-- THIS IS THE CLOSING BRACKET FOR THE MEDIA QUERY */

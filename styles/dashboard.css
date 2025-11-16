@@ -7,7 +7,8 @@ body.dashboard {
 
 .sidebar {
     background-color: var(--sidebar-bg);
-    min-height: 100vh;
+    /* MODIFIED: min-height is now in the media query */
+    height: 100%; /* Auto-height for mobile stacking */
     padding: 2rem 1rem;
     display: flex; /* ADDED: For sticky footer */
     flex-direction: column; /* ADDED: For sticky footer */
@@ -45,6 +46,18 @@ body.dashboard {
 .sidebar-nav .nav-link:hover {
     background-color: #f8e5d0;
 }
+
+/* MODIFIED: 
+  - Moved min-height to here. 
+  - This applies when the breakpoint is 'md' or larger (768px+),
+    which matches the 'col-md-3' class.
+*/
+@media (min-width: 768px) {
+    .sidebar {
+        min-height: 100vh;
+    }
+}
+
 
 .main-content {
     padding: 2rem;

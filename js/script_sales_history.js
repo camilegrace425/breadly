@@ -141,6 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (lowerVal.includes('in stock')) return 'b_in_stock';
                 if (lowerVal.includes('ingredient')) return 'a_ingredient';
                 if (lowerVal.includes('product')) return 'b_product';
+                // --- ::: ADDED FOR LOGIN TAB ::: ---
+                if (lowerVal.includes('failure')) return 'a_failure';
+                if (lowerVal.includes('success')) return 'b_success';
                 return lowerVal;
         }
     }
@@ -188,16 +191,16 @@ document.addEventListener('DOMContentLoaded', () => {
         sortLink.classList.add('active');
     }
 
-    // ::: MODIFIED: Attach listeners to ONLY return pane :::
-    document.querySelectorAll('#returns-pane .sort-trigger').forEach(link => {
+    // ::: MODIFIED: Attach listeners to returns AND login panes :::
+    document.querySelectorAll('#returns-pane .sort-trigger, #logins-pane .sort-trigger').forEach(link => { // <-- MODIFY THIS LINE
         link.addEventListener('click', (e) => {
             e.preventDefault();
             sortTableByDropdown(e.target);
         });
     });
 
-    // ::: MODIFIED: Initial sort for ONLY return pane :::
-    document.querySelectorAll('#returns-pane .dropdown').forEach(dropdown => {
+    // ::: MODIFIED: Initial sort for returns AND login panes :::
+    document.querySelectorAll('#returns-pane .dropdown, #logins-pane .dropdown').forEach(dropdown => { // <-- MODIFY THIS LINE
         const defaultSortLink = dropdown.querySelector('.dropdown-item.active') || dropdown.querySelector('.dropdown-item');
         if (defaultSortLink) {
             sortTableByDropdown(defaultSortLink);
@@ -219,9 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 tabButton.addEventListener('click', () => {
                     const paneId = tabButton.dataset.bsTarget;
                     let tabValue = 'sales';
-                    // --- MODIFIED: Removed 'recall' ---
+                    // --- MODIFIED: Added 'logins' ---
                     if (paneId === '#returns-pane') {
                         tabValue = 'returns';
+                    } else if (paneId === '#logins-pane') { // <-- ADD THIS ELSE IF
+                        tabValue = 'logins';
                     }
                     activeTabInput.value = tabValue;
                 });
@@ -236,9 +241,11 @@ document.addEventListener('DOMContentLoaded', () => {
         tabButton.addEventListener('click', function(event) {
             const paneId = event.target.dataset.bsTarget;
             let activeTabValue = 'sales'; // Default
-            // --- MODIFIED: Removed 'recall' ---
+            // --- MODIFIED: Added 'logins' ---
             if (paneId === '#returns-pane') {
                 activeTabValue = 'returns';
+            } else if (paneId === '#logins-pane') { // <-- ADD THIS ELSE IF
+                activeTabValue = 'logins';
             }
             
             const url = new URL(window.location);
@@ -279,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ::: NEWLY ADDED: Initialize table pagination ::: ---
     addTablePagination('sales-rows-select', 'sales-table-body');
     addTablePagination('returns-rows-select', 'returns-table-body');
+    addTablePagination('login-rows-select', 'login-table-body'); // <-- ADD THIS LINE
     // --- ::: END ::: ---
 
 });

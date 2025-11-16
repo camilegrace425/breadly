@@ -1,15 +1,13 @@
 <?php
-require_once '../db_connection.php';
-
 // --- ADDED: Include config file if not already loaded ---
 if (!defined('SMS_API_TOKEN')) {
     // Adjust path as this file is in /src/
-    require_once __DIR__ . '../config.php'; 
+    require_once __DIR__ . '/../config.php'; 
 }
+require_once __DIR__ . '/../db_connection.php';
 
 class UserManager {
     private $conn;
-
     // --- MODIFIED: Use constants from config.php ---
     private $api_token = SMS_API_TOKEN; 
     private $api_send_otp_url = SMS_OTP_URL;
@@ -18,6 +16,43 @@ class UserManager {
     public function __construct() {
         $db = new Database();
         $this->conn = $db->getConnection();
+    }
+    
+    // --- ::: MODIFIED: This function no longer logs IP address ::: ---
+    public function login($username, $password) {
+        // --- IP ADDRESS LINE REMOVED ---
+    
+        $stmt = $this->conn->prepare("CALL UserLogin(?)");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+
+        if ($user && password_verify($password, $user['password'])) {
+            // --- MODIFIED BLOCK (Success Log) ---
+            try {
+                $log_stmt = $this->conn->prepare("CALL LogLoginAttempt(?, ?, ?)");
+                $log_stmt->execute([$user['user_id'], $username, 'success']); // IP param removed
+                $log_stmt->closeCursor();
+            } catch (PDOException $e) {
+                error_log("Failed to log login success: " . $e->getMessage());
+            }
+            // --- END OF BLOCK ---
+    
+            return $user; // Success
+        } else {
+            // --- MODIFIED BLOCK (Failure Log) ---
+            $user_id_to_log = $user ? $user['user_id'] : null;
+            try {
+                $log_stmt = $this->conn->prepare("CALL LogLoginAttempt(?, ?, ?)");
+                $log_stmt->execute([$user_id_to_log, $username, 'failure']); // IP param removed
+                $log_stmt->closeCursor();
+            } catch (PDOException $e) {
+                error_log("Failed to log login failure: " . $e->getMessage());
+            }
+            // --- END OF BLOCK ---
+    
+            return false; // Failure
+        }
     }
 
     private function formatPhoneNumberForAPI($phone_number) {
@@ -43,170 +78,121 @@ class UserManager {
         return $phone_number;
     }
 
-    // Authenticates a user by checking username and verifying the hashed password.
-    public function login($username, $plain_password) {
-        
-        $stmt = $this->conn->prepare("CALL UserLogin(?)");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
-
-        if ($user && password_verify($plain_password, $user['password'])) {
-            unset($user['password']); 
-            return $user;
-        }
-        
-        return false;
-    }
-
-    // Finds a user by their ID.
-    public function findUserById($user_id) {
-        $stmt = $this->conn->prepare("CALL UserFindById(?)");
-        $stmt->execute([$user_id]);
-        return $stmt->fetch();
-    }
-
-    private function findUserByPhone($phone_number) {
-        try {
-            $stmt = $this->conn->prepare("CALL UserFindByPhone(?)");
-            $stmt->execute([$phone_number]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            return false;
-        }
-    }
-    // Calls the 'UserRequestPasswordReset' stored procedure for email.
     public function requestEmailReset($email) {
-        try {
-            $stmt = $this->conn->prepare("CALL UserRequestPasswordReset(?, @token)");
-            $stmt->execute([$email]);
-            
-            $token_stmt = $this->conn->query("SELECT @token AS reset_token");
-            $result = $token_stmt->fetch();
+        $stmt = $this->conn->prepare("CALL UserRequestPasswordReset(?, @token)");
+        $stmt->execute([$email]);
+        $stmt->closeCursor();
+        
+        $token_row = $this->conn->query("SELECT @token AS token")->fetch(PDO::FETCH_ASSOC);
+        $token = $token_row['token'];
 
-            if ($result && $result['reset_token']) {
-                return $result['reset_token'];
-            }
-            return false;
-        } catch (PDOException $e) {
-            return false;
+        if ($token) {
+            // --- SIMULATE EMAIL ---
+            error_log("--- PASSWORD RESET (EMAIL) ---");
+            error_log("User: $email");
+            error_log("Token: $token");
+            error_log("Link: http://localhost/breadly/nav/reset_password.php?token=$token");
+            error_log("---------------------------------");
+            return $token;
         }
+        return null;
     }
 
     public function requestPhoneReset($phone_number) {
-        
-        // 1. Check if user exists in our DB using new SP
-        $user = $this->findUserByPhone($phone_number);
-        if (!$user) {
-            return false;
-        }
-        $user_id = $user['user_id'];
-        $formatted_phone = $this->formatPhoneNumberForAPI($phone_number);
-        // -------------------------------------------
+        // 1. Find user by phone
+        $stmt = $this->conn->prepare("CALL UserFindByPhone(?)");
+        $stmt->execute([$phone_number]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
 
-        // 3. Prepare data for the API
+        if (!$user) {
+            return null; // No user with this phone number
+        }
+
+        // 2. Generate OTP
+        $otp = (string)rand(100000, 999999);
+        $user_id = $user['user_id'];
+        $expiration_time = date('Y-m-d H:i:s', time() + 300); // 5 minutes
+
+        // 3. Store OTP in database
+        $stmt = $this->conn->prepare("CALL UserStorePhoneOTP(?, ?, ?)");
+        $stmt->execute([$user_id, $otp, $expiration_time]);
+        $stmt->closeCursor();
+        
+        // 4. Format phone number for API
+        $formatted_phone = $this->formatPhoneNumberForAPI($phone_number);
+
+        // 5. Send OTP via SMS API
         $data = [
             'api_token' => $this->api_token,
-            'phone_number' => $formatted_phone,
-            'expires_in' => 600,
-            'interval' => 180    
+            'message' => "Your BREADLY password reset code is: $otp. It will expire in 5 minutes.",
+            'phone_number' => $formatted_phone
         ];
-        $payload = http_build_query($data);
-
-        // 4. Send cURL request to iProg API
+        
         $ch = curl_init($this->api_send_otp_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        // --- FIX: Change Content-Type to form-urlencoded ---
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
-            'Accept: application/json' // Keep Accept as application/json
+            'Content-Type: application/x-www-form-urlencoded'
         ]);
-
+        
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
         curl_close($ch);
-
-        if ($curl_error) {
-            error_log("OTP API cURL Error: " . $curl_error);
-            return false;
-        }
         
-        if ($http_code != 200) {
-             error_log("OTP API HTTP Error: " . $http_code . " Response: " . $response);
-             return false;
-        }
-
         $result = json_decode($response, true);
 
-        // 5. Check API response
-        if (isset($result['status']) && $result['status'] === 'success' && isset($result['data']['otp_code'])) {
-            
-            $otp_code = $result['data']['otp_code'];
-            $expiration_time = $result['data']['otp_code_expires_at'];
-
-            // 6. Save the OTP to our local database using new SP
-            try {
-                $stmt = $this->conn->prepare("CALL UserStorePhoneOTP(?, ?, ?)");
-                return $stmt->execute([$user_id, $otp_code, $expiration_time]);
-
-            } catch (PDOException $e) {
-                error_log("OTP DB Insert Error: " . $e->getMessage());
-                return false;
-            }
-            
+        // Check for success
+        if ($http_code == 200 && isset($result['status']) && $result['status'] == 200) {
+            return $otp; // Return OTP on success
         } else {
-            error_log("OTP API Response Error: " . $response);
-            return false;
+            // Log the error
+            error_log("SMS API Error: " . $response);
+            return null; // Return null on failure
         }
     }
 
-    // Finalizes the password reset using either a token or OTP.
-    public function resetPassword($token_or_otp, $new_plain_password) {
+    public function resetPassword($token_or_otp, $new_password) {
+        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
         
-        $new_hashed_password = password_hash($new_plain_password, PASSWORD_DEFAULT);
+        $stmt = $this->conn->prepare("CALL UserResetPassword(?, ?)");
+        $stmt->execute([$token_or_otp, $hashed_password]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
 
-        try {
-            // This procedure is now created from the SQL in Step 1
-            $stmt = $this->conn->prepare("CALL UserResetPassword(?, ?)");
-            $stmt->execute([$token_or_otp, $new_hashed_password]);
-            $result = $stmt->fetch();
-
-            return ($result && $result['status'] === 'Success');
-        } catch (PDOException $e) {
-            return false;
-        }
+        return ($result && $result['status'] === 'Success');
     }
+    
     public function getUserSettings($user_id) {
-        try {
+         try {
             $stmt = $this->conn->prepare("CALL AdminGetMySettings(?)");
             $stmt->execute([$user_id]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Error fetching user settings: " . $e->getMessage());
-            return ['phone_number' => '', 'enable_daily_report' => 0];
+            return [];
         }
     }
-
-    public function updateMySettings($user_id, $phone_number, $enable_report) {
-        try {
+    
+    public function updateMySettings($user_id, $phone_number, $enable_daily_report) {
+         try {
             $stmt = $this->conn->prepare("CALL AdminUpdateMySettings(?, ?, ?)");
-            return $stmt->execute([$user_id, $phone_number, $enable_report]);
+            $stmt->execute([$user_id, $phone_number, $enable_daily_report]);
+            return true;
         } catch (PDOException $e) {
             error_log("Error updating user settings: " . $e->getMessage());
             return false;
         }
     }
-    public function getSalesSummaryByDate($date_start, $date_end) {
+
+    public function getLoginHistory() {
         try {
-            $stmt = $this->conn->prepare("CALL ReportGetSalesSummaryByDate(?, ?)");
-            $stmt->execute([$date_start, $date_end]);
-            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $stmt->closeCursor();
-            return $data;
+            $stmt = $this->conn->prepare("CALL ReportGetLoginHistory()");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("Error fetching sales summary: " . $e->getMessage());
+            error_log("Error fetching login history: " . $e->getMessage());
             return [];
         }
     }

@@ -63,6 +63,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['message_type'] = 'danger';
     }
     
+    // MODIFIED: Check if it's an AJAX request (from our new JS)
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        // If it's AJAX, just send back a success status.
+        // The JS will handle refreshing the modal content.
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'message' => $_SESSION['message']]);
+        unset($_SESSION['message']);
+        unset($_SESSION['message_type']);
+        exit();
+    }
+    
     // Redirect back to this page, preserving the selected product
     $redirect_url = 'recipes.php';
     if ($product_id_redirect) {
@@ -79,6 +90,7 @@ $current_recipe_items = [];
 $current_batch_size = 0; // --- ::: ADDED ::: ---
 $products = $bakeryManager->getAllProductsSimple(); // Get all products for dropdown
 $all_ingredients = $bakeryManager->getAllIngredientsSimple(); // Get all ingredients for dropdown
+$selected_product_name = 'Recipe'; // Default
 
 if ($selected_product_id) {
     $current_recipe_items = $bakeryManager->getRecipeForProduct($selected_product_id);
@@ -87,6 +99,7 @@ if ($selected_product_id) {
     foreach ($products as $product) {
         if ($product['product_id'] == $selected_product_id) {
             $current_batch_size = $product['batch_size'] ?? 0;
+            $selected_product_name = $product['name']; // Get name
             break;
         }
     }
@@ -111,60 +124,71 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
     <link rel="stylesheet" href="../styles/dashboard.css"> 
     <link rel="stylesheet" href="../styles/pos.css"> 
     <link rel="stylesheet" href="../styles/recipes.css"> 
-
+    <link rel="stylesheet" href="../styles/responsive.css?v=2"> 
 </head>
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
-        <aside class="col-lg-2 col-md-3 sidebar">
-            <div class="sidebar-brand">
-                <img src="../images/kzklogo.png" alt="BREADLY Logo">
-                <h5>BREADLY</h5>
-                <p>Kz & Khyle's Bakery</p>
+        <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+            
+            <div class="offcanvas-header d-lg-none">
+                <h5 class="offcanvas-title" id="sidebarMenuLabel">BREADLY</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
             </div>
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard_panel.php">
-                        <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="inventory_management.php">
-                        <i class="bi bi-box me-2"></i> Inventory
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="recipes.php">
-                        <i class="bi bi-journal-bookmark me-2"></i> Recipes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="sales_history.php">
-                        <i class="bi bi-clock-history me-2"></i> Sales & Transactions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php">
-                        <i class="bi bi-arrow-left me-2"></i> Main Menu
-                    </a>
-                </li>
-            </ul>
-            <div class="sidebar-user">
-                <hr>
-                <div class="dropdown">
-                    <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-2 fs-4"></i>
-                        <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
-                        <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
-                    </ul>
+
+            <div class="offcanvas-body d-flex flex-column p-0">
+                <div class="sidebar-brand">
+                    <img src="../images/kzklogo.png" alt="BREADLY Logo">
+                    <h5>BREADLY</h5>
+                    <p>Kz & Khyle's Bakery</p>
                 </div>
-            </div>
-        </aside>
+                <ul class="nav flex-column sidebar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard_panel.php">
+                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="inventory_management.php">
+                            <i class="bi bi-box me-2"></i> Inventory
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="recipes.php">
+                            <i class="bi bi-journal-bookmark me-2"></i> Recipes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="sales_history.php">
+                            <i class="bi bi-clock-history me-2"></i> Sales & Transactions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.php">
+                            <i class="bi bi-arrow-left me-2"></i> Main Menu
+                        </a>
+                    </li>
+                </ul>
+                <div class="sidebar-user">
+                    <hr>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-2 fs-4"></i>
+                            <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
+                            <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div> </aside>
 
         <main class="col-lg-10 col-md-9 main-content">
-            <div class="header">
+            <div class="header d-flex justify-content-between align-items-center">
+                <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
+                    <i class="bi bi-list"></i>
+                </button>
+            
                 <h1>Recipe Management</h1>
             </div>
 
@@ -176,7 +200,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
             <?php endif; ?>
 
             <div class="row">
-                <div class="col-lg-5">
+                <div class="col-lg-5 recipe-products-col">
                     <div class="product-grid">
                         <h4 class="mb-3">Select a Product</h4>
                         
@@ -190,7 +214,8 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                                 <?php $is_active = ($selected_product_id == $product['product_id']); ?>
                                 <div class="col" data-product-name="<?= htmlspecialchars(strtolower($product['name'])) ?>">
                                     <a href="recipes.php?product_id=<?php echo $product['product_id']; ?>" 
-                                       class="product-card <?php echo $is_active ? 'active' : ''; ?>">
+                                       class="product-card <?php echo $is_active ? 'active' : ''; ?>"
+                                       data-product-name="<?php echo htmlspecialchars($product['name']); ?>">
                                          <div class="product-name"><?= htmlspecialchars($product['name']) ?></div>
                                          <small class="text-muted">Batch: <?= htmlspecialchars($product['batch_size'] ?? 'N/A') ?> pcs</small>
                                     </a>
@@ -208,7 +233,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                     </div>
                 </div>
 
-                <div class="col-lg-7">
+                <div class="col-lg-7 recipe-content-col">
                     <?php if ($selected_product_id): ?>
                     <div class="row">
                         <div class="col-12 mb-4">
@@ -237,7 +262,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                         <div class="col-12 mb-4">
                             <div class="card shadow-sm">
                                 <div class="card-header">
-                                    Current Recipe for: <strong><?php echo htmlspecialchars($products[array_search($selected_product_id, array_column($products, 'product_id'))]['name']); ?></strong>
+                                    Current Recipe for: <strong><?php echo htmlspecialchars($selected_product_name); ?></strong>
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
@@ -258,9 +283,9 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                                                 <?php else: ?>
                                                     <?php foreach ($current_recipe_items as $item): ?>
                                                     <tr>
-                                                        <td><?php echo htmlspecialchars($item['name']); ?></td>
-                                                        <td><?php echo htmlspecialchars($item['qty_needed']); ?></td>
-                                                        <td><?php echo htmlspecialchars($item['unit']); ?></td>
+                                                        <td data-label="Ingredient"><?php echo htmlspecialchars($item['name']); ?></td>
+                                                        <td data-label="Qty Needed"><?php echo htmlspecialchars($item['qty_needed']); ?></td>
+                                                        <td data-label="Unit"><?php echo htmlspecialchars($item['unit']); ?></td>
                                                         <td>
                                                             <button class="btn btn-outline-danger btn-sm"
                                                                     data-bs-toggle="modal" 
@@ -367,7 +392,35 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
   </div>
 </div>
 
+<div class="modal fade" id="recipeModal" tabindex="-1" aria-labelledby="recipeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="recipeModalLabel">Loading Recipe...</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="recipeModalBody">
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../js/script_recipes.js"></script>
+
+<?php 
+    $js_file = "../js/script_recipes.js";
+    $js_version = file_exists($js_file) ? filemtime($js_file) : "1";
+?>
+<script src="../js/script_recipes.js?v=<?php echo $js_version; ?>"></script>
+
 </body>
 </html>
