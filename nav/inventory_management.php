@@ -299,6 +299,9 @@ foreach ($recall_history as $log) {
 // --- Static Options for Modals ---
 $unit_options = ["kg", "g", "L", "ml", "pcs", "pack", "tray", "can", "bottle"];
 $product_status_options = ["available", "discontinued"];
+
+// --- Active Nav Link for Sidebar ---
+$active_nav_link = 'inventory';
 ?>
 
 <!DOCTYPE html>
@@ -312,61 +315,79 @@ $product_status_options = ["available", "discontinued"];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../styles/global.css"> 
     <link rel="stylesheet" href="../styles/dashboard.css"> 
+    <link rel="stylesheet" href="../styles/recipes.css?v=3"> 
+    <link rel="stylesheet" href="../styles/responsive.css?v=3"> 
 </head>
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
-        <aside class="col-lg-2 col-md-3 sidebar">
-            <div class="sidebar-brand">
-                <img src="../images/kzklogo.png" alt="BREADLY Logo">
-                <h5>BREADLY</h5>
-                <p>Kz & Khyle's Bakery</p>
+        <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+            
+            <div class="offcanvas-header d-lg-none">
+                <h5 class="offcanvas-title" id="sidebarMenuLabel">BREADLY</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
             </div>
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard_panel.php">
-                        <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="inventory_management.php">
-                        <i class="bi bi-box me-2"></i> Inventory
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="recipes.php">
-                        <i class="bi bi-journal-bookmark me-2"></i> Recipes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="sales_history.php">
-                        <i class="bi bi-clock-history me-2"></i> Sales & Transactions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php">
-                        <i class="bi bi-arrow-left me-2"></i> Main Menu
-                    </a>
-                </li>
-            </ul>
-            <div class="sidebar-user">
-                <hr>
-                <div class="dropdown">
-                    <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-2 fs-4"></i>
-                        <strong><?php echo htmlspecialchars(
-                            $_SESSION["username"]
-                        ); ?></strong>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
-                        <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
-                    </ul>
+
+            <div class="offcanvas-body d-flex flex-column p-0">
+                <div class="sidebar-brand">
+                    <img src="../images/kzklogo.png" alt="BREADLY Logo">
+                    <h5>BREADLY</h5>
+                    <p>Kz & Khyle's Bakery</p>
                 </div>
-            </div>
-        </aside>
+                <ul class="nav flex-column sidebar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'dashboard') ? 'active' : ''; ?>" href="dashboard_panel.php">
+                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'inventory') ? 'active' : ''; ?>" href="inventory_management.php">
+                            <i class="bi bi-box me-2"></i> Inventory
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'recipes') ? 'active' : ''; ?>" href="recipes.php">
+                            <i class="bi bi-journal-bookmark me-2"></i> Recipes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
+                            <i class="bi bi-clock-history me-2"></i> Sales & Transactions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'login_history') ? 'active' : ''; ?>" href="login_history.php">
+                            <i class="bi bi-person-check me-2"></i> Login History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.php">
+                            <i class="bi bi-arrow-left me-2"></i> Main Menu
+                        </a>
+                    </li>
+                </ul>
+                <div class="sidebar-user">
+                    <hr>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-2 fs-4"></i>
+                            <strong><?php echo htmlspecialchars(
+                                $_SESSION["username"]
+                            ); ?></strong>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
+                            <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div> </aside>
 
         <main class="col-lg-10 col-md-9 main-content">
-            <div class="header">
+            <div class="header d-flex justify-content-between align-items-center">
+                <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
+                    <i class="bi bi-list"></i>
+                </button>
+
                 <h1>Inventory Management</h1>
             </div>
 
@@ -425,18 +446,15 @@ $product_status_options = ["available", "discontinued"];
                     ? "show active"
                     : ""; ?>" id="products-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center gap-3">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
                             <span class="fs-5">Active Products</span>
-                            <div class="input-group">
+                            
+                            <div class="input-group" style="max-width: 400px;">
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                                 <input type="text" id="product-search-input" class="form-control" placeholder="Search products...">
                             </div>
-                                    <div class="btn-group btn-group-sm ms-2" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                    </div>
-                            <div class="d-flex gap-2 flex-shrink-0 align-items-center"> 
+
+                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-1">
                                     <label for="product-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
                                     <select class="form-select form-select-sm" id="product-rows-select" style="width: auto;">
@@ -445,12 +463,16 @@ $product_status_options = ["available", "discontinued"];
                                         <option value="50">50</option>
                                         <option value="all">All</option>
                                     </select>
-                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                    <div class="btn-group btn-group-sm ms-1" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
                                         <button type="button" class="btn btn-outline-secondary" id="product-next-btn">
                                             <i class="bi bi-arrow-right"></i>
                                         </button>
                                     </div>
-                                    </div>
+                                </div>
+
                                 <div class="dropdown d-inline-block">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
@@ -468,90 +490,65 @@ $product_status_options = ["available", "discontinued"];
                                     <i class="bi bi-plus-circle me-1"></i> Add New Product
                                 </button>
                             </div>
-                            </div>
+                        </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="name">Name</th>
-                                            <th data-sort-by="price" data-sort-type="number">Price</th>
-                                            <th data-sort-by="status">Status</th>
-                                            <th data-sort-by="stock" data-sort-type="number">Current Stock</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="product-table-body">
-                                        <?php foreach (
-                                            $products
-                                            as $product
-                                        ): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars(
-                                                $product["name"]
-                                            ); ?></td>
-                                            <td>₱<?php echo number_format(
-                                                $product["price"],
-                                                2
-                                            ); ?></td>
-                                            <td>
-                                                <span class="badge bg-success"><?php echo htmlspecialchars(
-                                                    ucfirst($product["status"])
-                                                ); ?></span>
-                                            </td>
-                                            <td><strong><?php echo $product[
-                                                "stock_qty"
-                                            ]; ?></strong></td>
-                                            <td>
-                                                <button class="btn btn-outline-primary btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#editProductModal"
-                                                        data-product-id="<?php echo $product[
-                                                            "product_id"
-                                                        ]; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars(
-                                                            $product["name"]
-                                                        ); ?>"
-                                                        data-product-price="<?php echo $product[
-                                                            "price"
-                                                        ]; ?>"
-                                                        data-product-status="<?php echo $product[
-                                                            "status"
-                                                        ]; ?>"
-                                                        data-product-image="<?php echo htmlspecialchars($product["image_url"] ?? ''); // <-- MODIFIED: Added this line ?>">
-                                                    <i class="bi bi-pencil-square"></i> Edit
-                                                </button>
-                                                <button class="btn btn-outline-secondary btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#adjustProductModal"
-                                                        data-product-id="<?php echo $product[
-                                                            "product_id"
-                                                        ]; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars(
-                                                            $product["name"]
-                                                        ); ?>">
-                                                    Adjust Stock
-                                                </button>
+                            <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3" id="product-card-list">
+                                <?php if (empty($products)): ?>
+                                    <div class="col-12">
+                                        <p class="text-center text-muted">No active products found.</p>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($products as $product): ?>
+                                        <?php 
+                                        $image_path = !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : '../images/breadlylogo.png'; 
+                                        $stock_class = $product['stock_qty'] <= 0 ? 'text-danger' : 'text-dark';
+                                        ?>
+                                        <div class="col product-item" 
+                                             data-product-name="<?php echo htmlspecialchars(strtolower($product["name"])); ?>"
+                                             data-product-price="<?php echo $product["price"]; ?>"
+                                             data-product-stock="<?php echo $product["stock_qty"]; ?>"
+                                             data-product-status="<?php echo $product["status"]; ?>">
+                                            
+                                            <div class="product-card h-100 d-flex flex-column"> 
+                                                <img src="<?php echo $image_path; ?>" alt="<?php echo htmlspecialchars($product["name"]); ?>" class="img-fluid rounded mb-2" style="height: 150px; object-fit: cover;">
+                                                <h5 class="product-name mb-1"><?php echo htmlspecialchars($product["name"]); ?></h5>
+                                                <p class="text-muted mb-1">₱<?php echo number_format($product["price"], 2); ?></p>
+                                                <p class="fw-bold <?php echo $stock_class; ?> mb-2">
+                                                    Stock: <?php echo $product["stock_qty"]; ?>
+                                                </p>
                                                 
-                                                <button class="btn btn-outline-danger btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#deleteProductModal"
-                                                        data-product-id="<?php echo $product[
-                                                            "product_id"
-                                                        ]; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars(
-                                                            $product["name"]
-                                                        ); ?>">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                        <?php if (empty($products)): ?>
-                                            <tr><td colspan="5" class="text-center text-muted">No active products found.</td></tr>
-                                        <?php endif; ?>
-                                        <tr id="product-no-results" style="display: none;">
-                                            <td colspan="5" class="text-center text-muted">No products match your search.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                                <div class="mt-auto d-grid gap-2">
+                                                     <button class="btn btn-outline-primary btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#editProductModal"
+                                                            data-product-id="<?php echo $product["product_id"]; ?>"
+                                                            data-product-name="<?php echo htmlspecialchars($product["name"]); ?>"
+                                                            data-product-price="<?php echo $product["price"]; ?>"
+                                                            data-product-status="<?php echo $product["status"]; ?>"
+                                                            data-product-image="<?php echo htmlspecialchars($product["image_url"] ?? ''); ?>">
+                                                        <i class="bi bi-pencil-square"></i> Edit
+                                                    </button>
+                                                    <button class="btn btn-outline-secondary btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#adjustProductModal"
+                                                            data-product-id="<?php echo $product["product_id"]; ?>"
+                                                            data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
+                                                        Adjust Stock
+                                                    </button>
+                                                    
+                                                    <button class="btn btn-outline-danger btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#deleteProductModal"
+                                                            data-product-id="<?php echo $product["product_id"]; ?>"
+                                                            data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                
+                                <div class="col-12" id="product-no-results" style="display: none;">
+                                    <p class="text-center text-muted">No products match your search.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -562,18 +559,15 @@ $product_status_options = ["available", "discontinued"];
                     ? "show active"
                     : ""; ?>" id="ingredients-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center gap-3">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
                             <span class="fs-5">All Ingredients</span>
-                            <div class="input-group">
+                            
+                            <div class="input-group" style="max-width: 400px;">
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                                 <input type="text" id="ingredient-search-input" class="form-control" placeholder="Search ingredients...">
                             </div>
-                            <div class="btn-group btn-group-sm ms-2" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                    </div>
-                            <div class="d-flex gap-2 flex-shrink-0 align-items-center"> 
+
+                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-1">
                                     <label for="ingredient-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
                                     <select class="form-select form-select-sm" id="ingredient-rows-select" style="width: auto;">
@@ -582,12 +576,15 @@ $product_status_options = ["available", "discontinued"];
                                         <option value="50">50</option>
                                         <option value="all">All</option>
                                     </select>
-                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                    <div class="btn-group btn-group-sm ms-1" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="ingredient-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
                                         <button type="button" class="btn btn-outline-secondary" id="ingredient-next-btn">
                                             <i class="bi bi-arrow-right"></i>
                                         </button>
                                     </div>
-                                    </div>
+                                </div>
                                 <div class="dropdown d-inline-block">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
@@ -607,7 +604,7 @@ $product_status_options = ["available", "discontinued"];
                                     <i class="bi bi-plus-circle me-1"></i> Add New Ingredient
                                 </button>
                             </div>
-                            </div>
+                        </div>
                         <div class="card-body">
                              <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -622,82 +619,83 @@ $product_status_options = ["available", "discontinued"];
                                         </tr>
                                     </thead>
                                     <tbody id="ingredient-table-body">
-                                        <?php foreach ($ingredients as $ing): ?>
-                                        <tr class="<?php echo $ing[
-                                            "stock_surplus"
-                                        ] <= 0
-                                            ? "table-danger"
-                                            : "";
-                                            // Highlight low stock rows
-                                            ?>">
-                                            <td><?php echo htmlspecialchars(
-                                                $ing["name"]
-                                            ); ?></td>
-                                            <td><?php echo htmlspecialchars(
-                                                $ing["unit"]
-                                            ); ?></td>
-                                            <td><strong><?php echo number_format(
-                                                $ing["stock_qty"],
-                                                2
-                                            ); ?></strong></td>
-                                            <td><?php echo number_format(
-                                                $ing["reorder_level"],
-                                                2
-                                            ); ?></td>
-                                            <td>
-                                                <?php if (
-                                                    $ing["stock_surplus"] <= 0
-                                                ): ?>
-                                                    <span class="badge bg-danger">Low Stock</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-success">In Stock</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-outline-primary btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#editIngredientModal"
-                                                        data-ingredient-id="<?php echo $ing[
-                                                            "ingredient_id"
-                                                        ]; ?>"
-                                                        data-ingredient-name="<?php echo htmlspecialchars(
-                                                            $ing["name"]
-                                                        ); ?>"
-                                                        data-ingredient-unit="<?php echo htmlspecialchars(
-                                                            $ing["unit"]
-                                                        ); ?>"
-                                                        data-ingredient-reorder="<?php echo $ing[
-                                                            "reorder_level"
-                                                        ]; ?>">
-                                                    <i class="bi bi-pencil-square"></i> Edit
-                                                </button>
-                                                <button class="btn btn-outline-secondary btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#adjustIngredientModal"
-                                                        data-ingredient-id="<?php echo $ing[
-                                                            "ingredient_id"
-                                                        ]; ?>"
-                                                        data-ingredient-name="<?php echo htmlspecialchars(
-                                                            $ing["name"]
-                                                        ); ?>"
-                                                        data-ingredient-unit="<?php echo htmlspecialchars(
-                                                            $ing["unit"]
-                                                        ); ?>">
-                                                    Adjust Stock
-                                                </button>
-                                                <button class="btn btn-outline-danger btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#deleteIngredientModal"
-                                                        data-ingredient-id="<?php echo $ing[
-                                                            "ingredient_id"
-                                                        ]; ?>"
-                                                        data-ingredient-name="<?php echo htmlspecialchars(
-                                                            $ing["name"]
-                                                        ); ?>">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                         <?php if (empty($ingredients)): ?>
+                                        <?php if (empty($ingredients)): ?>
                                             <tr><td colspan="6" class="text-center text-muted">No ingredients found. Add one to get started!</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($ingredients as $ing): ?>
+                                            <tr class="<?php echo $ing[
+                                                "stock_surplus"
+                                            ] <= 0
+                                                ? "table-danger"
+                                                : "";
+                                                // Highlight low stock rows
+                                                ?>">
+                                                <td data-label="Name"><?php echo htmlspecialchars(
+                                                    $ing["name"]
+                                                ); ?></td>
+                                                <td data-label="Unit"><?php echo htmlspecialchars(
+                                                    $ing["unit"]
+                                                ); ?></td>
+                                                <td data-label="Current Stock"><strong><?php echo number_format(
+                                                    $ing["stock_qty"],
+                                                    2
+                                                ); ?></strong></td>
+                                                <td data-label="Reorder Level"><?php echo number_format(
+                                                    $ing["reorder_level"],
+                                                    2
+                                                ); ?></td>
+                                                <td data-label="Status">
+                                                    <?php if (
+                                                        $ing["stock_surplus"] <= 0
+                                                    ): ?>
+                                                        <span class="badge bg-danger">Low Stock</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-success">In Stock</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-outline-primary btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#editIngredientModal"
+                                                            data-ingredient-id="<?php echo $ing[
+                                                                "ingredient_id"
+                                                            ]; ?>"
+                                                            data-ingredient-name="<?php echo htmlspecialchars(
+                                                                $ing["name"]
+                                                            ); ?>"
+                                                            data-ingredient-unit="<?php echo htmlspecialchars(
+                                                                $ing["unit"]
+                                                            ); ?>"
+                                                            data-ingredient-reorder="<?php echo $ing[
+                                                                "reorder_level"
+                                                            ]; ?>">
+                                                        <i class="bi bi-pencil-square"></i> Edit
+                                                    </button>
+                                                    <button class="btn btn-outline-secondary btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#adjustIngredientModal"
+                                                            data-ingredient-id="<?php echo $ing[
+                                                                "ingredient_id"
+                                                            ]; ?>"
+                                                            data-ingredient-name="<?php echo htmlspecialchars(
+                                                                $ing["name"]
+                                                            ); ?>"
+                                                            data-ingredient-unit="<?php echo htmlspecialchars(
+                                                                $ing["unit"]
+                                                            ); ?>">
+                                                        Adjust Stock
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#deleteIngredientModal"
+                                                            data-ingredient-id="<?php echo $ing[
+                                                                "ingredient_id"
+                                                            ]; ?>"
+                                                            data-ingredient-name="<?php echo htmlspecialchars(
+                                                                $ing["name"]
+                                                            ); ?>">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
                                         <?php endif; ?>
                                         <tr id="ingredient-no-results" style="display: none;">
                                             <td colspan="6" class="text-center text-muted">No ingredients match your search.</td>
@@ -714,14 +712,10 @@ $product_status_options = ["available", "discontinued"];
                     ? "show active"
                     : ""; ?>" id="discontinued-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span>Discontinued Products (Archived)</span>
-                            <div class="d-flex gap-2 align-items-center">
-                            <div class="btn-group btn-group-sm ms-2" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                    </div>
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <span class="fs-5">Discontinued Products</span>
+                            
+                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-1">
                                     <label for="discontinued-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
                                     <select class="form-select form-select-sm" id="discontinued-rows-select" style="width: auto;">
@@ -730,12 +724,15 @@ $product_status_options = ["available", "discontinued"];
                                         <option value="50">50</option>
                                         <option value="all">All</option>
                                     </select>
-                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                    <div class="btn-group btn-group-sm ms-1" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="discontinued-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
                                         <button type="button" class="btn btn-outline-secondary" id="discontinued-next-btn">
                                             <i class="bi bi-arrow-right"></i>
                                         </button>
                                     </div>
-                                    </div>
+                                </div>
                                 <div class="dropdown">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Name (A-Z)</span>
@@ -750,7 +747,7 @@ $product_status_options = ["available", "discontinued"];
                                     </ul>
                                 </div>
                             </div>
-                            </div>
+                        </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -764,58 +761,59 @@ $product_status_options = ["available", "discontinued"];
                                         </tr>
                                     </thead>
                                     <tbody id="discontinued-table-body">
-                                        <?php foreach (
-                                            $discontinued_products
-                                            as $product
-                                        ): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars(
-                                                $product["name"]
-                                            ); ?></td>
-                                            <td>₱<?php echo number_format(
-                                                $product["price"],
-                                                2
-                                            ); ?></td>
-                                            <td><span class="badge bg-secondary"><?php echo htmlspecialchars(
-                                                ucfirst($product["status"])
-                                            ); ?></span></td>
-                                            <td><?php echo $product[
-                                                "stock_qty"
-                                            ]; ?></td>
-                                            <td>
-                                                <button class="btn btn-outline-primary btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#editProductModal"
-                                                        data-product-id="<?php echo $product[
-                                                            "product_id"
-                                                        ]; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars(
-                                                            $product["name"]
-                                                        ); ?>"
-                                                        data-product-price="<?php echo $product[
-                                                            "price"
-                                                        ]; ?>"
-                                                        data-product-status="<?php echo $product[
-                                                            "status"
-                                                        ]; ?>">
-                                                    <i class="bi bi-pencil-square"></i> Edit Status
-                                                </button>
-                                                <button class="btn btn-outline-danger btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#deleteProductModal"
-                                                        data-product-id="<?php echo $product[
-                                                            "product_id"
-                                                        ]; ?>"
-                                                        data-product-name="<?php echo htmlspecialchars(
-                                                            $product["name"]
-                                                        ); ?>">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
                                         <?php if (
                                             empty($discontinued_products)
                                         ): ?>
                                             <tr><td colspan="5" class="text-center text-muted">No discontinued products found.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach (
+                                                $discontinued_products
+                                                as $product
+                                            ): ?>
+                                            <tr>
+                                                <td data-label="Name"><?php echo htmlspecialchars(
+                                                    $product["name"]
+                                                ); ?></td>
+                                                <td data-label="Price">₱<?php echo number_format(
+                                                    $product["price"],
+                                                    2
+                                                ); ?></td>
+                                                <td data-label="Status"><span class="badge bg-secondary"><?php echo htmlspecialchars(
+                                                    ucfirst($product["status"])
+                                                ); ?></span></td>
+                                                <td data-label="Last Stock"><?php echo $product[
+                                                    "stock_qty"
+                                                ]; ?></td>
+                                                <td>
+                                                    <button class="btn btn-outline-primary btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#editProductModal"
+                                                            data-product-id="<?php echo $product[
+                                                                "product_id"
+                                                            ]; ?>"
+                                                            data-product-name="<?php echo htmlspecialchars(
+                                                                $product["name"]
+                                                            ); ?>"
+                                                            data-product-price="<?php echo $product[
+                                                                "price"
+                                                            ]; ?>"
+                                                            data-product-status="<?php echo $product[
+                                                                "status"
+                                                            ]; ?>">
+                                                        <i class="bi bi-pencil-square"></i> Edit Status
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm"
+                                                            data-bs-toggle="modal" data-bs-target="#deleteProductModal"
+                                                            data-product-id="<?php echo $product[
+                                                                "product_id"
+                                                            ]; ?>"
+                                                            data-product-name="<?php echo htmlspecialchars(
+                                                                $product["name"]
+                                                            ); ?>">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -828,14 +826,10 @@ $product_status_options = ["available", "discontinued"];
                     ? "show active"
                     : ""; ?>" id="recall-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3 border-warning">
-                        <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
-                            <span>Recall Log</span>
-                            <div class="d-flex gap-2 align-items-center">
-                            <div class="btn-group btn-group-sm ms-2" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                    </div>
+                        <div class="card-header bg-warning-subtle d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <span class="fs-5">Recall Log</span>
+                            
+                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-1">
                                     <label for="recall-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
                                     <select class="form-select form-select-sm" id="recall-rows-select" style="width: auto;">
@@ -844,12 +838,15 @@ $product_status_options = ["available", "discontinued"];
                                         <option value="50">50</option>
                                         <option value="all">All</option>
                                     </select>
-                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                    <div class="btn-group btn-group-sm ms-1" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="recall-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
                                         <button type="button" class="btn btn-outline-secondary" id="recall-next-btn">
                                             <i class="bi bi-arrow-right"></i>
                                         </button>
                                     </div>
-                                    </div>
+                                </div>
                                 <div class="dropdown">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Date (Newest First)</span>
@@ -863,7 +860,7 @@ $product_status_options = ["available", "discontinued"];
                                     </ul>
                                 </div>
                             </div>
-                            </div>
+                        </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -886,7 +883,11 @@ $product_status_options = ["available", "discontinued"];
                                                 as $log
                                             ): ?>
                                             <tr>
-                                                <td><?php echo htmlspecialchars(
+                                                <td data-label="Product"><?php echo htmlspecialchars(
+                                                    $log["item_name"] ??
+                                                        "Item Deleted"
+                                                ); ?></td>
+                                                <td data-label="Timestamp"><?php echo htmlspecialchars(
                                                     date(
                                                         "M d, Y h:i A",
                                                         strtotime(
@@ -894,11 +895,7 @@ $product_status_options = ["available", "discontinued"];
                                                         )
                                                     )
                                                 ); ?></td>
-                                                <td><?php echo htmlspecialchars(
-                                                    $log["item_name"] ??
-                                                        "Item Deleted"
-                                                ); ?></td>
-                                                <td>
+                                                <td data-label="Quantity">
                                                     <?php if (
                                                         $log["adjustment_qty"] <
                                                         0
@@ -910,7 +907,7 @@ $product_status_options = ["available", "discontinued"];
                                                             0
                                                         ); ?></strong>
                                                     <?php else: ?>
-                                                        <strong class="text-success">+<?php echo number_format(
+                                                        <strong class_name="text-success">+<?php echo number_format(
                                                             $log[
                                                                 "adjustment_qty"
                                                             ],
@@ -918,7 +915,7 @@ $product_status_options = ["available", "discontinued"];
                                                         ); ?></strong>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td>
+                                                <td data-label="Total Price">
                                                     <?php if (
                                                         $log["removed_value"] <
                                                         0
@@ -937,10 +934,10 @@ $product_status_options = ["available", "discontinued"];
                                                         ₱0.00
                                                     <?php endif; ?>
                                                 </td>
-                                                <td><?php echo htmlspecialchars(
+                                                <td data-label="Cashier"><?php echo htmlspecialchars(
                                                     $log["username"] ?? "N/A"
                                                 ); ?></td>
-                                                <td><?php echo htmlspecialchars(
+                                                <td data-label="Reason"><?php echo htmlspecialchars(
                                                     $log["reason"]
                                                 ); ?></td>
                                             </tr>
@@ -960,18 +957,15 @@ $product_status_options = ["available", "discontinued"];
                         </div>
                     </div>
                 </div>
+
                 <div class="tab-pane fade <?php echo $active_tab === "history"
                     ? "show active"
                     : ""; ?>" id="history-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span>Stock Adjustment History (Last 200)</span>
-                            <div class="d-flex gap-2 align-items-center">
-                            <div class="btn-group btn-group-sm ms-2" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                    </div>
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <span class="fs-5">Stock Adjustment History</span>
+                            
+                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-1">
                                     <label for="history-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
                                     <select class="form-select form-select-sm" id="history-rows-select" style="width: auto;">
@@ -981,12 +975,15 @@ $product_status_options = ["available", "discontinued"];
                                         <option value="100">100</option>
                                         <option value="all">All</option>
                                     </select>
-                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                    <div class="btn-group btn-group-sm ms-1" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="history-prev-btn" disabled>
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
                                         <button type="button" class="btn btn-outline-secondary" id="history-next-btn">
                                             <i class="bi bi-arrow-right"></i>
                                         </button>
                                     </div>
-                                    </div>
+                                </div>
                                 <div class="dropdown">
                                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Sort By: <span class="current-sort-text">Date (Newest First)</span>
@@ -1003,7 +1000,7 @@ $product_status_options = ["available", "discontinued"];
                                     </ul>
                                 </div>
                             </div>
-                            </div>
+                        </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover align-middle">
@@ -1028,7 +1025,11 @@ $product_status_options = ["available", "discontinued"];
                                                 as $log
                                             ): ?>
                                             <tr>
-                                                <td><?php echo htmlspecialchars(
+                                                <td data-label="Item Name"><?php echo htmlspecialchars(
+                                                    $log["item_name"] ??
+                                                        "Item Deleted"
+                                                ); ?></td>
+                                                <td data-label="Timestamp"><?php echo htmlspecialchars(
                                                     date(
                                                         "M d, Y h:i A",
                                                         strtotime(
@@ -1036,14 +1037,10 @@ $product_status_options = ["available", "discontinued"];
                                                         )
                                                     )
                                                 ); ?></td>
-                                                <td><?php echo htmlspecialchars(
+                                                <td data-label="User"><?php echo htmlspecialchars(
                                                     $log["username"] ?? "N/A"
                                                 ); ?></td>
-                                                <td><?php echo htmlspecialchars(
-                                                    $log["item_name"] ??
-                                                        "Item Deleted"
-                                                ); ?></td>
-                                                <td>
+                                                <td data-label="Type">
                                                     <?php if (
                                                         $log["item_type"] ==
                                                         "product"
@@ -1053,7 +1050,7 @@ $product_status_options = ["available", "discontinued"];
                                                         <span class="badge bg-secondary">Ingredient</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td>
+                                                <td data-label="Quantity">
                                                     <?php if (
                                                         $log["adjustment_qty"] >
                                                         0
@@ -1083,7 +1080,7 @@ $product_status_options = ["available", "discontinued"];
                                                         ); ?>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td><?php echo htmlspecialchars(
+                                                <td data-label="Reason"><?php echo htmlspecialchars(
                                                     $log["reason"]
                                                 ); ?></td>
                                             </tr>
@@ -1243,7 +1240,6 @@ $product_status_options = ["available", "discontinued"];
                     <label for="adjust_type" class="form-label">Adjustment Type</label>
                     <select class="form-select" id="adjust_type" name="adjustment_type">
                         <option value="Production" selected>Production (Add Stock, Deduct Ingredients)</option>
-                        <option value="Spoilage">Spoilage (Remove Stock)</option>
                         <option value="Recall">Recall (Remove Stock)</option>
                         <option value="Correction">Correction (Add/Remove Stock & Ingredients)</option>
                     </select>
@@ -1269,7 +1265,6 @@ $product_status_options = ["available", "discontinued"];
         </div>
       </div>
 </div>
-
 <div class="modal fade" id="editIngredientModal" tabindex="-1" aria-labelledby="editIngredientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1410,6 +1405,13 @@ $product_status_options = ["available", "discontinued"];
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../js/script_inventory.js"></script>
+
+<?php 
+    $js_file = "../js/script_inventory.js";
+    // Get the last modification time of the file
+    $js_version = file_exists($js_file) ? filemtime($js_file) : "1";
+?>
+<script src="../js/script_inventory.js?v=<?php echo $js_version; ?>"></script>
+
 </body>
 </html>

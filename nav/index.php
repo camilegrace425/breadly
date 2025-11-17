@@ -29,7 +29,7 @@ $role = $_SESSION['role'];
     <div class="container-fluid landing-page">
         <div class="row d-flex">
 
-            <div class="col-6 d-flex align-items-center text-column">
+            <div class="col-12 col-lg-6 d-flex align-items-center text-column">
                 <div class="content-box w-100">
 
                     <h1 class="fw-bold mb-2">
@@ -46,6 +46,12 @@ $role = $_SESSION['role'];
                         </form>
                     <?php endif; ?>
                     
+                    <?php if ($role == 'cashier'): ?>
+                        <form action="sales_history.php" method="get">
+                            <button type="submit" class="btn btn-secondary fw-bold">Go to Sales History</button>
+                        </form>
+                    <?php endif; ?>
+                    
                     <?php if ($role == 'manager'): ?>
                         <form action="dashboard_panel.php" method="get">
                             <button type="submit" class="btn btn-dash fw-bold">Manager Dashboard</button>
@@ -58,7 +64,7 @@ $role = $_SESSION['role'];
                     </div>
             </div>
 
-            <div class="col-6 bakery-column">
+            <div class="col-12 col-lg-6 bakery-column">
                 <img src="../images/landingbakery.jpg" alt="KZ and Khyle's Front" class="bakery-img">
             </div>
 
