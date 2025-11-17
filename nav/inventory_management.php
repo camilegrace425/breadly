@@ -299,6 +299,9 @@ foreach ($recall_history as $log) {
 // --- Static Options for Modals ---
 $unit_options = ["kg", "g", "L", "ml", "pcs", "pack", "tray", "can", "bottle"];
 $product_status_options = ["available", "discontinued"];
+
+// --- Active Nav Link for Sidebar ---
+$active_nav_link = 'inventory';
 ?>
 
 <!DOCTYPE html>
@@ -333,23 +336,28 @@ $product_status_options = ["available", "discontinued"];
                 </div>
                 <ul class="nav flex-column sidebar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="dashboard_panel.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'dashboard') ? 'active' : ''; ?>" href="dashboard_panel.php">
                             <i class="bi bi-speedometer2 me-2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="inventory_management.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'inventory') ? 'active' : ''; ?>" href="inventory_management.php">
                             <i class="bi bi-box me-2"></i> Inventory
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="recipes.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'recipes') ? 'active' : ''; ?>" href="recipes.php">
                             <i class="bi bi-journal-bookmark me-2"></i> Recipes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="sales_history.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
                             <i class="bi bi-clock-history me-2"></i> Sales & Transactions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'login_history') ? 'active' : ''; ?>" href="login_history.php">
+                            <i class="bi bi-person-check me-2"></i> Login History
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1232,7 +1240,6 @@ $product_status_options = ["available", "discontinued"];
                     <label for="adjust_type" class="form-label">Adjustment Type</label>
                     <select class="form-select" id="adjust_type" name="adjustment_type">
                         <option value="Production" selected>Production (Add Stock, Deduct Ingredients)</option>
-                        <option value="Spoilage">Spoilage (Remove Stock)</option>
                         <option value="Recall">Recall (Remove Stock)</option>
                         <option value="Correction">Correction (Add/Remove Stock & Ingredients)</option>
                     </select>
@@ -1258,7 +1265,6 @@ $product_status_options = ["available", "discontinued"];
         </div>
       </div>
 </div>
-
 <div class="modal fade" id="editIngredientModal" tabindex="-1" aria-labelledby="editIngredientModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

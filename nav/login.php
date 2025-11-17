@@ -3,12 +3,28 @@
 session_start();
 require_once '../src/UserManager.php'; // Include your secure user manager class
 
-// --- ADDED: Check for success message from reset password page ---
+// --- ADDED: Success message from reset ---
 $success_message = $_SESSION['success_message'] ?? '';
 unset($_SESSION['success_message']); // Clear it so it only shows once
-// -----------------------------------------------------------------
 
-// UPDATED: Redirect to correct page if already logged in
+// --- ADDED: Helper function to get device type ---
+function getDeviceType() {
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    if (preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i', $user_agent)) {
+        return 'Tablet';
+    }
+    if (preg_match('/(mobi|ipod|phone|blackberry|opera mini|fennec|minimo|symbian|psp|nintendo ds)/i', $user_agent)) {
+        return 'Mobile';
+    }
+    if (preg_match('/(windows nt|macintosh|linux)/i', $user_agent)) {
+        return 'Desktop';
+    }
+    return 'Unknown';
+}
+// --- END HELPER ---
+
+
+// Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'manager') {
          header('Location: index.php');
@@ -19,50 +35,67 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $error_message = '';
+
+// --- ::: MODIFIED: All logging logic is now handled here ::: ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
     $password = $_POST['password'];
-    $login_type = $_POST['login_type'] ?? 'manager'; // Get the form type (manager or cashier)
+    $login_type = $_POST['login_type'] ?? 'manager'; // 'manager' or 'cashier'
 
     $userManager = new UserManager();
+    $device_type = getDeviceType(); // Get device type
+    
+    // Step 1: Verify credentials (this function no longer logs)
     $user = $userManager->login($username, $password);
 
     if ($user) {
-        // --- NEW: Role Validation Logic ---
+        // Step 2: Credentials are correct. Now check if they used the right form.
         $actual_role = $user['role'];
 
-        if ($login_type === 'manager' && $actual_role !== 'manager') {
-            // Tried to log in as manager, but is a cashier
-            $error_message = "Access Denied. Please use the Cashier Login form.";
-        } elseif ($login_type === 'cashier' && $actual_role !== 'cashier') {
-            // Tried to log in as cashier, but is a manager
-            $error_message = "Access Denied. Please use the Admin Login form.";
-        } else {
+        if ($login_type === $actual_role) {
             // --- SUCCESS: Role matches form type ---
+            
+            // Step 3: Log the successful attempt
+            $userManager->logLoginAttempt($username, 'success', $device_type);
+            
             $_SESSION['logged_in'] = true;
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
 
-            // --- ADDED: Prevent Session Hijacking ---
-            // Regenerate the session ID to prevent session fixation.
             session_regenerate_id(true);
-            // --- END ADDITION ---
 
-            // UPDATED: Redirect to correct page based on role
             if ($user['role'] === 'manager') {
                  header('Location: index.php');
             } else {
-                 header('Location: index.php'); // Cashier goes to main menu
+                 header('Location: index.php'); // Cashier
             }
             exit();
+
+        } else {
+            // --- FAILURE: Wrong Form (e.g., cashier on admin form) ---
+            
+            // Step 3: Log this as a 'failure'
+            $userManager->logLoginAttempt($username, 'failure', $device_type);
+            
+            if ($login_type === 'manager') {
+                $error_message = "Access Denied. Please use the Cashier Login form.";
+            } else {
+                $error_message = "Access Denied. Please use the Admin Login form.";
+            }
         }
-        // --- END: Role Validation Logic ---
         
     } else {
+        // --- FAILURE: Invalid username or password ---
+        
+        // Step 3: Log the failed attempt
+        $userManager->logLoginAttempt($username, 'failure', $device_type);
+        
         $error_message = "Invalid username or password. Please try again.";
     }
 }
+// --- ::: END OF MODIFIED LOGIC ::: ---
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -71,6 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BREADLY Login</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
     <link rel="stylesheet" href="../styles/global.css"> 
     <link rel="stylesheet" href="../styles/login.css"> 
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
@@ -86,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <input type="hidden" name="login_type" value="manager">
 
                         <?php 
-                          // --- ADDED: Display success/error message ---
+                          // --- Display success/error message ---
                           if (!empty($success_message)) { 
                             echo '<div class="alert alert-success" style="width:100%; font-size: 0.9rem;">' . htmlspecialchars($success_message) . '</div>'; 
                           } 
@@ -114,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <input type="hidden" name="login_type" value="cashier">
 
                         <?php 
-                          // --- ADDED: Display success/error message (mirrored) ---
+                          // --- Display success/error message (mirrored) ---
                           if (!empty($success_message)) { 
                             echo '<div class="alert alert-success" style="width:100%; font-size: 0.9rem;">' . htmlspecialchars($success_message) . '</div>'; 
                           } 
@@ -144,7 +180,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="logo-wrapper">
                     <img src="../images/kzklogo.png" alt="Kz & Khyle's Logo" class="bakery-logo">
                 </div>
-                <button type="button" class="btn switch-btn" id="switch-btn">Cashier Login?</button>
+                
+                <button type="button" class="btn switch-btn d-none d-lg-block mx-auto" id="switch-btn">Cashier Login?</button>
+
+                <div class="mobile-toggle-wrapper d-lg-none" role="group">
+                    <button type="button" class="btn toggle-btn active" id="admin-toggle-btn">Admin</button>
+                    <button type="button" class="btn toggle-btn" id="cashier-toggle-btn">Cashier</button>
+                </div>
+                
             </div>
         </div>
     </div>
@@ -162,7 +205,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (loginType === 'cashier') {
                     // If error was on cashier form, switch to that view
                     body.classList.add('cashier-mode');
-                    switchBtn.textContent = 'Admin Login?';
+                    
+                    // --- ALSO SYNC THE BUTTONS ---
+                    if (switchBtn) {
+                        switchBtn.textContent = 'Admin Login?';
+                    }
+                    const adminBtn = document.getElementById('admin-toggle-btn');
+                    const cashierBtn = document.getElementById('cashier-toggle-btn');
+                    if(adminBtn) adminBtn.classList.remove('active');
+                    if(cashierBtn) cashierBtn.classList.add('active');
                 }
             <?php endif; ?>
         });

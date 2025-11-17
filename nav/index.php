@@ -46,6 +46,12 @@ $role = $_SESSION['role'];
                         </form>
                     <?php endif; ?>
                     
+                    <?php if ($role == 'cashier'): ?>
+                        <form action="sales_history.php" method="get">
+                            <button type="submit" class="btn btn-secondary fw-bold">Go to Sales History</button>
+                        </form>
+                    <?php endif; ?>
+                    
                     <?php if ($role == 'manager'): ?>
                         <form action="dashboard_panel.php" method="get">
                             <button type="submit" class="btn btn-dash fw-bold">Manager Dashboard</button>

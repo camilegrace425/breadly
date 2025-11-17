@@ -50,13 +50,14 @@ class DashboardManager {
         return $phone_number;
     }
 
-    // --- ::: MODIFIED: This function now filters in PHP ::: ---
+    // --- ::: MODIFIED: This function now filters in PHP AND returns value + count ::: ---
     private function getTotalReturnsByDateRange($date_start, $date_end) {
         try {
             // 1. Get ALL returns using the existing SalesManager
             $all_returns = $this->salesManager->getReturnHistory();
             
             $totalReturnValue = 0.00;
+            $totalReturnCount = 0;
             
             // 2. Prepare date range for comparison
             // Set time to cover the entire day
@@ -70,21 +71,21 @@ class DashboardManager {
                 // Check if the return date is within the selected range
                 if ($returnDateObj >= $startDateObj && $returnDateObj <= $endDateObj) {
                     $totalReturnValue += $return['return_value'] ?? 0.00;
+                    $totalReturnCount++;
                 }
             }
             
-            return $totalReturnValue;
+            return ['value' => $totalReturnValue, 'count' => $totalReturnCount];
             
         } catch (Exception $e) {
             // Catch any errors (like from DateTime)
             error_log("Error in getTotalReturnsByDateRange: " . $e->getMessage());
-            return 0.00;
+            return ['value' => 0.00, 'count' => 0];
         }
     }
     // --- ::: END MODIFICATION ::: ---
 
     public function getSalesSummaryByDateRange($date_start, $date_end) {
-        // --- ::: MODIFIED: To call two separate procedures ::: ---
         $summary = ['totalSales' => 0, 'totalRevenue' => 0.00];
         
         try {
@@ -103,10 +104,11 @@ class DashboardManager {
         }
         
         // 2. Get Total Returns from new private function
-        $summary['totalReturns'] = $this->getTotalReturnsByDateRange($date_start, $date_end);
+        $returnsSummary = $this->getTotalReturnsByDateRange($date_start, $date_end);
+        $summary['totalReturnsValue'] = $returnsSummary['value'];
+        $summary['totalReturnsCount'] = $returnsSummary['count'];
         
         return $summary;
-        // --- ::: END MODIFICATION ::: ---
     }
 
     public function getLowStockAlertsCount() {
@@ -133,6 +135,19 @@ class DashboardManager {
             return [];
         }
     }
+
+    // --- ::: NEW FUNCTION TO GET UNSOLD PRODUCTS ::: ---
+    public function getUnsoldProducts($date_start, $date_end) {
+        try {
+            $stmt = $this->conn->prepare("CALL ReportGetUnsoldProducts(?, ?)");
+            $stmt->execute([$date_start, $date_end]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error fetching unsold products: " . $e->getMessage());
+            return [];
+        }
+    }
+    // --- ::: END NEW FUNCTION ::: ---
     
     public function getActiveLowStockAlerts($limit = 1) {
          try {
@@ -146,7 +161,6 @@ class DashboardManager {
 
     public function getRecalledStockValue($date_start, $date_end) {
         try {
-            // --- MODIFIED: Call the procedure with date parameters ---
             $stmt = $this->conn->prepare("CALL DashboardGetRecalledStockValue(?, ?)");
             $stmt->execute([$date_start, $date_end]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -156,6 +170,33 @@ class DashboardManager {
             return 0.00;
         }
     }
+    
+    // --- ::: NEW FUNCTION ::: ---
+    public function getRecallCountForToday() {
+        $today = date('Y-m-d');
+        $totalCount = 0;
+        
+        try {
+            // Use the existing procedure that can filter by date
+            $stmt = $this->conn->prepare("CALL InventoryGetRecallHistory(?, ?)");
+            $stmt->execute([$today, $today]);
+            $recalls = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+            
+            foreach ($recalls as $recall) {
+                // Recalls are stored as negative adjustments
+                if (isset($recall['adjustment_qty']) && $recall['adjustment_qty'] < 0) {
+                    $totalCount += abs($recall['adjustment_qty']);
+                }
+            }
+            return $totalCount;
+
+        } catch (PDOException $e) {
+            error_log("Error fetching recall count for today: " . $e->getMessage());
+            return 0;
+        }
+    }
+    // --- ::: END NEW FUNCTION ::: ---
 
     public function sendDailySummaryReport($phone_number, $date_start, $date_end) {
         

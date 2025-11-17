@@ -82,31 +82,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="pos-page"> 
 <div class="pos-container">
     <div class="product-grid">
-        <h4 class="mb-3">Products</h4>
         
-        <div class="d-flex justify-content-between mb-3 gap-2">
-            <div class="input-group flex-grow-1">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            
+            <span class="fs-5">Products</span>
+
+            <div class="input-group" style="max-width: 400px;">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="product-search" class="form-control" placeholder="Search...">
             </div>
-            
-            <select class="form-select" id="search-type" style="width: auto; flex-grow: 0;">
-                <option value="name" selected>by Name</option>
-                <option value="code">by Code</option>
-            </select>
-            
-            <select class="form-select" id="sort-type" style="width: auto; flex-grow: 0;">
-                <option value="name-asc" selected>Sort: Name (A-Z)</option>
-                <option value="name-desc">Sort: Name (Z-A)</option>
-                <option value="price-asc">Sort: Price (Low-High)</option>
-                <option value="price-desc">Sort: Price (High-Low)</option>
-                <option value="stock-desc">Sort: Stock (High-Low)</option>
-                <option value="stock-asc">Sort: Stock (Low-High)</option>
-                <option value="code-asc">Sort: Code (Asc)</option>
-                <option value="code-desc">Sort: Code (Desc)</option>
-            </select>
+
+            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
+                
+                <div class="d-flex align-items-center gap-1">
+                    <label for="search-type" class="form-label mb-0 small text-muted flex-shrink-0">Search:</label>
+                    <select class="form-select form-select-sm" id="search-type" style="width: auto;">
+                        <option value="name" selected>by Name</option>
+                        <option value="code">by Code</option>
+                    </select>
+                </div>
+
+                <div class="d-flex align-items-center gap-1">
+                    <label for="sort-type" class="form-label mb-0 small text-muted flex-shrink-0">Sort By:</label>
+                    <select class="form-select form-select-sm" id="sort-type" style="width: auto;">
+                        <option value="name-asc" selected>Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="price-asc">Price (Low-High)</option>
+                        <option value="price-desc">Price (High-Low)</option>
+                        <option value="stock-desc">Stock (High-Low)</option>
+                        <option value="stock-asc">Stock (Low-High)</option>
+                        <option value="code-asc">Code (Asc)</option>
+                        <option value="code-desc">Code (Desc)</option>
+                    </select>
+                </div>
+
+            </div>
         </div>
-        
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3" id="product-list">
             <?php foreach ($products as $product): ?>
             <div class="col" 
@@ -240,12 +251,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       </div>
       <div class="modal-footer justify-content-between">
-          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#discountModal">
+          <button class="btn btn-sm btn-outline-secondary" type="button" id="mobile-discount-btn">
             <i class="bi bi-percent me-1"></i> Discount
           </button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back to Products</button>
       </div>
-    </div>
+      </div>
   </div>
 </div>
 
@@ -273,110 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="../js/script_pos.js"></script>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Mobile POS UI Sync Script ---
-
-    // Get references to all duplicated elements
-    const desktopCart = document.getElementById('order-items-container');
-    const mobileCart = document.getElementById('order-items-container-mobile');
-    
-    const desktopSubtotalLine = document.getElementById('subtotal-line');
-    const mobileSubtotalLine = document.getElementById('subtotal-line-mobile');
-    const desktopSubtotalPrice = document.getElementById('subtotal-price');
-    const mobileSubtotalPrice = document.getElementById('subtotal-price-mobile');
-
-    const desktopDiscountLine = document.getElementById('discount-line');
-    const mobileDiscountLine = document.getElementById('discount-line-mobile');
-    const desktopDiscountAmount = document.getElementById('discount-amount');
-    const mobileDiscountAmount = document.getElementById('discount-amount-mobile');
-    const desktopDiscountText = document.querySelector('#discount-line .text-discount');
-    const mobileDiscountText = document.querySelector('#discount-line-mobile .text-discount');
-
-    const desktopTotal = document.getElementById('total-price');
-    const mobileTotal = document.getElementById('total-price-mobile');
-
-    const desktopPayBtn = document.getElementById('pay-button');
-    const mobilePayBtn = document.getElementById('pay-button-mobile');
-
-    const desktopClearBtn = document.getElementById('clear-button');
-    const mobileClearBtn = document.getElementById('clear-button-mobile');
-
-    // Mobile-only summary bar
-    const mobileSummaryCount = document.getElementById('mobile-cart-count');
-    const mobileSummaryTotal = document.getElementById('mobile-cart-total');
-
-    const observer = new MutationObserver((mutations) => {
-        // Sync cart items
-        if (mobileCart) mobileCart.innerHTML = desktopCart.innerHTML;
-        
-        // Sync summary lines
-        if (mobileSubtotalLine) mobileSubtotalLine.style.display = desktopSubtotalLine.style.display;
-        if (mobileSubtotalPrice) mobileSubtotalPrice.textContent = desktopSubtotalPrice.textContent;
-        
-        if (mobileDiscountLine) mobileDiscountLine.style.display = desktopDiscountLine.style.display;
-        if (mobileDiscountAmount) mobileDiscountAmount.textContent = desktopDiscountAmount.textContent;
-        if (mobileDiscountText) mobileDiscountText.textContent = desktopDiscountText.textContent;
-
-        // Sync main total
-        if (mobileTotal) mobileTotal.textContent = desktopTotal.textContent;
-        
-        // Sync button states
-        if (mobilePayBtn) mobilePayBtn.disabled = desktopPayBtn.disabled;
-        
-        // Sync mobile summary bar
-        if (mobileSummaryTotal) mobileSummaryTotal.textContent = desktopTotal.textContent;
-        if (mobileSummaryCount) {
-            // Calculate item count (this is tricky, let's just grab it from the original script's `cart` variable)
-            // A simpler way: count the items in the list.
-            const itemCount = desktopCart.querySelectorAll('.cart-item').length;
-            mobileSummaryCount.textContent = `${itemCount} Item${itemCount === 1 ? '' : 's'}`;
-        }
-
-        // --- Re-attach event listeners for mobile cart ---
-        // (This is crucial because we copied innerHTML)
-        if (mobileCart) {
-            mobileCart.querySelectorAll('.btn-dec').forEach(btn => {
-                btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), -1));
-            });
-            mobileCart.querySelectorAll('.btn-inc').forEach(btn => {
-                btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), 1));
-            });
-            mobileCart.querySelectorAll('.btn-remove').forEach(btn => {
-                btn.addEventListener('click', () => window.setQuantity(parseInt(btn.dataset.id), 0));
-            });
-            mobileCart.querySelectorAll('.cart-quantity-input').forEach(input => {
-                input.addEventListener('change', (e) => {
-                    window.setQuantity(parseInt(e.target.dataset.id, 10), parseInt(e.target.value, 10));
-                });
-            });
-        }
-    });
-
-    // Start observing the desktop cart for changes
-    observer.observe(desktopCart, { childList: true, subtree: true });
-    
-    // Also observe the summary lines for text/style changes
-    observer.observe(desktopTotal, { characterData: true, childList: true });
-    observer.observe(desktopSubtotalPrice, { characterData: true, childList: true });
-    observer.observe(desktopDiscountAmount, { characterData: true, childList: true });
-    observer.observe(desktopDiscountText, { characterData: true, childList: true });
-    observer.observe(desktopPayBtn, { attributes: true, attributeFilter: ['disabled'] });
-
-    // --- Sync button clicks from mobile to desktop ---
-    // (The original script's listeners are only on the desktop buttons)
-    if (mobilePayBtn) {
-        mobilePayBtn.addEventListener('click', () => {
-            desktopPayBtn.click(); // Trigger the original pay button
-        });
-    }
-    if (mobileClearBtn) {
-        mobileClearBtn.addEventListener('click', () => {
-            desktopClearBtn.click(); // Trigger the original clear button
-        });
-    }
-});
-</script>
+<script src="../js/script_pos_mobile.js"></script>
 
 </body>
 </html>

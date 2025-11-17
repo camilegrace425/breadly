@@ -144,23 +144,28 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                 </div>
                 <ul class="nav flex-column sidebar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="dashboard_panel.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'dashboard') ? 'active' : ''; ?>" href="dashboard_panel.php">
                             <i class="bi bi-speedometer2 me-2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="inventory_management.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'inventory') ? 'active' : ''; ?>" href="inventory_management.php">
                             <i class="bi bi-box me-2"></i> Inventory
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="recipes.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'recipes') ? 'active' : ''; ?>" href="recipes.php">
                             <i class="bi bi-journal-bookmark me-2"></i> Recipes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="sales_history.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
                             <i class="bi bi-clock-history me-2"></i> Sales & Transactions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'login_history') ? 'active' : ''; ?>" href="login_history.php">
+                            <i class="bi bi-person-check me-2"></i> Login History
                         </a>
                     </li>
                     <li class="nav-item">

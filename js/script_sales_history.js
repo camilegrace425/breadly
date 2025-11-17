@@ -1,17 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- ::: NEW Reusable Table Pagination Function (REWRITTEN) ::: ---
+    // --- Reusable Table Pagination Function ---
     function addTablePagination(selectId, tableBodyId) {
         const select = document.getElementById(selectId);
         const tableBody = document.getElementById(tableBodyId);
-
-        // --- ::: MODIFICATION: Get button IDs from selectId ::: ---
-        const baseId = selectId.replace('-rows-select', ''); // e.g., "product"
+        const baseId = selectId.replace('-rows-select', '');
         const prevBtn = document.getElementById(`${baseId}-prev-btn`);
         const nextBtn = document.getElementById(`${baseId}-next-btn`);
         
         if (!select || !tableBody || !prevBtn || !nextBtn) {
-            // console.warn('Pagination elements not found for:', selectId, tableBodyId);
             return;
         }
 
@@ -20,27 +17,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateTableRows = () => {
             const selectedValue = select.value;
             
-            // Get all rows, but ONLY count those visible by the search filter
-            // (Search filter sets style.display = 'none')
             const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
             const visibleRows = [];
             all_rows.forEach(row => {
-                // Check if row is hidden by search
                 const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
                 if (!isHiddenBySearch) {
-                    // If it's not hidden by search (or only hidden by us), consider it
                     visibleRows.push(row);
                 }
             });
 
-            // Reset all rows we manage to be visible (so search filter can re-hide them)
             visibleRows.forEach(row => {
                 row.style.display = '';
                 row.dataset.paginatedHidden = 'false';
             });
 
             if (selectedValue === 'all') {
-                // "Show All" is selected, disable buttons and exit
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
                 return;
@@ -50,26 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalRows = visibleRows.length;
             const totalPages = Math.ceil(totalRows / limit);
 
-            // --- Apply pagination ---
             const start = currentPage * limit;
             const end = start + limit;
 
             visibleRows.forEach((row, index) => {
                 if (index >= start && index < end) {
-                    row.style.display = ''; // Show
+                    row.style.display = '';
                     row.dataset.paginatedHidden = 'false';
                 } else {
-                    row.style.display = 'none'; // Hide
+                    row.style.display = 'none';
                     row.dataset.paginatedHidden = 'true';
                 }
             });
 
-            // --- Update button states ---
             prevBtn.disabled = currentPage === 0;
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
         };
 
-        // --- ::: ADDED: Event Listeners for buttons ::: ---
         prevBtn.addEventListener('click', () => {
             if (currentPage > 0) {
                 currentPage--;
@@ -99,26 +87,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Re-apply pagination when search happens
         const searchInputId = select.id.replace('-rows-select', '-search-input');
         const searchInput = document.getElementById(searchInputId);
         if (searchInput) {
             searchInput.addEventListener('keyup', () => {
-                currentPage = 0; // Reset to first page on search
+                currentPage = 0; 
                 updateTableRows();
             });
         }
 
-        // Add event listener for changes
         select.addEventListener('change', () => {
-            currentPage = 0; // Reset to first page on limit change
+            currentPage = 0; 
             updateTableRows();
         });
         
-        // Call once on initial load
         updateTableRows();
     }
-    // --- ::: END NEW PAGINATION FUNCTION ::: ---
     
     // --- JS Sorting for Recall & Return Tabs ---
     function getSortableValue(value, type = 'text') {
@@ -141,9 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (lowerVal.includes('in stock')) return 'b_in_stock';
                 if (lowerVal.includes('ingredient')) return 'a_ingredient';
                 if (lowerVal.includes('product')) return 'b_product';
-                // --- ::: ADDED FOR LOGIN TAB ::: ---
-                if (lowerVal.includes('failure')) return 'a_failure';
-                if (lowerVal.includes('success')) return 'b_success';
                 return lowerVal;
         }
     }
@@ -173,10 +154,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tbody.append(...rows);
         
-        // After sorting, re-apply pagination
         const paginationSelectId = table.closest('.card').querySelector('select[id$="-rows-select"]')?.id;
         if (paginationSelectId) {
-             // Find the select element and trigger its change event to re-apply pagination
             const paginationSelect = document.getElementById(paginationSelectId);
             if (paginationSelect) {
                 paginationSelect.dispatchEvent(new Event('change'));
@@ -191,16 +170,16 @@ document.addEventListener('DOMContentLoaded', () => {
         sortLink.classList.add('active');
     }
 
-    // ::: MODIFIED: Attach listeners to returns AND login panes :::
-    document.querySelectorAll('#returns-pane .sort-trigger, #logins-pane .sort-trigger').forEach(link => { // <-- MODIFY THIS LINE
+    // Attach listeners to returns pane
+    document.querySelectorAll('#returns-pane .sort-trigger').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             sortTableByDropdown(e.target);
         });
     });
 
-    // ::: MODIFIED: Initial sort for returns AND login panes :::
-    document.querySelectorAll('#returns-pane .dropdown, #logins-pane .dropdown').forEach(dropdown => { // <-- MODIFY THIS LINE
+    // Initial sort for returns pane
+    document.querySelectorAll('#returns-pane .dropdown').forEach(dropdown => {
         const defaultSortLink = dropdown.querySelector('.dropdown-item.active') || dropdown.querySelector('.dropdown-item');
         if (defaultSortLink) {
             sortTableByDropdown(defaultSortLink);
@@ -210,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Logic to set active_tab in the main filter form ---
     const mainFilterForm = document.querySelector('#sales-pane form');
     const allTabButtons = document.querySelectorAll('#historyTabs .nav-link');
-
     const urlParams = new URLSearchParams(window.location.search);
     const activeTabFromURL = urlParams.get('active_tab') || 'sales';
 
@@ -222,16 +200,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 tabButton.addEventListener('click', () => {
                     const paneId = tabButton.dataset.bsTarget;
                     let tabValue = 'sales';
-                    // --- MODIFIED: Added 'logins' ---
                     if (paneId === '#returns-pane') {
                         tabValue = 'returns';
-                    } else if (paneId === '#logins-pane') { // <-- ADD THIS ELSE IF
-                        tabValue = 'logins';
                     }
                     activeTabInput.value = tabValue;
                 });
             });
-            // On page load, set it to the correct active tab
             activeTabInput.value = activeTabFromURL;
         }
     }
@@ -241,11 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tabButton.addEventListener('click', function(event) {
             const paneId = event.target.dataset.bsTarget;
             let activeTabValue = 'sales'; // Default
-            // --- MODIFIED: Added 'logins' ---
             if (paneId === '#returns-pane') {
                 activeTabValue = 'returns';
-            } else if (paneId === '#logins-pane') { // <-- ADD THIS ELSE IF
-                activeTabValue = 'logins';
             }
             
             const url = new URL(window.location);
@@ -254,16 +225,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- ::: MODIFIED: Event Listener for Return Sale Modal ::: ---
+    // --- Event Listener for Return Sale Modal ---
     const returnSaleModal = document.getElementById('returnSaleModal');
     if (returnSaleModal) {
         returnSaleModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
+            if (!button) return; // Fix for modal being opened without a button
             
             // Get data from the button
             const saleId = button.dataset.saleId;
             const productName = button.dataset.productName;
-            const qtyAvailable = button.dataset.qtyAvailable; // <-- Use the new attribute
+            const qtyAvailable = button.dataset.qtyAvailable;
             const saleDate = button.dataset.saleDate;
 
             // Populate the modal fields
@@ -271,22 +243,19 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('return_product_name').textContent = productName;
             document.getElementById('return_sale_date').textContent = saleDate;
             
-            // Set the quantity input
             const qtyInput = document.getElementById('return_qty');
-            qtyInput.value = qtyAvailable; // Default to the max available
-            qtyInput.max = qtyAvailable; // Set max
+            qtyInput.value = qtyAvailable; 
+            qtyInput.max = qtyAvailable; 
             document.getElementById('return_max_qty').value = qtyAvailable;
-            document.getElementById('return_qty_sold_text').textContent = qtyAvailable; // Update helper text
+            document.getElementById('return_qty_sold_text').textContent = qtyAvailable;
 
-            // Clear the reason
             document.getElementById('return_reason').value = '';
         });
     }
 
-    // --- ::: NEWLY ADDED: Initialize table pagination ::: ---
+    // --- Initialize table pagination ---
     addTablePagination('sales-rows-select', 'sales-table-body');
     addTablePagination('returns-rows-select', 'returns-table-body');
-    addTablePagination('login-rows-select', 'login-table-body'); // <-- ADD THIS LINE
-    // --- ::: END ::: ---
+    // login-rows-select removed
 
 });

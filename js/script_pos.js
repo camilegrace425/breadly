@@ -16,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Discount DOM References ---
     const discountModalEl = document.getElementById('discountModal');
-    const discountModal = discountModalEl ? new bootstrap.Modal(discountModalEl) : null;
+    // --- MODIFIED: Make the modal instance global ---
+    window.bootstrapDiscountModal = discountModalEl ? new bootstrap.Modal(discountModalEl) : null; 
     const discountInput = document.getElementById('discount-input');
     const applyDiscountBtn = document.getElementById('apply-discount-btn-modal'); 
     const removeDiscountBtn = document.getElementById('remove-discount-btn-modal'); 
@@ -125,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const itemEl = document.createElement('div');
                 itemEl.className = 'cart-item';
                 
-                // --- MODIFICATION IS HERE ---
                 itemEl.innerHTML = `
                 <div class="cart-item-details">
                     <div class="text-muted">(ID: ${item.id})</div> <strong>${item.name}</strong>
@@ -139,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn btn-outline-danger btn-sm btn-remove" data-id="${item.id}"><i class="bi bi-dash"></i></button>
                 </div>
             `;
-                // --- END MODIFICATION ---
                 
                 orderItemsContainer.appendChild(itemEl);
             });
@@ -152,14 +151,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), 1));
             });
 
-            // --- ADD THIS BLOCK ---
             orderItemsContainer.querySelectorAll('.btn-remove').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const productId = parseInt(btn.dataset.id);
                     setQuantity(productId, 0); // Calling setQuantity with 0 removes the item
                 });
             });
-            // --- END OF ADDED BLOCK ---
 
             orderItemsContainer.querySelectorAll('.cart-quantity-input').forEach(input => {
                 input.addEventListener('change', (e) => {
@@ -278,8 +275,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 dataToSearch = col.dataset.productCode || '';
             }
 
-            // Use startsWith for the "search as you type" feel
-            if (dataToSearch.startsWith(searchTerm)) {
+            // --- THIS IS THE MODIFIED LINE ---
+            // Use .includes() for a "contains" search
+            if (dataToSearch.includes(searchTerm)) {
                 col.style.display = '';
                 itemsFound++;
             } else {
@@ -380,8 +378,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- New Discount Modal Event Listeners ---
     
+    // --- MODIFIED: Use global modal instance ---
     // Listener for the "Apply" button INSIDE the modal
-    if (applyDiscountBtn && discountModal) {
+    if (applyDiscountBtn && window.bootstrapDiscountModal) {
         applyDiscountBtn.addEventListener('click', () => {
             let percent = parseFloat(discountInput.value);
             if (isNaN(percent) || percent < 0) {
@@ -394,12 +393,13 @@ document.addEventListener('DOMContentLoaded', () => {
             discountInput.value = percent; 
             
             renderCart();
-            discountModal.hide(); 
+            window.bootstrapDiscountModal.hide(); 
         });
     }
     
+    // --- MODIFIED: Use global modal instance ---
     // Listener for the "No Discount" button INSIDE the modal
-    if (removeDiscountBtn && discountModal) {
+    if (removeDiscountBtn && window.bootstrapDiscountModal) {
         removeDiscountBtn.addEventListener('click', () => {
             // 1. Set the discount value to 0
             discountPercent = 0;
@@ -411,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCart();
             
             // 4. Hide the modal
-            discountModal.hide(); 
+            window.bootstrapDiscountModal.hide(); 
         });
     }
     

@@ -207,10 +207,11 @@ h3.chart-title {
 .sortable-header a:hover {
   color: inherit;
 }
+/* --- ::: MODIFIED: Chart container height ::: --- */
 .chart-container {
     position: relative;
-    height: 40vh;
-    min-height: 300px;
+    height: 50vh; /* Was 40vh */
+    min-height: 400px; /* Was 300px */
 }
 .low-stock-card a {
     text-decoration: none;
@@ -222,4 +223,148 @@ h3.chart-title {
 .stat-card .fs-4 {
     font-size: 1.75rem !important;
      line-height: 1.2;
+}
+a.stat-card-link {
+    text-decoration: none;
+    display: block;
+    height: 100%;
+}
+
+a.stat-card-link .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+a.stat-card-link .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+/* Pushes the link text to the bottom of the card */
+a.stat-card-link .stat-card .percent-change {
+    margin-top: auto;
+}
+
+/* === NEW STYLES FOR UNSOLD PRODUCTS CARD === */
+.stat-card.unsold-products-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Make it match the height of other cards if they stretch */
+}
+
+.unsold-list-container {
+    max-height: 150px; /* Set a max height */
+    overflow-y: auto;  /* Make it scrollable */
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.unsold-list-container .list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.25rem; /* Tighter padding */
+    background-color: transparent; /* Blend with card */
+    border: none;
+    border-bottom: 1px solid rgba(0,0,0,0.05); /* Faint separator */
+    font-size: 0.85rem;
+}
+
+.unsold-list-container .list-group-item:last-child {
+    border-bottom: none;
+}
+a.stat-card-link {
+    text-decoration: none;
+    display: block;
+    height: 100%;
+}
+
+a.stat-card-link .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+a.stat-card-link .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+/* Pushes the link text to the bottom of the card */
+a.stat-card-link .stat-card .percent-change {
+    margin-top: auto;
+}
+
+/* === STYLES FOR UNSOLD PRODUCTS CARD/MODAL === */
+.stat-card.unsold-products-card .stat-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* This is the scrolling list inside the modal OR card */
+.unsold-list-container {
+    max-height: 350px; /* Set a max height */
+    overflow-y: auto;  /* Make it scrollable */
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.unsold-list-container .list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.25rem; /* Tighter padding */
+    background-color: transparent; /* Blend with card/modal */
+    border: none;
+    border-bottom: 1px solid rgba(0,0,0,0.05); /* Faint separator */
+    font-size: 0.9rem;
+}
+
+.unsold-list-container .list-group-item:last-child {
+    border-bottom: none;
+}
+a.stat-card-link {
+    text-decoration: none;
+    display: block;
+    height: 100%;
+}
+
+a.stat-card-link .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+a.stat-card-link .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+/* Pushes the link text to the bottom of the card */
+a.stat-card-link .stat-card .percent-change {
+    margin-top: auto;
+}
+
+/* === STYLES FOR STOCK LIST MODAL === */
+.stock-list-container {
+    max-height: 50vh; /* Set a max height */
+    overflow-y: auto; /* Make it scrollable */
+}
+
+/* Makes table rows sortable */
+#stock-list-tbody tr {
+    cursor: default;
+}
+
+/* Ensures the modal's table headers are sticky */
+#stockListModal .table-responsive thead {
+   position: sticky;
+   top: 0;
+   background-color: white;
+   z-index: 1;
 }

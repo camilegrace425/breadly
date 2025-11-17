@@ -18,9 +18,9 @@ class UserManager {
         $this->conn = $db->getConnection();
     }
     
-    // --- ::: MODIFIED: This function no longer logs IP address ::: ---
+    // --- ::: MODIFIED: This function NO LONGER LOGS ATTEMPTS ::: ---
+    // It is now only responsible for verifying credentials.
     public function login($username, $password) {
-        // --- IP ADDRESS LINE REMOVED ---
     
         $stmt = $this->conn->prepare("CALL UserLogin(?)");
         $stmt->execute([$username]);
@@ -28,32 +28,32 @@ class UserManager {
         $stmt->closeCursor();
 
         if ($user && password_verify($password, $user['password'])) {
-            // --- MODIFIED BLOCK (Success Log) ---
-            try {
-                $log_stmt = $this->conn->prepare("CALL LogLoginAttempt(?, ?, ?)");
-                $log_stmt->execute([$user['user_id'], $username, 'success']); // IP param removed
-                $log_stmt->closeCursor();
-            } catch (PDOException $e) {
-                error_log("Failed to log login success: " . $e->getMessage());
-            }
-            // --- END OF BLOCK ---
-    
             return $user; // Success
         } else {
-            // --- MODIFIED BLOCK (Failure Log) ---
-            $user_id_to_log = $user ? $user['user_id'] : null;
-            try {
-                $log_stmt = $this->conn->prepare("CALL LogLoginAttempt(?, ?, ?)");
-                $log_stmt->execute([$user_id_to_log, $username, 'failure']); // IP param removed
-                $log_stmt->closeCursor();
-            } catch (PDOException $e) {
-                error_log("Failed to log login failure: " . $e->getMessage());
-            }
-            // --- END OF BLOCK ---
-    
             return false; // Failure
         }
     }
+
+    // --- ::: NEW FUNCTION: To be called from login.php ::: ---
+    public function logLoginAttempt($username_attempt, $status, $device_type) {
+        try {
+            // Find the user_id based on the username attempt
+            $stmt = $this->conn->prepare("CALL UserLogin(?)");
+            $stmt->execute([$username_attempt]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            $user_id_to_log = $user ? $user['user_id'] : null;
+
+            // Log the attempt with the correct user_id (or null) and device
+            $log_stmt = $this->conn->prepare("CALL LogLoginAttempt(?, ?, ?, ?)");
+            $log_stmt->execute([$user_id_to_log, $username_attempt, $status, $device_type]);
+            $log_stmt->closeCursor();
+        } catch (PDOException $e) {
+            error_log("Failed to log login attempt: " . $e->getMessage());
+        }
+    }
+
 
     private function formatPhoneNumberForAPI($phone_number) {
         // 1. Remove all non-numeric characters (like +, -, spaces)

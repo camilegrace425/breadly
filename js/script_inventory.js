@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Modal Event Listeners ---
-    // (Ensure these IDs match your HTML file exactly)
     
     // Add Ingredient Modal
     const addIngredientModal = document.getElementById('addIngredientModal');
@@ -67,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Adjust Product Modal
     const adjustProductModal = document.getElementById('adjustProductModal');
     if (adjustProductModal) {
         adjustProductModal.addEventListener('show.bs.modal', function (event) {
@@ -99,14 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (type === 'Production' && qty < 0) {
                     qtyHelper.textContent = 'Production quantity should be positive.';
                     qtyHelper.className = 'form-text text-danger';
-                } else if ((type === 'Spoilage' || type === 'Recall') && qty > 0) {
-                    qtyHelper.textContent = 'Spoilage/Recall quantity should be negative (e.g., -5).';
+                } else if (type === 'Recall' && qty > 0) { // <-- Removed 'Spoilage'
+                    qtyHelper.textContent = 'Recall quantity should be negative (e.g., -5).'; // <-- Removed 'Spoilage'
                     qtyHelper.className = 'form-text text-danger';
                 } else {
                     let actionText = '';
                     if (type === 'Production') {
                         actionText = `ADD ${qty} pcs to stock and DEDUCT ingredients.`;
-                    } else if (type === 'Spoilage' || type === 'Recall') {
+                    } else if (type === 'Recall') { // <-- Removed 'Spoilage'
                         actionText = `REMOVE ${Math.abs(qty)} pcs from stock.`;
                     } else if (type === 'Correction') {
                         actionText = (qty > 0) ? `ADD ${qty} pcs to stock.` : `REMOVE ${Math.abs(qty)} pcs from stock.`;
@@ -146,7 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
             editProductModal.querySelector('#edit_product_price').value = button.dataset.productPrice;
             editProductModal.querySelector('#edit_product_status').value = button.dataset.productStatus;
             
-            // --- ADDED: Handle image path ---
             editProductModal.querySelector('#edit_product_current_image').value = button.dataset.productImage || '';
 
             // Set the "active_tab" hidden input based on the product status
@@ -192,13 +188,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Table/Grid Sorting & Pagination Logic ---
-
-    // --- NEW: Card Grid Sorter/Filter/Paginator ---
     function setupCardGrid(gridId, searchInputId, rowsSelectId, prevBtnId, nextBtnId) {
         const gridContainer = document.getElementById(gridId);
         if (!gridContainer) {
-            // console.error('Failed to find card grid:', gridId);
             return;
         }
 
@@ -382,8 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupSortableTable(tableBodyId, searchInputId, rowsSelectId, prevBtnId, nextBtnId) {
         const tableBody = document.getElementById(tableBodyId);
         if (!tableBody) {
-             // This is not an error, it just means this tab isn't the card grid
-             // console.log('Skipping table setup for:', tableBodyId);
             return;
         }
 

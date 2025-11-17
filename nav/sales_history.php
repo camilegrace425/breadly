@@ -3,22 +3,24 @@ session_start();
 require_once "../src/SalesManager.php";
 require_once "../src/InventoryManager.php";
 require_once "../src/BakeryManager.php";
-require_once "../src/UserManager.php"; // <-- This is needed
+// No longer need UserManager
 
+// --- Security Check: MANAGERS AND CASHIERS ---
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit();
 }
-if ($_SESSION["role"] !== "manager") {
-    header("Location: index.php");
+if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "cashier") {
+    header("Location: index.php"); // Not authorized
     exit();
 }
+
+$current_role = $_SESSION["role"];
 
 // --- Managers ---
 $salesManager = new SalesManager();
 $inventoryManager = new InventoryManager();
 $bakeryManager = new BakeryManager();
-$userManager = new UserManager(); // <-- This is needed
 
 // --- Message Handling ---
 $message = "";
@@ -30,7 +32,7 @@ if (isset($_SESSION["message"])) {
     unset($_SESSION["message_type"]);
 }
 
-// --- POST HANDLING FOR RETURNS ---
+// --- POST HANDLING FOR RETURNS (Managers AND Cashiers) ---
 if (
     $_SERVER["REQUEST_METHOD"] === "POST" &&
     isset($_POST["action"]) &&
@@ -134,7 +136,7 @@ $sales = $salesManager->getSalesHistory(
     $sort_direction
 );
 $return_history = $salesManager->getReturnHistory();
-$login_history = $userManager->getLoginHistory(); // <-- Data for the new tab
+// Login history removed
 
 $total_sales_revenue = 0;
 foreach ($sales as $sale) {
@@ -153,9 +155,10 @@ foreach ($return_history as $log) {
     }
 }
 
-// --- ::: NEW: Calculate Net Revenue ::: ---
-// We only subtract returns, as recalls are a separate "loss" metric
 $net_revenue = $total_sales_revenue - $total_return_value;
+
+// --- Active Nav Link for Sidebar ---
+$active_nav_link = 'sales'; 
 ?>
 
 <!DOCTYPE html>
@@ -170,10 +173,19 @@ $net_revenue = $total_sales_revenue - $total_return_value;
     <link rel="stylesheet" href="../styles/global.css"> 
     <link rel="stylesheet" href="../styles/dashboard.css"> 
     <link rel="stylesheet" href="../styles/responsive.css?v=3"> 
-</head>
+    
+    <?php if ($current_role === 'cashier'): ?>
+    <style>
+        .sidebar-toggle-btn {
+            display: none !important;
+        }
+    </style>
+    <?php endif; ?>
+    </head>
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
+        <?php if ($current_role === 'manager'): ?>
         <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
             
             <div class="offcanvas-header d-lg-none">
@@ -189,23 +201,28 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                 </div>
                 <ul class="nav flex-column sidebar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="dashboard_panel.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'dashboard') ? 'active' : ''; ?>" href="dashboard_panel.php">
                             <i class="bi bi-speedometer2 me-2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="inventory_management.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'inventory') ? 'active' : ''; ?>" href="inventory_management.php">
                             <i class="bi bi-box me-2"></i> Inventory
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="recipes.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'recipes') ? 'active' : ''; ?>" href="recipes.php">
                             <i class="bi bi-journal-bookmark me-2"></i> Recipes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="sales_history.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
                             <i class="bi bi-clock-history me-2"></i> Sales & Transactions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo ($active_nav_link == 'login_history') ? 'active' : ''; ?>" href="login_history.php">
+                            <i class="bi bi-person-check me-2"></i> Login History
                         </a>
                     </li>
                     <li class="nav-item">
@@ -219,24 +236,30 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-2 fs-4"></i>
-                            <strong><?php echo htmlspecialchars(
-                                $_SESSION["username"]
-                            ); ?></strong>
+                            <strong><?php echo htmlspecialchars($_SESSION["username"]); ?></strong>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
                             <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
                         </ul>
                     </div>
                 </div>
-            </div> </aside>
+            </div> 
+        </aside>
+        <?php endif; ?>
 
-        <main class="col-lg-10 col-md-9 main-content">
+        <main class="<?php echo ($current_role === 'manager') ? 'col-lg-10 col-md-9' : 'col-12'; ?> main-content">
             <div class="header d-flex justify-content-between align-items-center">
-                <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
+                <button class="btn btn-outline-secondary d-lg-none sidebar-toggle-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
                     <i class="bi bi-list"></i>
                 </button>
             
                 <h1>Sales & Transaction History</h1>
+                
+                <?php if ($current_role === 'cashier'): ?>
+                <a href="index.php" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Main Menu
+                </a>
+                <?php endif; ?>
             </div>
             
             <?php if ($message): ?>
@@ -262,12 +285,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                         <i class="bi bi-arrow-return-left me-1"></i> Returns Log
                     </button>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link text-secondary <?php echo $active_tab === "logins" ? "active" : ""; ?>" id="logins-tab" data-bs-toggle="tab" data-bs-target="#logins-pane" type="button" role="tab">
-                        <i class="bi bi-person-check me-1"></i> Login History
-                    </button>
-                </li>
-            </ul>
+                </ul>
 
             <div class="tab-content" id="historyTabContent">
 
@@ -363,7 +381,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                             <th>Discount</th>
                                             <th>Net Total</th>
                                             <th>Cashier</th>
-                                            <th>Actions</th>
+                                            <th class="btn-return-access">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="sales-table-body">
@@ -429,7 +447,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                                 <td data-label="Sale ID" class="d-none"><?php echo $sale[
                                                     "sale_id"
                                                 ]; ?></td>
-                                                <td>
+                                                <td class="btn-return-access">
                                                     <button class="btn btn-info btn-sm"
                                                             data-bs-toggle="modal"
                                                             data-bs-target="#returnSaleModal"
@@ -615,82 +633,9 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                         </div>
                     </div>
                 </div> 
-
-                <div class="tab-pane fade <?php echo $active_tab === "logins" ? "show active" : ""; ?>" id="logins-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3 border-secondary">
-                        <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <span class="fs-5">Login History</span>
-                            
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="login-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="login-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="login-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" id="login-next-btn">
-                                            <i class="bi bi-arrow-right"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Sort By: <span class="current-sort-text">Timestamp (Newest First)</span>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Timestamp (Newest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Timestamp (Oldest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="status" data-sort-dir="asc" data-sort-type="text" href="#">Status (Failure First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="status" data-sort-dir="desc" data-sort-type="text" href="#">Status (Success First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">Username (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="desc" data-sort-type="text" href="#">Username (Z-A)</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
-                                            <th data-sort-by="user">Username (Attempt)</th>
-                                            <th data-sort-by="user_system">User (System)</th>
-                                            <th data-sort-by="status">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="login-table-body">
-                                        <?php if (empty($login_history)): ?>
-                                            <tr><td colspan="4" class="text-center text-muted">No login history found.</td></tr>
-                                        <?php else: ?>
-                                            <?php foreach ($login_history as $log): ?>
-                                            <tr>
-                                                <td data-label="Timestamp"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
-                                                <td data-label="Username (Attempt)"><?php echo htmlspecialchars($log["username_attempt"]); ?></td>
-                                                <td data-label="User (System)"><?php echo htmlspecialchars($log["user_system_name"] ?? 'N/A'); ?></td>
-                                                <td data-label="Status">
-                                                    <?php if ($log["status"] == 'success'): ?>
-                                                        <span class="badge bg-success">Success</span>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-danger">Failure</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div> 
-                </div> </main>
+                
+            </div> 
+        </main>
     </div>
 </div>
 
