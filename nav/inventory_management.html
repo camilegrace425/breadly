@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BREADLY - Inventory Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f7f7; }
+        .nav-active { background-color: #f3e9e1; color: #a0522d; font-weight: 600; border-radius: 0.5rem; }
+    </style>
+</head>
+<body>
+
+    <!-- Header and Navigation (Re-used from dashboard.html, active state changed) -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <!-- Logo and Title -->
+            <div class="flex items-center space-x-2">
+                <svg class="w-8 h-8 text-[#a0522d]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-10h4v2h-4v4h-2v-4H6v-2h4V6h2v4z"></path></svg>
+                <div class="text-lg font-bold text-gray-800">BREADLY</div>
+                <div class="text-sm text-gray-500 border-l ml-2 pl-2">Bakery Management</div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex space-x-2 p-1 bg-gray-50 rounded-lg">
+                <a href="dashboard.html" class="p-2 flex items-center space-x-1 hover:bg-gray-100 rounded-lg text-gray-600 text-sm">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15.01H9V15h2v2.01zm0-4.5H9v-2h2v2.5zm0-4.5H9v-2h2v2.5zm4.5 9h-2V15h2v2.01zm0-4.5h-2v-2h2v2.5zm0-4.5h-2v-2h2v2.5z"/></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="inventory.html" class="p-2 flex items-center space-x-1 nav-active text-sm">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+                    <span>Inventory</span>
+                </a>
+                <a href="pos.html" class="p-2 flex items-center space-x-1 hover:bg-gray-100 rounded-lg text-gray-600 text-sm">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.3 5.71c-.39-.39-1.02-.39-1.41 0L12 10.59 7.11 5.7c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41L10.59 12 5.7 16.89c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L12 13.41l4.89 4.89c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4z"/></svg>
+                    <span>Point of Sale</span>
+                </a>
+                <a href="sales_transactions.html" class="p-2 flex items-center space-x-1 hover:bg-gray-100 rounded-lg text-gray-600 text-sm">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4 0h2v7h-2zm4 0h2v7h-2z"/></svg>
+                    <span>Sales & Transactions</span>
+                </a>
+            </nav>
+
+            <!-- User/Logout -->
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-600 hidden sm:block">Admin User<br><span class="text-xs text-gray-400">Full Access</span></span>
+                <button class="bg-gray-200 text-gray-700 py-1 px-3 rounded-lg font-medium hover:bg-gray-300 transition flex items-center space-x-1 text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Inventory Management</h1>
+                <p class="text-gray-500">Manage products, ingredients, and stock levels</p>
+            </div>
+            <!-- PHP/JS: This button would typically open a modal form -->
+            <button class="bg-[#a0522d] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#8b4513] transition flex items-center space-x-2 shadow-md">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                <span>Add Product</span>
+            </button>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
+            <!-- Filter Tabs -->
+            <div class="flex flex-wrap space-x-2 bg-white p-2 rounded-lg shadow-sm border">
+                <!-- Active Tab - PHP/JS would handle the change/query -->
+                <button class="px-3 py-1.5 text-sm font-medium rounded-md bg-[#a0522d] text-white">All Products</button>
+                <button class="px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100">Ingredients</button>
+                <button class="px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100">Low Stock</button>
+                <button class="px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100">Discontinued</button>
+                <button class="px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100">History</button>
+                <button class="px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100">Recalls</button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="w-full md:w-auto">
+                <div class="relative">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" placeholder="Search products..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-[#a0522d] focus:border-[#a0522d] shadow-sm" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="bg-white rounded-xl shadow-lg overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Stock</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <!-- Product Row 1 (In Stock) -->
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Croissant</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#a0522d] font-semibold">Pastries</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">85 pcs</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">30 pcs</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$4.00</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">In Stock</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-2">
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-green-300 transition text-xs font-bold w-12">+10</button>
+                            <!-- PHP/JS: These buttons would trigger stock updates (e.g., inventory.php?action=add&id=1&qty=10) -->
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-red-300 transition text-xs font-bold w-12">-10</button>
+                        </td>
+                    </tr>
+
+                    <!-- Product Row 2 (In Stock) -->
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Sourdough Bread</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#a0522d] font-semibold">Bread</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">42 loaves</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">20 loaves</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$5.00</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">In Stock</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-2">
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-green-300 transition text-xs font-bold w-12">+10</button>
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-red-300 transition text-xs font-bold w-12">-10</button>
+                        </td>
+                    </tr>
+
+                    <!-- Ingredient Row 3 (Low Stock) -->
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">All-Purpose Flour</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-semibold">Ingredients</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-bold">15 kg</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">50 kg</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$2.50</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Low Stock</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-2">
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-green-300 transition text-xs font-bold w-12">+10</button>
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-red-300 transition text-xs font-bold w-12">-10</button>
+                        </td>
+                    </tr>
+                    
+                    <!-- Ingredient Row 4 (Low Stock) -->
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Butter</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-semibold">Ingredients</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-bold">8 kg</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">20 kg</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$7.50</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Low Stock</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-2">
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-green-300 transition text-xs font-bold w-12">+10</button>
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-red-300 transition text-xs font-bold w-12">-10</button>
+                        </td>
+                    </tr>
+                    
+                    <!-- Ingredient Row 5 (Low Stock) -->
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Eggs</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-semibold">Ingredients</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-bold">30 pcs</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">100 pcs</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$0.30</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Low Stock</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-2">
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-green-300 transition text-xs font-bold w-12">+10</button>
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-red-300 transition text-xs font-bold w-12">-10</button>
+                        </td>
+                    </tr>
+                    
+                    <!-- Product Row 6 (In Stock) -->
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Chocolate Cake</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#a0522d] font-semibold">Cakes</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">15 pcs</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">10 pcs</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$20.00</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">In Stock</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-2">
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-green-300 transition text-xs font-bold w-12">+10</button>
+                            <button class="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-red-300 transition text-xs font-bold w-12">-10</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        // Placeholder for PHP/JS to handle table population, filtering, and stock updates.
+        // E.g., a fetch call to 'src/products/get_products.php'
+        console.log("Inventory UI loaded. Ready for data integration and stock action listeners.");
+    </script>
+</body>
+</html>
