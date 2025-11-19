@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
 }
-if (!in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
+if ($_SESSION['role'] !== 'manager') {
     header('Location: index.php');
     exit();
 }
@@ -109,6 +109,8 @@ if ($selected_product_id) {
 // Static unit options (same as inventory_management.php)
 $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
 
+// --- Active Nav Link for Sidebar ---
+$active_nav_link = 'recipes';
 ?>
 
 <!DOCTYPE html>
@@ -161,11 +163,6 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                     <li class="nav-item">
                         <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
                             <i class="bi bi-clock-history me-2"></i> Sales & Transactions
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'login_history') ? 'active' : ''; ?>" href="login_history.php">
-                            <i class="bi bi-person-check me-2"></i> Login History
                         </a>
                     </li>
                     <li class="nav-item">

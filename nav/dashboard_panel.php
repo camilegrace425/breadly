@@ -150,11 +150,6 @@ $active_nav_link = 'dashboard';
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'login_history') ? 'active' : ''; ?>" href="login_history.php">
-                            <i class="bi bi-person-check me-2"></i> Login History
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="index.php">
                             <i class="bi bi-arrow-left me-2"></i> Main Menu
                         </a>
