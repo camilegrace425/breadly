@@ -53,23 +53,8 @@ $active_nav_link = 'login_history';
                 </div>
                 <ul class="nav flex-column sidebar-nav">
                     <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'dashboard') ? 'active' : ''; ?>" href="dashboard_panel.php">
-                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'inventory') ? 'active' : ''; ?>" href="inventory_management.php">
-                            <i class="bi bi-box me-2"></i> Inventory
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'recipes') ? 'active' : ''; ?>" href="recipes.php">
-                            <i class="bi bi-journal-bookmark me-2"></i> Recipes
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
-                            <i class="bi bi-clock-history me-2"></i> Sales & Transactions
+                        <a class="nav-link" href="account_management.php">
+                            <i class="bi bi-people me-2"></i> User Management
                         </a>
                     </li>
                     <li class="nav-item">
