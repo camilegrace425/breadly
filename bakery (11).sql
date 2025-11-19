@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 17, 2025 at 05:52 PM
+-- Generation Time: Nov 19, 2025 at 06:43 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -25,10 +25,22 @@ DELIMITER $$
 --
 -- Procedures
 --
+CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminDeleteUser` (IN `p_user_id` INT)   BEGIN
+    DELETE FROM users WHERE user_id = p_user_id;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetAllUsers` ()   BEGIN
+    SELECT user_id, username, role, email, phone_number, created_at 
+    FROM users 
+    ORDER BY role, username;
+END$$
+
 CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetManagers` ()   BEGIN
     SELECT user_id, username, phone_number
     FROM users
-    WHERE role = 'manager' AND phone_number IS NOT NULL AND phone_number != '';
+    WHERE role IN ('manager', 'assistant_manager') 
+      AND phone_number IS NOT NULL 
+      AND phone_number != '';
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetMySettings` (IN `p_user_id` INT)   BEGIN
@@ -52,6 +64,17 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminUpdateMySettings` (IN `p_user_
     SET 
         phone_number = p_phone_number,
         enable_daily_report = p_enable_report
+    WHERE user_id = p_user_id;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminUpdateUser` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier','assistant_manager'), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+    UPDATE users
+    SET 
+        username = p_username,
+        password = IF(p_password IS NOT NULL AND p_password != '', p_password, password),
+        role = p_role,
+        email = p_email,
+        phone_number = p_phone
     WHERE user_id = p_user_id;
 END$$
 
@@ -808,9 +831,28 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleRecordTransaction` (IN `user_id
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCreateAccount` (IN `p_username` VARCHAR(100), IN `p_hashed_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier'), IN `p_email` VARCHAR(150), IN `p_phone_number` VARCHAR(11))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCheckAvailability` (IN `p_username` VARCHAR(100), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+    SELECT user_id 
+    FROM users 
+    WHERE username = p_username 
+       OR email = p_email 
+       -- Only check phone if it's not empty/null to allow multiple users without phones
+       OR (p_phone IS NOT NULL AND p_phone != '' AND phone_number = p_phone)
+    LIMIT 1;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCheckAvailabilityForUpdate` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+    SELECT user_id 
+    FROM users 
+    WHERE (username = p_username OR email = p_email OR (p_phone IS NOT NULL AND p_phone != '' AND phone_number = p_phone))
+      AND user_id != p_user_id
+    LIMIT 1;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCreateAccount` (IN `p_username` VARCHAR(100), IN `p_hashed_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier','assistant_manager'), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+    -- FIX: Changed p_phone_number to p_phone to match the parameter above
     INSERT INTO users (username, password, role, email, phone_number)
-    VALUES (p_username, p_hashed_password, p_role, p_email, p_phone_number);
+    VALUES (p_username, p_hashed_password, p_role, p_email, p_phone);
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `UserFindById` (IN `p_user_id` INT)   BEGIN
@@ -1003,7 +1045,18 @@ INSERT INTO `login_history` (`log_id`, `user_id`, `username_attempt`, `status`, 
 (51, 3, 'gian123', 'success', 'Mobile', '2025-11-18 00:43:27'),
 (52, 2, 'klain123', 'failure', 'Mobile', '2025-11-18 00:46:56'),
 (53, 2, 'klain123', 'success', 'Mobile', '2025-11-18 00:47:10'),
-(54, 3, 'gian123', 'success', 'Desktop', '2025-11-18 00:47:13');
+(54, 3, 'gian123', 'success', 'Desktop', '2025-11-18 00:47:13'),
+(55, 3, 'gian123', 'success', 'Desktop', '2025-11-19 20:25:53'),
+(56, 2, 'klain123', 'success', 'Mobile', '2025-11-19 20:27:08'),
+(57, 2, 'klain123', 'success', 'Mobile', '2025-11-19 21:17:30'),
+(58, NULL, 'camile123', 'success', 'Desktop', '2025-11-19 22:51:27'),
+(59, 2, 'klain123', 'success', 'Desktop', '2025-11-19 22:55:09'),
+(60, 3, 'gian123', 'success', 'Desktop', '2025-11-19 23:03:15'),
+(61, 3, 'gian123', 'success', 'Desktop', '2025-11-19 23:56:39'),
+(62, 4, 'camile123', 'failure', 'Desktop', '2025-11-20 00:39:32'),
+(63, 4, 'camile123', 'success', 'Desktop', '2025-11-20 00:41:59'),
+(64, 4, 'camile123', 'success', 'Desktop', '2025-11-20 00:42:10'),
+(65, 3, 'gian123', 'success', 'Desktop', '2025-11-20 00:53:15');
 
 -- --------------------------------------------------------
 
@@ -1038,7 +1091,16 @@ INSERT INTO `password_resets` (`reset_id`, `user_id`, `reset_method`, `reset_tok
 (10, 3, 'phone_otp', NULL, '665319', '2025-10-30 21:48:47', 1),
 (11, 3, 'phone_otp', NULL, '392128', '2025-10-30 22:57:37', 1),
 (15, 3, 'phone_otp', NULL, '740743', '2025-11-07 09:25:37', 0),
-(16, 3, 'phone_otp', NULL, '925491', '2025-11-11 23:05:22', 1);
+(16, 3, 'phone_otp', NULL, '925491', '2025-11-11 23:05:22', 1),
+(17, 3, 'email_token', 'e7c0148c-c55c-11f0-be5d-c01850aa0dfb', NULL, '2025-11-20 00:32:04', 1),
+(18, 3, 'email_token', NULL, '271215', '2025-11-19 16:50:26', 0),
+(19, 3, 'email_token', NULL, '163363', '2025-11-19 23:53:41', 0),
+(20, 3, 'email_token', NULL, '305976', '2025-11-19 23:53:48', 0),
+(21, 3, 'email_token', NULL, '929938', '2025-11-19 23:54:38', 1),
+(22, 3, 'phone_otp', NULL, '526824', '2025-11-19 23:45:15', 0),
+(23, 3, 'phone_otp', NULL, '619149', '2025-11-19 23:45:22', 0),
+(24, 3, 'phone_otp', NULL, '456386', '2025-11-19 23:51:32', 1),
+(25, 3, 'email_token', NULL, '453184', '2025-11-20 00:01:56', 0);
 
 -- --------------------------------------------------------
 
@@ -1093,10 +1155,10 @@ CREATE TABLE `products` (
 
 INSERT INTO `products` (`product_id`, `name`, `price`, `image_url`, `status`, `stock_qty`, `stock_unit`, `is_sellable`, `batch_size`) VALUES
 (1, 'Spanish Bread', 10.00, NULL, 'available', 47, 'pcs', 1, 24),
-(2, 'Cheese Bread', 12.00, '../uploads/products/prod_6912d9f7dd8542.44340855.jpg', 'available', 23, 'pcs', 1, 20),
+(2, 'Cheese Bread', 12.00, '../uploads/products/prod_6912d9f7dd8542.44340855.jpg', 'available', 21, 'pcs', 1, 20),
 (3, 'Ensaymada', 15.00, NULL, 'available', 25, 'pcs', 1, 12),
 (4, 'Cinnamon Roll', 20.00, NULL, 'available', 21, 'pcs', 1, 12),
-(5, 'Choco Bread', 12.00, '../uploads/products/prod_6912dc4b078fa3.44458814.jpg', 'available', 55, 'pcs', 1, 24),
+(5, 'Choco Bread', 12.00, '../uploads/products/prod_6912dc4b078fa3.44458814.jpg', 'available', 53, 'pcs', 1, 24),
 (6, 'Ube Cheese Pandesal', 15.00, NULL, 'available', 35, 'pcs', 1, 30),
 (7, 'Hotdog Roll', 18.00, NULL, 'available', 15, 'pcs', 1, 1),
 (8, 'Cheese Stick Bread', 10.00, '../uploads/products/prod_6912da69d6bf68.30804241.jpg', 'available', 25, 'pcs', 1, 1),
@@ -1104,7 +1166,7 @@ INSERT INTO `products` (`product_id`, `name`, `price`, `image_url`, `status`, `s
 (10, 'Egg Pie Slice', 25.00, NULL, 'available', 8, 'pcs', 1, 1),
 (11, 'Mocha Bun', 12.00, NULL, 'available', 34, 'pcs', 1, 1),
 (12, 'Corned Beef Bread', 20.00, NULL, 'available', 16, 'pcs', 1, 1),
-(13, 'Chicken Floss Bun', 25.00, '../uploads/products/prod_6912dc2989ccb1.13733051.jpg', 'available', 35, 'pcs', 1, 1),
+(13, 'Chicken Floss Bun', 25.00, '../uploads/products/prod_6912dc2989ccb1.13733051.jpg', 'available', 34, 'pcs', 1, 1),
 (14, 'Chocolate Donut', 18.00, NULL, 'available', 30, 'pcs', 1, 1),
 (16, 'Cream Bread', 10.00, NULL, 'available', 48, 'pcs', 1, 1),
 (17, 'Coffee Bun', 15.00, NULL, 'available', 29, 'pcs', 1, 1),
@@ -1113,12 +1175,12 @@ INSERT INTO `products` (`product_id`, `name`, `price`, `image_url`, `status`, `s
 (20, 'Whole Wheat Loaf', 40.00, NULL, 'available', 14, 'loaf', 1, 1),
 (21, 'Raisin Bread', 20.00, NULL, 'available', 15, 'pcs', 1, 1),
 (22, 'Banana Loaf', 35.00, '../uploads/products/prod_6912da909c02d2.10638207.jpg', 'available', 0, 'loaf', 1, 1),
-(23, 'Cheese Cupcake', 15.00, '../uploads/products/prod_6912da1b2c3e28.82878651.jpg', 'available', 20, 'pcs', 1, 1),
-(24, 'Butter Muffin', 18.00, '../uploads/products/prod_6912d9d87feab5.21908923.jpg', 'available', 8, 'pcs', 1, 1),
+(23, 'Cheese Cupcake', 15.00, '../uploads/products/prod_6912da1b2c3e28.82878651.jpg', 'available', 19, 'pcs', 1, 1),
+(24, 'Butter Muffin', 18.00, '../uploads/products/prod_6912d9d87feab5.21908923.jpg', 'available', 6, 'pcs', 1, 1),
 (25, 'Yema Bread', 12.00, NULL, 'available', 30, 'pcs', 1, 1),
-(26, 'Chocolate Crinkles', 10.00, '../uploads/products/prod_6912dce63c5352.95058142.jpg', 'available', 25, 'pcs', 1, 1),
+(26, 'Chocolate Crinkles', 10.00, '../uploads/products/prod_6912dce63c5352.95058142.jpg', 'available', 24, 'pcs', 1, 1),
 (27, 'Pan de Coco', 12.00, NULL, 'available', 0, 'pcs', 1, 1),
-(28, 'Baguette', 30.00, '../uploads/products/prod_6912d96d877162.80266620.jpg', 'available', 10, 'pcs', 1, 1),
+(28, 'Baguette', 30.00, '../uploads/products/prod_6912d96d877162.80266620.jpg', 'available', 8, 'pcs', 1, 1),
 (29, 'Focaccia Bread', 28.00, NULL, 'available', 5, 'pcs', 1, 1),
 (30, 'Mini Donut', 8.00, NULL, 'available', 30, 'pcs', 1, 1),
 (31, 'Pandesal', 2.00, '../uploads/products/prod_691b0d3c93d025.68910842.jpg', 'available', 15, 'pcs', 1, 1);
@@ -1498,7 +1560,18 @@ INSERT INTO `sales` (`sale_id`, `product_id`, `user_id`, `qty_sold`, `total_pric
 (86, 28, 2, 1, 30.00, 0.00, 0, '2025-11-16 13:42:21'),
 (87, 23, 2, 2, 30.00, 0.00, 0, '2025-11-16 13:42:21'),
 (88, 24, 3, 3, 54.00, 0.00, 0, '2025-11-17 21:02:47'),
-(89, 22, 3, 2, 70.00, 0.00, 2, '2025-11-17 21:02:47');
+(89, 22, 3, 2, 70.00, 0.00, 2, '2025-11-17 21:02:47'),
+(90, 28, 3, 1, 30.00, 0.00, 0, '2025-11-18 18:36:11'),
+(91, 24, 3, 1, 18.00, 0.00, 0, '2025-11-18 18:36:11'),
+(92, 2, 3, 1, 12.00, 0.00, 0, '2025-11-18 18:36:11'),
+(93, 23, 3, 1, 15.00, 0.00, 0, '2025-11-18 18:36:11'),
+(94, 26, 3, 1, 10.00, 0.00, 0, '2025-11-18 18:36:11'),
+(95, 5, 3, 1, 12.00, 0.00, 0, '2025-11-18 18:36:11'),
+(96, 13, 3, 1, 25.00, 0.00, 0, '2025-11-18 18:36:11'),
+(97, 28, 2, 1, 30.00, 0.00, 0, '2025-11-19 20:28:53'),
+(98, 24, 3, 1, 18.00, 0.00, 0, '2025-11-19 22:03:49'),
+(99, 2, 3, 1, 12.00, 0.00, 0, '2025-11-19 22:03:49'),
+(100, 5, 3, 1, 12.00, 0.00, 0, '2025-11-19 22:03:49');
 
 -- --------------------------------------------------------
 
@@ -1627,9 +1700,9 @@ CREATE TABLE `users` (
   `user_id` int(11) NOT NULL,
   `username` varchar(100) NOT NULL,
   `password` varchar(255) DEFAULT NULL,
-  `role` enum('manager','cashier') NOT NULL,
+  `role` enum('manager','cashier','assistant_manager') NOT NULL,
   `email` varchar(150) DEFAULT NULL,
-  `phone_number` varchar(11) DEFAULT NULL,
+  `phone_number` varchar(11) NOT NULL,
   `enable_daily_report` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'For daily SMS reports',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -1639,9 +1712,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `password`, `role`, `email`, `phone_number`, `enable_daily_report`, `created_at`) VALUES
-(1, 'camile123', '$2y$10$Dfv1I9ZXClQUsKS5SOTRP.UrjdaHjcRHLT7lzV0JrZbvxbVkehmKy', 'manager', 'camile@gmail.com', '09935581868', 0, '2025-10-20 04:44:55'),
-(2, 'klain123', '$2y$10$pS2IpgUKXqAaSGO3oqgSHOnVJ0CS3FHy6f0nrDxFj6iapGe3FeTne', 'cashier', 'klain@gmail.com', '09923142756', 0, '2025-10-20 04:44:55'),
-(3, 'gian123', '$2y$10$QlSn71av0bazIlZLdkkrXu7ZinZtTzxKA3lOryWyOhD6Y5IIWcgeu', 'manager', 'givano550@gmail.com', '09945005100', 0, '2025-10-20 05:50:57');
+(2, 'klain123', '$2y$10$pS2IpgUKXqAaSGO3oqgSHOnVJ0CS3FHy6f0nrDxFj6iapGe3FeTne', 'cashier', 'dreedklaingonito@gmail.com', '09923142756', 0, '2025-10-20 04:44:55'),
+(3, 'gian123', '$2y$10$8HOAYekmrM7JYIj0oVukFe7.m8ah1dskJReruqVsElJnxr8orCA4u', 'manager', 'givano550@gmail.com', '09945005100', 0, '2025-10-20 05:50:57'),
+(4, 'camile123', '$2y$10$DGybQGSq6fDZ2hW0P6UjpuVJUpmx2NuiXJFdm/6okJpMXvWGT7q/m', 'assistant_manager', NULL, '09935581868', 0, '2025-11-19 16:39:05');
 
 -- --------------------------------------------------------
 
@@ -1841,7 +1914,10 @@ ALTER TABLE `unit_conversions`
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
-  ADD PRIMARY KEY (`user_id`);
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `phone_number` (`phone_number`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -1863,13 +1939,13 @@ ALTER TABLE `ingredients`
 -- AUTO_INCREMENT for table `login_history`
 --
 ALTER TABLE `login_history`
-  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
+  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
 
 --
 -- AUTO_INCREMENT for table `password_resets`
 --
 ALTER TABLE `password_resets`
-  MODIFY `reset_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `reset_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `production`
@@ -1911,7 +1987,7 @@ ALTER TABLE `returns`
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=90;
+  MODIFY `sale_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT for table `stock_adjustments`
@@ -1923,7 +1999,7 @@ ALTER TABLE `stock_adjustments`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables
