@@ -3,18 +3,25 @@ session_start();
 // 1. Load all necessary files
 require_once 'fpdf.php';
 require_once '../src/DashboardManager.php';
-require_once '../src/InventoryManager.php'; // Keep this for recall data
+require_once '../src/InventoryManager.php'; 
+require_once '../config.php';
+require_once '../phpmailer/vendor/autoload.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 // 2. Security Check
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'manager') {
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
     die('Access denied.');
 }
 
-// 3. Get dates from the form submission
+// 3. Get dates and action from the form
 $date_start = $_POST['date_start'] ?? date('Y-m-d');
 $date_end = $_POST['date_end'] ?? date('Y-m-d');
+$action_type = $_POST['report_action'] ?? 'download'; 
+$recipient_email = $_POST['recipient_email'] ?? ''; 
 
-// --- Create friendly date range text ---
+// Friendly date range text
 $date_range_text = date('M d, Y', strtotime($date_start));
 if ($date_start != $date_end) {
     $date_range_text .= ' to ' . date('M d, Y', strtotime($date_end));
@@ -27,29 +34,23 @@ if (empty($_POST['date_start']) && empty($_POST['date_end'])) {
 if ($date_start == date('Y-m-d') && $date_end == date('Y-m-d')) {
     $date_range_text = 'Today';
 }
-// ---
 
 // 4. Fetch the data
 $dashboardManager = new DashboardManager();
 $inventoryManager = new InventoryManager();
 
-// --- ::: NEW: Fetch summary data like the dashboard ::: ---
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
 $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
 $totalReturns = $dateRangeSummary['totalReturns'] ?? 0.00;
 $netRevenue = $grossRevenue - $totalReturns;
 $recalledStockValue = $dashboardManager->getRecalledStockValue($date_start, $date_end);
-// --- ::: END NEW ::: ---
-
-// --- Fetch detailed data for tables ---
-$salesData = $dashboardManager->getSalesSummaryByDate($date_start, $date_end); //
-$recallData = $inventoryManager->getRecallHistoryByDate($date_start, $date_end); //
+$salesData = $dashboardManager->getSalesSummaryByDate($date_start, $date_end); 
+$recallData = $inventoryManager->getRecallHistoryByDate($date_start, $date_end); 
 
 
-// 5. Create a new PDF class
+// 5. PDF Class Definition
 class PDF extends FPDF
 {
-    // --- Define some colors ---
     private $colorHeaderBg;
     private $colorHeaderText;
     private $colorRowEven;
@@ -58,42 +59,36 @@ class PDF extends FPDF
 
     function __construct($orientation='P', $unit='mm', $size='A4') {
         parent::__construct($orientation, $unit, $size);
-        // --- Set our color palette ---
-        $this->colorHeaderBg = [230, 230, 230]; // Light Gray
-        $this->colorHeaderText = [106, 56, 31]; // Dark Brown
-        $this->colorRowEven = [245, 245, 245]; // Off-white
-        $this->colorRowOdd = [255, 255, 255]; // White
-        $this->colorBorder = [200, 200, 200]; // Gray border
+        $this->colorHeaderBg = [230, 230, 230]; 
+        $this->colorHeaderText = [106, 56, 31]; 
+        $this->colorRowEven = [245, 245, 245]; 
+        $this->colorRowOdd = [255, 255, 255]; 
+        $this->colorBorder = [200, 200, 200]; 
     }
 
-    // --- ::: NEW HEADER ::: ---
     function Header()
     {
         global $date_range_text;
-        // Add Logo
-        // (Assuming kzklogo.png is in the ../images/ folder relative to this script)
         $this->Image('../images/kzklogo.png', 10, 8, 25);
         
         $this->SetFont('Arial', 'B', 20);
-        $this->Cell(25); // Move right, past the logo
+        $this->Cell(25); 
         $this->SetTextColor($this->colorHeaderText[0], $this->colorHeaderText[1], $this->colorHeaderText[2]);
         $this->Cell(0, 10, 'BREADLY', 0, 1, 'L');
         
         $this->SetFont('Arial', '', 12);
-        $this->Cell(25); // Move right, past the logo
+        $this->Cell(25); 
         $this->SetTextColor(50, 50, 50);
         $this->Cell(0, 8, 'Sales & Recall Report', 0, 1, 'L');
         
         $this->SetFont('Arial', 'I', 10);
-        $this->Cell(25); // Move right, past the logo
+        $this->Cell(25); 
         $this->SetTextColor(100, 100, 100);
         $this->Cell(0, 6, 'Period: ' . $date_range_text, 0, 1, 'L');
         
         $this->Ln(10);
     }
-    // --- ::: END NEW HEADER ::: ---
 
-    // Page footer
     function Footer()
     {
         $this->SetY(-15);
@@ -102,7 +97,6 @@ class PDF extends FPDF
         $this->Cell(0, 10, 'Page ' . $this->PageNo() . '/{nb}', 0, 0, 'C');
     }
 
-    // Section title
     function SectionTitle($label)
     {
         $this->SetFont('Arial', 'B', 14);
@@ -112,22 +106,18 @@ class PDF extends FPDF
         $this->Ln(4);
     }
     
-    // --- ::: NEW: Summary Box Function ::: ---
     function SummaryBox($title, $value, $color = [0, 0, 0])
     {
         $this->SetFont('Arial', '', 10);
         $this->SetTextColor(50, 50, 50);
         $this->Cell(47, 8, $title, 0, 0, 'L');
-        
         $this->SetFont('Arial', 'B', 12);
         $this->SetTextColor($color[0], $color[1], $color[2]);
         $this->Cell(47, 8, $value, 0, 1, 'R');
     }
     
-    // --- ::: NEW: Fancy Table Function ::: ---
     function FancyTable($header, $data, $columnWidths, $aligns)
     {
-        // --- Table Header ---
         $this->SetFont('Arial', 'B', 10);
         $this->SetFillColor($this->colorHeaderBg[0], $this->colorHeaderBg[1], $this->colorHeaderBg[2]);
         $this->SetTextColor($this->colorHeaderText[0], $this->colorHeaderText[1], $this->colorHeaderText[2]);
@@ -139,7 +129,6 @@ class PDF extends FPDF
         }
         $this->Ln();
 
-        // --- Table Body ---
         $this->SetFont('Arial', '', 9);
         $this->SetTextColor(0);
         $fill = false;
@@ -151,7 +140,6 @@ class PDF extends FPDF
         }
 
         foreach ($data as $row) {
-            // Set row color
             $fillColor = $fill ? $this->colorRowEven : $this->colorRowOdd;
             $this->SetFillColor($fillColor[0], $fillColor[1], $fillColor[2]);
             
@@ -163,12 +151,9 @@ class PDF extends FPDF
             $this->Ln();
             $fill = !$fill;
         }
-        
-        // Closing line
         $this->Cell(array_sum($columnWidths), 0, '', 'T');
     }
 
-    // --- ::: NEW: Function for Table Totals Row ::: ---
     function TableTotals($cells, $columnWidths, $aligns)
     {
         $this->SetFont('Arial', 'B', 10);
@@ -183,7 +168,6 @@ class PDF extends FPDF
         $this->Ln();
     }
 }
-// --- ::: END OF NEW PDF CLASS ::: ---
 
 
 // 6. Generate the PDF
@@ -191,46 +175,38 @@ $pdf = new PDF();
 $pdf->AliasNbPages();
 $pdf->AddPage();
 
-// --- ::: NEW: SUMMARY SECTION ::: ---
+// --- Executive Summary ---
 $pdf->SectionTitle('Executive Summary');
-
 $pdf->SetFont('Arial', '', 10);
 $pdf->SetFillColor(250, 250, 250);
 
-// --- ::: FIX: Get Y before drawing boxes ::: ---
 $startY = $pdf->GetY();
-$boxHeight = 36; // Define the height of the summary boxes
+$boxHeight = 36; 
 
 $pdf->Rect(10, $startY, 95, $boxHeight, 'F');
 $pdf->Rect(105, $startY, 95, $boxHeight, 'F');
 
 // Column 1: Sales
-$pdf->SetY($startY + 2); // Set Y relative to the start
+$pdf->SetY($startY + 2); 
 $pdf->SetX(12);
 $pdf->SummaryBox('Gross Revenue:', 'P ' . number_format($grossRevenue, 2), [60, 118, 61]);
 $pdf->SetX(12);
 $pdf->SummaryBox('Less Returns:', '(P ' . number_format($totalReturns, 2) . ')', [20, 138, 209]);
 $pdf->SetX(12);
-$pdf->Cell(91, 0, '', 'T'); // Divider
+$pdf->Cell(91, 0, '', 'T'); 
 $pdf->Ln(1);
 $pdf->SetX(12);
 $pdf->SummaryBox('Net Revenue:', 'P ' . number_format($netRevenue, 2), [60, 118, 61]);
 
 // Column 2: Recalls
-$pdf->SetY($startY + 2); // Reset Y to top of boxes
+$pdf->SetY($startY + 2); 
 $pdf->SetX(107);
 $pdf->SummaryBox('Total Recalled Value:', '(P ' . number_format($recalledStockValue, 2) . ')', [217, 83, 79]);
-
-// --- ::: FIX: Set Y based on box height, replacing Ln(15) ::: ---
-$pdf->SetY($startY + $boxHeight + 6); // Set Y below the boxes + 6 margin
-
-// --- ::: END SUMMARY SECTION ::: ---
+$pdf->SetY($startY + $boxHeight + 6); 
 
 
 // --- Sales Section ---
 $pdf->SectionTitle('Detailed Sales Report');
-
-// Prepare data for sales table
 $salesHeader = ['Product', 'Qty Sold', 'Total Revenue'];
 $salesColumnWidths = [100, 40, 50];
 $salesAligns = ['L', 'C', 'R'];
@@ -248,25 +224,15 @@ foreach ($salesData as $row) {
     $total_revenue += $row['total_revenue'];
 }
 
-// Draw the sales table
 $pdf->FancyTable($salesHeader, $salesTableData, $salesColumnWidths, $salesAligns);
 
-// --- Use the new TableTotals function ---
-$totalsCells = [
-    'Overall Total',
-    $total_qty,
-    'P ' . number_format($total_revenue, 2)
-];
+$totalsCells = ['Overall Total', $total_qty, 'P ' . number_format($total_revenue, 2)];
 $totalsAligns = ['R', 'C', 'R'];
 $pdf->TableTotals($totalsCells, $salesColumnWidths, $totalsAligns);
-
-
 $pdf->Ln(10);
 
 // --- Recall Section ---
 $pdf->SectionTitle('Detailed Recall Log');
-
-// Prepare data for recall table
 $recallHeader = ['Timestamp', 'Product', 'Qty', 'Cashier', 'Reason'];
 $recallColumnWidths = [40, 50, 15, 30, 55];
 $recallAligns = ['L', 'L', 'C', 'L', 'L'];
@@ -281,12 +247,77 @@ foreach ($recallData as $row) {
         $row['reason']
     ];
 }
-
-// Draw the recall table
 $pdf->FancyTable($recallHeader, $recallTableData, $recallColumnWidths, $recallAligns);
 
 
-// 7. Output the PDF
-$pdf->Output('D', 'Breadly_Report_' . $date_start . '_to_' . $date_end . '.pdf');
+// 7. Output based on Action
+$filename = 'Breadly_Report_' . $date_start . '_to_' . $date_end . '.pdf';
+
+if ($action_type === 'email' && !empty($recipient_email)) {
+    // --- EMAIL LOGIC ---
+    $pdfString = $pdf->Output('S');
+    
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isSMTP();
+        $mail->Host       = SMTP_HOST;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = SMTP_USER;
+        $mail->Password   = SMTP_PASS;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = SMTP_PORT;
+
+        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
+        $mail->addAddress($recipient_email);
+
+        $mail->addStringAttachment($pdfString, $filename);
+
+        $mail->isHTML(true);
+        $mail->Subject = 'Breadly Report: ' . $date_range_text;
+        $mail->Body    = "<h3>Sales & Recall Report</h3><p>Please find attached the report for the period: <strong>$date_range_text</strong>.</p>";
+
+        $mail->send();
+        
+        // --- MODIFIED: SweetAlert Success Response ---
+        echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Email Sent</title>';
+        echo '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>';
+        echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">'; // Optional: for standard font
+        echo '</head><body style="font-family: sans-serif; background-color: #f8f9fa;">';
+        echo "<script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    title: 'Email Sent!',
+                    text: 'The report has been successfully sent to $recipient_email',
+                    icon: 'success',
+                    confirmButtonColor: '#d97706', // Breadly orange/brownish
+                    confirmButtonText: 'Back to Dashboard'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.history.back();
+                    }
+                });
+            });
+        </script>";
+        echo '</body></html>';
+        // ---------------------------------------------
+
+    } catch (Exception $e) {
+        // SweetAlert Error Response
+        echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Error</title><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script></head><body>';
+        echo "<script>
+            Swal.fire({
+                title: 'Email Failed',
+                text: 'Message could not be sent. Mailer Error: " . addslashes($mail->ErrorInfo) . "',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            }).then(() => { window.history.back(); });
+        </script>";
+        echo '</body></html>';
+    }
+
+} else {
+    // --- DOWNLOAD LOGIC ---
+    $pdf->Output('D', $filename);
+}
 exit;
 ?>

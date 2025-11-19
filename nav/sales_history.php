@@ -10,7 +10,7 @@ if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit();
 }
-if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "cashier") {
+if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "assistant_manager" && $_SESSION["role"] !== "cashier") {
     header("Location: index.php"); // Not authorized
     exit();
 }

@@ -1,0 +1,77 @@
+/* Account Management Specific Styles */
+
+body { 
+    background-color: var(--bg-light-cream); 
+    color: var(--text-dark);
+}
+
+/* Navbar styling to match dashboard sidebar */
+.navbar {
+    background-color: var(--sidebar-bg) !important; 
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.navbar-text {
+    color: var(--text-dark) !important;
+}
+
+/* Card Styling */
+.card {
+    border: none;
+    border-radius: 12px; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+    background-color: #ffffff;
+}
+
+.card-header {
+    background-color: #fff; 
+    border-bottom: 2px solid var(--bg-light-cream);
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.card-header h5 {
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+/* Role Badges */
+.badge-manager { 
+    background-color: #198754; 
+}
+
+.badge-assistant_manager { 
+    background-color: #fd7e14; 
+}
+
+.badge-cashier { 
+    background-color: #0d6efd; 
+}
+
+/* Buttons - Using Breadly Theme Colors */
+.btn-primary {
+    background-color: var(--color-login-btn);
+    border-color: var(--color-login-btn);
+}
+
+.btn-primary:hover {
+    background-color: #8e4d1a; 
+    border-color: #8e4d1a;
+}
+
+.btn-warning {
+    color: #fff; 
+}
+
+/* Table Styles */
+.table-hover tbody tr:hover {
+    background-color: var(--bg-light-cream);
+}
+
+.table thead th {
+    border-bottom: 2px solid #f0f0f0;
+    color: var(--text-secondary);
+    font-weight: 600;
+}

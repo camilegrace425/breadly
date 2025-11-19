@@ -2,28 +2,29 @@
 session_start();
 require_once '../src/DashboardManager.php';
 require_once '../src/UserManager.php'; 
-require_once '../src/InventoryManager.php'; // <-- ADDED THIS
+require_once '../src/InventoryManager.php'; 
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
 }
-if ($_SESSION['role'] !== 'manager') {
+if (!in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
     header('Location: index.php');
     exit();
 }
 
 $dashboardManager = new DashboardManager();
 $userManager = new UserManager(); 
-$inventoryManager = new InventoryManager(); // <-- ADDED THIS
+$inventoryManager = new InventoryManager(); 
 $current_user_id = $_SESSION['user_id'];
 
 // --- Handle POST requests (unchanged) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_summary_report') {
-    // ... (code for sending report)
+    // This handles the SMS report logic which is separate from the PDF email logic
+    // ... (existing SMS logic would be here)
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_settings') {
-    // ... (code for updating settings)
+    // ... (existing settings logic)
 }
 
 // --- Read flash message (unchanged) ---
@@ -36,9 +37,8 @@ unset($_SESSION['flash_type']);
 $date_start = $_GET['date_start'] ?? date('Y-m-d');
 $date_end = $_GET['date_end'] ?? date('Y-m-d');
 
-// --- ::: NEW: Get active tab from URL ---
+// --- Get active tab from URL ---
 $active_tab = $_GET['active_tab'] ?? 'sales';
-// ---
 
 // --- Fetch data based on date range ---
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
@@ -55,11 +55,9 @@ $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
 $lowStockCount = $dashboardManager->getLowStockAlertsCount();
 
-// --- ::: NEW: Call the new function ::: ---
 $recalledStockCountToday = $dashboardManager->getRecallCountForToday();
-// --- ::: END NEW ::: ---
 
-// --- === NEW DATA FOR "IN STOCK" CARD === ---
+// --- DATA FOR "IN STOCK" CARD ---
 $allProducts = $inventoryManager->getProductsInventory();
 $productsWithStock = [];
 foreach ($allProducts as $product) {
@@ -68,10 +66,9 @@ foreach ($allProducts as $product) {
     }
 }
 $productsWithStockCount = count($productsWithStock);
-// --- === END NEW DATA === ---
 
 
-// --- ::: MODIFIED: Cleaned up friendly date range text logic ::: ---
+// --- Cleaned up friendly date range text logic ---
 if ($date_start == $date_end) {
     // Check if it's the default "Today"
     if (empty($_GET['date_start']) && empty($_GET['date_end'])) {
@@ -84,7 +81,6 @@ if ($date_start == $date_end) {
     // It's a range
     $date_range_text = date('M d, Y', strtotime($date_start)) . ' to ' . date('M d, Y', strtotime($date_end));
 }
-// --- ::: END MODIFICATION ::: ---
 
 $lowStockIngredient = 'N/A';
 $lowStockDetails = 'All items are well-stocked.';
@@ -115,7 +111,6 @@ $active_nav_link = 'dashboard';
     <link rel="stylesheet" href="../styles/global.css"> 
     <link rel="stylesheet" href="../styles/dashboard.css"> 
     <link rel="stylesheet" href="../styles/responsive.css"> 
-</head>
 </head>
 <body class="dashboard">
 <div class="container-fluid">
@@ -463,7 +458,7 @@ $active_nav_link = 'dashboard';
                 <h5 class="modal-title" id="generatePdfModalLabel">Generate PDF Report</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="../lib/generate_pdf_report.php" method="POST" target="_blank">
+            <form action="../lib/generate_pdf_report.php" method="POST" target="_blank" id="pdfReportForm">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="date_start_pdf" class="form-label">Start Date</label>
@@ -475,11 +470,29 @@ $active_nav_link = 'dashboard';
                         <input type="date" class="form-control" name="date_end" id="date_end_pdf" value="<?php echo htmlspecialchars($date_end); ?>" required>
                     </div>
                     
-                    <p class="text-muted small">This will generate a downloadable PDF containing a detailed summary of sales and recalls for the selected date range.</p>
+                    <div class="mb-3 p-2 border rounded bg-light">
+                        <label class="form-label fw-bold small">Action:</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="report_action" id="actionDownload" value="download" checked onclick="toggleEmailField(false)">
+                                <label class="form-check-label" for="actionDownload">Download PDF</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="report_action" id="actionEmail" value="email" onclick="toggleEmailField(true)">
+                                <label class="form-check-label" for="actionEmail">Email PDF</label>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2" id="emailContainer" style="display:none;">
+                            <input type="email" name="recipient_email" class="form-control form-control-sm" placeholder="Enter recipient email address">
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted small">This will generate a detailed summary of sales and recalls for the selected date range.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Download PDF</button>
+                    <button type="submit" class="btn btn-primary">Generate Report</button>
                 </div>
             </form>
         </div>
@@ -553,6 +566,25 @@ $active_nav_link = 'dashboard';
     $js_version = filemtime('../js/script_dashboard.js'); 
 ?>
 <script src="../js/script_dashboard.js?v=<?php echo $js_version; ?>"></script>
+
+<script>
+// --- Toggle Email Input in PDF Modal ---
+function toggleEmailField(show) {
+    const container = document.getElementById('emailContainer');
+    const emailInput = container.querySelector('input');
+    const form = document.getElementById('pdfReportForm');
+    
+    if (show) {
+        container.style.display = 'block';
+        emailInput.required = true;
+        form.removeAttribute('target'); // Open in same window to show success alert
+    } else {
+        container.style.display = 'none';
+        emailInput.required = false;
+        form.setAttribute('target', '_blank'); // Open download in new tab
+    }
+}
+</script>
 
 </body>
 </html>
