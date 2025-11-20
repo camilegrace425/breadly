@@ -263,6 +263,7 @@ $active_nav_link = 'account_management';
                                                     <a href="account_management.php?action=edit&id=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil-square"></i></a>
                                                     <a href="account_management.php?action=delete&id=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?');"><i class="bi bi-trash"></i></a>
                                                 <?php else: ?>
+                                                    <a href="account_management.php?action=edit&id=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil-square"></i></a>
                                                     <button class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-trash"></i></button>
                                                 <?php endif; ?>
                                             </td>
@@ -292,10 +293,12 @@ $active_nav_link = 'account_management';
                                 
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted">Role</label>
-                                    <select class="form-select" name="role" required>
-                                        <option value="cashier" <?php if($is_edit && $edit_data['role'] == 'cashier') echo 'selected'; ?>>Cashier</option>
-                                        <option value="assistant_manager" <?php if($is_edit && $edit_data['role'] == 'assistant_manager') echo 'selected'; ?>>Assistant Manager</option>
+                                        <select class="form-select" name="role" required>
+
                                         <option value="manager" <?php if($is_edit && $edit_data['role'] == 'manager') echo 'selected'; ?>>Manager</option>
+                                        <option value="assistant_manager" <?php if($is_edit && $edit_data['role'] == 'assistant_manager') echo 'selected'; ?>>Assistant Manager</option>
+                                        <option value="cashier" <?php if($is_edit && $edit_data['role'] == 'cashier') echo 'selected'; ?>>Cashier</option>
+
                                     </select>
                                 </div>
 

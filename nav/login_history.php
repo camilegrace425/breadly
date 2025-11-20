@@ -159,7 +159,7 @@ $active_nav_link = 'login_history';
                                             <?php elseif ($log["role"] == 'cashier'): ?>
                                                 <span class="badge bg-success">Cashier</span>
                                             <?php else: ?>
-                                                <span class="badge bg-secondary">N/A</span>
+                                                <span class="badge bg-warning text-dark">Assistant Manager</span>  
                                             <?php endif; ?>
                                         </td>
                                         <td data-label="Device">
