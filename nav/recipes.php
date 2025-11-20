@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
 }
-if ($_SESSION['role'] !== 'manager') {
+if ($_SESSION['role'] !== 'manager' && $_SESSION['role'] !== 'assistant_manager') {
     header('Location: index.php');
     exit();
 }

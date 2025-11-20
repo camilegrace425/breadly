@@ -190,7 +190,7 @@ class UserManager {
                 <p>You requested a password reset for your Breadly account.</p>
                 <p>Your Verification Code is:</p>
                 <h1 style='font-size: 32px; letter-spacing: 5px; color: #333;'>$otp</h1>
-                <p>This code expires in 15 minutes.</p>
+                <p>This code expires in 5 minutes.</p>
             </div>
         ";
         $mail->AltBody = "Your Password Reset Code is: $otp";

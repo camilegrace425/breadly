@@ -185,7 +185,7 @@ $active_nav_link = 'sales';
 <body class="dashboard">
 <div class="container-fluid">
     <div class="row">
-        <?php if ($current_role === 'manager'): ?>
+        <?php if ($current_role === 'manager' || $current_role === 'assistant_manager'): ?>
         <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
             
             <div class="offcanvas-header d-lg-none">
@@ -242,7 +242,7 @@ $active_nav_link = 'sales';
         </aside>
         <?php endif; ?>
 
-        <main class="<?php echo ($current_role === 'manager') ? 'col-lg-10 col-md-9' : 'col-12'; ?> main-content">
+        <main class="<?php echo ($current_role === 'manager' || $current_role === 'assistant_manager') ? 'col-lg-10 col-md-9' : 'col-12'; ?> main-content">
             <div class="header d-flex justify-content-between align-items-center">
                 <button class="btn btn-outline-secondary d-lg-none sidebar-toggle-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
                     <i class="bi bi-list"></i>

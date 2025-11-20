@@ -1,9 +1,10 @@
 <?php
 session_start();
 // 1. Load all necessary files
-require_once 'fpdf.php';
+require_once '../lib/fpdf.php';
 require_once '../src/DashboardManager.php';
 require_once '../src/InventoryManager.php'; 
+require_once '../src/SalesManager.php'; // Added SalesManager
 require_once '../config.php';
 require_once '../phpmailer/vendor/autoload.php';
 
@@ -38,14 +39,33 @@ if ($date_start == date('Y-m-d') && $date_end == date('Y-m-d')) {
 // 4. Fetch the data
 $dashboardManager = new DashboardManager();
 $inventoryManager = new InventoryManager();
+$salesManager = new SalesManager(); // Instantiate SalesManager
 
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
 $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
-$totalReturns = $dateRangeSummary['totalReturns'] ?? 0.00;
+// FIX: Use correct key 'totalReturnsValue' from DashboardManager
+$totalReturns = $dateRangeSummary['totalReturnsValue'] ?? 0.00; 
 $netRevenue = $grossRevenue - $totalReturns;
+
 $recalledStockValue = $dashboardManager->getRecalledStockValue($date_start, $date_end);
 $salesData = $dashboardManager->getSalesSummaryByDate($date_start, $date_end); 
-$recallData = $inventoryManager->getRecallHistoryByDate($date_start, $date_end); 
+$recallData = $inventoryManager->getRecallHistoryByDate($date_start, $date_end);
+
+// --- Fetch and Filter Returns Data ---
+$allReturns = $salesManager->getReturnHistory();
+$returnsData = [];
+$startDateObj = new DateTime($date_start . ' 00:00:00');
+$endDateObj = new DateTime($date_end . ' 23:59:59');
+
+foreach ($allReturns as $ret) {
+    // Ensure timestamp exists and is valid
+    if (!empty($ret['timestamp'])) {
+        $retDate = new DateTime($ret['timestamp']);
+        if ($retDate >= $startDateObj && $retDate <= $endDateObj) {
+            $returnsData[] = $ret;
+        }
+    }
+}
 
 
 // 5. PDF Class Definition
@@ -79,7 +99,7 @@ class PDF extends FPDF
         $this->SetFont('Arial', '', 12);
         $this->Cell(25); 
         $this->SetTextColor(50, 50, 50);
-        $this->Cell(0, 8, 'Sales & Recall Report', 0, 1, 'L');
+        $this->Cell(0, 8, 'Sales, Returns & Recall Report', 0, 1, 'L'); // Updated Title
         
         $this->SetFont('Arial', 'I', 10);
         $this->Cell(25); 
@@ -145,6 +165,7 @@ class PDF extends FPDF
             
             $i = 0;
             foreach ($row as $col) {
+                // Ensure text fits or is truncated if absolutely necessary, but Cell handles basic overflow by hiding
                 $this->Cell($columnWidths[$i], 7, $col, 'LR', 0, $aligns[$i], true);
                 $i++;
             }
@@ -191,17 +212,20 @@ $pdf->SetY($startY + 2);
 $pdf->SetX(12);
 $pdf->SummaryBox('Gross Revenue:', 'P ' . number_format($grossRevenue, 2), [60, 118, 61]);
 $pdf->SetX(12);
-$pdf->SummaryBox('Less Returns:', '(P ' . number_format($totalReturns, 2) . ')', [20, 138, 209]);
+$pdf->SummaryBox('Less Returns:', '(P ' . number_format($totalReturns, 2) . ')', [217, 83, 79]); // Red for deductions
 $pdf->SetX(12);
 $pdf->Cell(91, 0, '', 'T'); 
 $pdf->Ln(1);
 $pdf->SetX(12);
 $pdf->SummaryBox('Net Revenue:', 'P ' . number_format($netRevenue, 2), [60, 118, 61]);
 
-// Column 2: Recalls
+// Column 2: Recalls & Returns Info
 $pdf->SetY($startY + 2); 
 $pdf->SetX(107);
 $pdf->SummaryBox('Total Recalled Value:', '(P ' . number_format($recalledStockValue, 2) . ')', [217, 83, 79]);
+$pdf->SetX(107);
+$pdf->SummaryBox('Return Transactions:', count($returnsData), [50, 50, 50]);
+
 $pdf->SetY($startY + $boxHeight + 6); 
 
 
@@ -229,6 +253,35 @@ $pdf->FancyTable($salesHeader, $salesTableData, $salesColumnWidths, $salesAligns
 $totalsCells = ['Overall Total', $total_qty, 'P ' . number_format($total_revenue, 2)];
 $totalsAligns = ['R', 'C', 'R'];
 $pdf->TableTotals($totalsCells, $salesColumnWidths, $totalsAligns);
+$pdf->Ln(10);
+
+// --- Returns Section (NEW) ---
+$pdf->SectionTitle('Detailed Returns Report');
+$returnsHeader = ['Date', 'Product', 'Qty', 'Value', 'Reason', 'Cashier'];
+$returnsColumnWidths = [35, 50, 15, 25, 40, 25];
+$returnsAligns = ['L', 'L', 'C', 'R', 'L', 'L'];
+$returnsTableData = [];
+$total_returned_val = 0;
+
+foreach ($returnsData as $row) {
+    $returnsTableData[] = [
+        date('M d H:i', strtotime($row['timestamp'])),
+        $row['product_name'],
+        $row['qty_returned'],
+        'P ' . number_format($row['return_value'], 2),
+        $row['reason'],
+        $row['username'] ?? 'N/A'
+    ];
+    $total_returned_val += $row['return_value'];
+}
+
+$pdf->FancyTable($returnsHeader, $returnsTableData, $returnsColumnWidths, $returnsAligns);
+// Optional Total Row for Returns
+if (!empty($returnsData)) {
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->Cell(100, 8, 'Total Returns Value', 1, 0, 'R', true);
+    $pdf->Cell(90, 8, 'P ' . number_format($total_returned_val, 2), 1, 1, 'R', true);
+}
 $pdf->Ln(10);
 
 // --- Recall Section ---
@@ -278,10 +331,10 @@ if ($action_type === 'email' && !empty($recipient_email)) {
 
         $mail->send();
         
-        // --- MODIFIED: SweetAlert Success Response ---
+        // --- SweetAlert Success Response ---
         echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Email Sent</title>';
         echo '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>';
-        echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">'; // Optional: for standard font
+        echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">'; 
         echo '</head><body style="font-family: sans-serif; background-color: #f8f9fa;">';
         echo "<script>
             document.addEventListener('DOMContentLoaded', function() {
@@ -289,7 +342,7 @@ if ($action_type === 'email' && !empty($recipient_email)) {
                     title: 'Email Sent!',
                     text: 'The report has been successfully sent to $recipient_email',
                     icon: 'success',
-                    confirmButtonColor: '#d97706', // Breadly orange/brownish
+                    confirmButtonColor: '#d97706', 
                     confirmButtonText: 'Back to Dashboard'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -299,7 +352,6 @@ if ($action_type === 'email' && !empty($recipient_email)) {
             });
         </script>";
         echo '</body></html>';
-        // ---------------------------------------------
 
     } catch (Exception $e) {
         // SweetAlert Error Response

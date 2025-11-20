@@ -20,14 +20,13 @@ $current_user_id = $_SESSION['user_id'];
 
 // --- Handle POST requests (unchanged) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_summary_report') {
-    // This handles the SMS report logic which is separate from the PDF email logic
-    // ... (existing SMS logic would be here)
+    // ...
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_settings') {
-    // ... (existing settings logic)
+    // ...
 }
 
-// --- Read flash message (unchanged) ---
+// --- Read flash message ---
 $flash_message = $_SESSION['flash_message'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? 'info';
 unset($_SESSION['flash_message']);
@@ -36,11 +35,9 @@ unset($_SESSION['flash_type']);
 // --- Get main page date range ---
 $date_start = $_GET['date_start'] ?? date('Y-m-d');
 $date_end = $_GET['date_end'] ?? date('Y-m-d');
-
-// --- Get active tab from URL ---
 $active_tab = $_GET['active_tab'] ?? 'sales';
 
-// --- Fetch data based on date range ---
+// --- Fetch data ---
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
 
 $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
@@ -54,7 +51,6 @@ $priorityAlert = $dashboardManager->getActiveLowStockAlerts(1);
 $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
 $lowStockCount = $dashboardManager->getLowStockAlertsCount();
-
 $recalledStockCountToday = $dashboardManager->getRecallCountForToday();
 
 // --- DATA FOR "IN STOCK" CARD ---
@@ -67,18 +63,14 @@ foreach ($allProducts as $product) {
 }
 $productsWithStockCount = count($productsWithStock);
 
-
-// --- Cleaned up friendly date range text logic ---
+// --- Friendly date range text ---
 if ($date_start == $date_end) {
-    // Check if it's the default "Today"
     if (empty($_GET['date_start']) && empty($_GET['date_end'])) {
         $date_range_text = 'Today';
     } else {
-        // It's a single day, but not the default
         $date_range_text = date('M d, Y', strtotime($date_start));
     }
 } else {
-    // It's a range
     $date_range_text = date('M d, Y', strtotime($date_start)) . ' to ' . date('M d, Y', strtotime($date_end));
 }
 
@@ -95,7 +87,6 @@ if (!empty($priorityAlert)) {
     $lowStockDetails = "Only <strong>" . ($alert['current_stock'] ?? '0') . " {$lowStockUnit}</strong> left.";
 }
 
-// --- Active Nav Link for Sidebar ---
 $active_nav_link = 'dashboard'; 
 ?>
 
@@ -116,12 +107,10 @@ $active_nav_link = 'dashboard';
 <div class="container-fluid">
     <div class="row">
         <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
-            
             <div class="offcanvas-header d-lg-none">
                 <h5 class="offcanvas-title" id="sidebarMenuLabel">BREADLY</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
             </div>
-
             <div class="offcanvas-body d-flex flex-column p-0"> 
                 <div class="sidebar-brand">
                     <img src="../images/kzklogo.png" alt="BREADLY Logo">
@@ -185,6 +174,9 @@ $active_nav_link = 'dashboard';
                     <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sendReportModal">
                         <i class="bi bi-send me-1"></i> Send SMS Report
                     </button>
+                    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#exportCsvModal">
+                        <i class="bi bi-filetype-csv me-1"></i> Export CSV
+                    </button>
                     <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#generatePdfModal">
                         <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
                     </button>
@@ -212,14 +204,11 @@ $active_nav_link = 'dashboard';
             </ul>
 
             <div class="tab-content" id="dashboardTabContent">
-
                 <div class="tab-pane fade <?php echo ($active_tab == 'sales') ? 'show active' : ''; ?>" id="sales-pane" role="tabpanel">
-                    
                     <div class="card shadow-sm mt-3">
                         <div class="card-header">
                             <form method="GET" action="dashboard_panel.php" class="row g-3 align-items-end" id="date-filter-form">
                                 <input type="hidden" name="active_tab" id="active_tab_input" value="<?php echo htmlspecialchars($active_tab); ?>">
-                                
                                 <div class="col-md-4">
                                     <label for="date_start" class="form-label">Start Date</label>
                                     <input type="date" class="form-control" name="date_start" id="date_start" value="<?php echo htmlspecialchars($date_start); ?>">
@@ -264,32 +253,16 @@ $active_nav_link = 'dashboard';
                                 </div>
                                 <div class="col-xl-3 col-md-6">
                                     <div class="stat-card" style="background-color: var(--card-bg-4);">
-                                        <?php
-                                        if ($totalReturnsCount == 0) {
-                                            echo '<h1 style="color: green">0</h1>';
-                                        } else {
-                                            echo '<h1 style="color: red;">' . $totalReturnsCount . '</h1>';
-                                        }
-                                        ?>
+                                        <?php if ($totalReturnsCount == 0) echo '<h1 style="color: green">0</h1>'; else echo '<h1 style="color: red;">' . $totalReturnsCount . '</h1>'; ?>
                                         <p>Total Returns</p>
-                                        <span class="percent-change text-muted">
-                                            <?php echo $date_range_text; ?>
-                                        </span>
+                                        <span class="percent-change text-muted"><?php echo $date_range_text; ?></span>
                                     </div>
                                 </div>
                                 <div class="col-xl-3 col-md-6">
                                     <div class="stat-card" style="background-color: var(--card-bg-2);">
-                                        <?php
-                                        if ($totalReturnsValue == 0) {
-                                            echo '<h1 style="color: green">₱0.00</h1>';
-                                        } else {
-                                            echo '<h1 style="color: red">₱' . number_format($totalReturnsValue, 2) . '</h1>';
-                                        }
-                                        ?>
+                                        <?php if ($totalReturnsValue == 0) echo '<h1 style="color: green">₱0.00</h1>'; else echo '<h1 style="color: red">₱' . number_format($totalReturnsValue, 2) . '</h1>'; ?>
                                         <p>Return Amount</p>
-                                        <span class="percent-change text-muted">
-                                            <?php echo $date_range_text; ?>
-                                        </span>
+                                        <span class="percent-change text-muted"><?php echo $date_range_text; ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -297,17 +270,15 @@ $active_nav_link = 'dashboard';
                                 <div class="col-lg-12">
                                     <div class="chart-container">
                                         <h3 class="chart-title">Top Selling Products (<?php echo $date_range_text; ?>)</h3>
-                                        <canvas id="topProductsChart" 
-                                                data-products="<?php echo htmlspecialchars(json_encode($topProducts)); ?>"
-                                                data-date-range="<?php echo htmlspecialchars($date_range_text); ?>">
-                                        </canvas>
+                                        <canvas id="topProductsChart" data-products="<?php echo htmlspecialchars(json_encode($topProducts)); ?>" data-date-range="<?php echo htmlspecialchars($date_range_text); ?>"></canvas>
                                     </div>
                                 </div>
                             </div>
-                        </div> </div> </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="tab-pane fade <?php echo ($active_tab == 'inventory') ? 'show active' : ''; ?>" id="inventory-pane" role="tabpanel">
-                    
                     <div class="card shadow-sm mt-3">
                         <div class="card-header">
                             <span class="fs-5">Inventory Tracking</span>
@@ -321,11 +292,7 @@ $active_nav_link = 'dashboard';
                                                 <?php echo $productsWithStockCount; ?>
                                             </h1>
                                             <p>Products in Stock</p>
-                                            <span class="percent-change text-muted">
-                                                Current stock count
-                                                <br>
-                                                Click to view list <i class="bi bi-arrow-right-short"></i>
-                                            </span>
+                                            <span class="percent-change text-muted">Current stock count<br>Click to view list <i class="bi bi-arrow-right-short"></i></span>
                                         </div>
                                     </a>
                                 </div>
@@ -349,21 +316,91 @@ $active_nav_link = 'dashboard';
                                         <div class="stat-card h-100" style="background-color: var(--card-bg-4);">
                                             <h1 style="color: red;"><?php echo $recalledStockCountToday; ?></h1>
                                             <p>Total Recalled Products</p>
-                                            <span class="percent-change text-muted">
-                                                Today
-                                                <br>
-                                                <small>Click to view recall log</small>
-                                            </span>
+                                            <span class="percent-change text-muted">Today<br><small>Click to view recall log</small></span>
                                         </div>
                                     </a>
                                 </div>
                             </div>
-                        </div> </div> </div>
-
-            </div> </main>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+        </main>
     </div>
 </div>
 
+<div class="modal fade" id="exportCsvModal" tabindex="-1" aria-labelledby="exportCsvModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportCsvModalLabel">Export CSV Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="generate_csv_report.php" method="POST" target="_blank" id="csvReportForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Reports to Export:</label>
+                        <div class="list-group">
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="checkbox" name="report_types[]" value="sales" checked>
+                                Sales Transactions
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="checkbox" name="report_types[]" value="product_inventory">
+                                Product Inventory
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="checkbox" name="report_types[]" value="ingredient_inventory">
+                                Ingredient Inventory & Par Levels
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="checkbox" name="report_types[]" value="returns">
+                                Returns & Recalls History
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label for="date_start_csv" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" name="date_start" id="date_start_csv" value="<?php echo htmlspecialchars($date_start); ?>" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="date_end_csv" class="form-label">End Date</label>
+                            <input type="date" class="form-control" name="date_end" id="date_end_csv" value="<?php echo htmlspecialchars($date_end); ?>" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 p-2 border rounded bg-light">
+                        <label class="form-label fw-bold small">Action:</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="csv_action" id="csvActionDownload" value="download" checked onclick="toggleEmailField(false, 'csv')">
+                                <label class="form-check-label" for="csvActionDownload">Download</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="csv_action" id="csvActionEmail" value="email" onclick="toggleEmailField(true, 'csv')">
+                                <label class="form-check-label" for="csvActionEmail">Email</label>
+                            </div>
+                        </div>
+                        <div class="mt-2" id="csvEmailContainer" style="display:none;">
+                            <input type="email" name="recipient_email" class="form-control form-control-sm" placeholder="Enter recipient email address">
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        <i class="bi bi-info-circle"></i> If multiple reports are selected, they will be downloaded as a ZIP file.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success">Export Selected</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<?php /* Re-include other modals to ensure file completeness if copy-pasting */ ?>
 <div class="modal fade" id="sendReportModal" tabindex="-1" aria-labelledby="sendReportModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -384,9 +421,6 @@ $active_nav_link = 'dashboard';
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <?php if (empty($manager_list)): ?>
-                            <div class="form-text text-danger">No managers with phone numbers found.</div>
-                        <?php endif; ?>
                     </div>
                     <div class="mb-3">
                         <label for="date_start" class="form-label">Start Date</label>
@@ -396,7 +430,6 @@ $active_nav_link = 'dashboard';
                         <label for="date_end" class="form-label">End Date</label>
                         <input type="date" class="form-control" name="date_end" id="date_end_sms" value="<?php echo htmlspecialchars($date_end); ?>" required>
                     </div>
-                    <p class="text-muted small">This will send an SMS summary of sales and recalls for the selected date range.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -414,16 +447,14 @@ $active_nav_link = 'dashboard';
                 <h5 class="modal-title" id="settingsModalLabel">My Settings</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="settings-form" action="dashboard_panel.php?date_start=<?php echo htmlspecialchars($date_start); ?>&date_end=<?php echo htmlspecialchars($date_end); ?>&active_tab=<?php echo htmlspecialchars($active_tab); ?>" method="POST">
+            <form id="settings-form" action="dashboard_panel.php" method="POST">
                 <div class="modal-body">
                     <input type="hidden" name="action" value="update_settings">
                     <div class="mb-3">
                         <label for="my_phone_number" class="form-label">My Phone Number</label>
                         <input type="text" class="form-control" name="my_phone_number" id="my_phone_number" 
                                value="<?php echo htmlspecialchars($userSettings['phone_number'] ?? ''); ?>" 
-                               placeholder="e.g., 09171234567"
-                               maxlength="12">
-                        <div class="form-text">Your number for receiving all notifications, including password resets and daily reports.</div>
+                               placeholder="e.g., 09171234567" maxlength="12">
                     </div>
                     <hr>
                     <div class="form-check form-switch">
@@ -432,10 +463,6 @@ $active_nav_link = 'dashboard';
                                <?php if (!empty($userSettings['enable_daily_report'])) echo 'checked'; ?>>
                         <label class="form-check-label" for="enable_daily_report">Receive Automatic Daily Reports</label>
                     </div>
-                    <p class="text-muted small">
-                        If checked, you will automatically receive the "Sales & Recall Report" via SMS at the end of each day. 
-                        (Note: This requires a server Cron Job to be set up by the administrator).
-                    </p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -453,37 +480,32 @@ $active_nav_link = 'dashboard';
                 <h5 class="modal-title" id="generatePdfModalLabel">Generate PDF Report</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="../lib/generate_pdf_report.php" method="POST" target="_blank" id="pdfReportForm">
+            <form action="generate_pdf_report.php" method="POST" target="_blank" id="pdfReportForm">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="date_start_pdf" class="form-label">Start Date</label>
                         <input type="date" class="form-control" name="date_start" id="date_start_pdf" value="<?php echo htmlspecialchars($date_start); ?>" required>
                     </div>
-                    
                     <div class="mb-3">
                         <label for="date_end_pdf" class="form-label">End Date</label>
                         <input type="date" class="form-control" name="date_end" id="date_end_pdf" value="<?php echo htmlspecialchars($date_end); ?>" required>
                     </div>
-                    
                     <div class="mb-3 p-2 border rounded bg-light">
                         <label class="form-label fw-bold small">Action:</label>
                         <div class="d-flex gap-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="report_action" id="actionDownload" value="download" checked onclick="toggleEmailField(false)">
+                                <input class="form-check-input" type="radio" name="report_action" id="actionDownload" value="download" checked onclick="toggleEmailField(false, 'pdf')">
                                 <label class="form-check-label" for="actionDownload">Download PDF</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="report_action" id="actionEmail" value="email" onclick="toggleEmailField(true)">
+                                <input class="form-check-input" type="radio" name="report_action" id="actionEmail" value="email" onclick="toggleEmailField(true, 'pdf')">
                                 <label class="form-check-label" for="actionEmail">Email PDF</label>
                             </div>
                         </div>
-                        
-                        <div class="mt-2" id="emailContainer" style="display:none;">
+                        <div class="mt-2" id="pdfEmailContainer" style="display:none;">
                             <input type="email" name="recipient_email" class="form-control form-control-sm" placeholder="Enter recipient email address">
                         </div>
                     </div>
-                    
-                    <p class="text-muted small">This will generate a detailed summary of sales and recalls for the selected date range.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -494,7 +516,6 @@ $active_nav_link = 'dashboard';
     </div>
 </div>
 
-
 <div class="modal fade" id="stockListModal" tabindex="-1" aria-labelledby="stockListModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -503,7 +524,6 @@ $active_nav_link = 'dashboard';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                
                 <div class="d-flex justify-content-end mb-3">
                      <div class="dropdown">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -517,7 +537,6 @@ $active_nav_link = 'dashboard';
                         </ul>
                     </div>
                 </div>
-
                 <div class="table-responsive stock-list-container">
                     <table class="table table-striped table-hover align-middle">
                         <thead>
@@ -544,7 +563,6 @@ $active_nav_link = 'dashboard';
                         </tbody>
                     </table>
                 </div>
-
             </div>
             <div class="modal-footer">
                 <a href="inventory_management.php?active_tab=products" class="btn btn-primary">
@@ -555,31 +573,35 @@ $active_nav_link = 'dashboard';
         </div>
     </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<?php 
-    $js_version = filemtime('../js/script_dashboard.js'); 
-?>
+<?php $js_version = filemtime('../js/script_dashboard.js'); ?>
 <script src="../js/script_dashboard.js?v=<?php echo $js_version; ?>"></script>
 
 <script>
-// --- Toggle Email Input in PDF Modal ---
-function toggleEmailField(show) {
-    const container = document.getElementById('emailContainer');
+function toggleEmailField(show, type) {
+    let containerId, formId;
+    if (type === 'pdf') {
+        containerId = 'pdfEmailContainer';
+        formId = 'pdfReportForm';
+    } else {
+        containerId = 'csvEmailContainer';
+        formId = 'csvReportForm';
+    }
+    const container = document.getElementById(containerId);
     const emailInput = container.querySelector('input');
-    const form = document.getElementById('pdfReportForm');
-    
+    const form = document.getElementById(formId);
     if (show) {
         container.style.display = 'block';
         emailInput.required = true;
-        form.removeAttribute('target'); // Open in same window to show success alert
+        form.removeAttribute('target');
     } else {
         container.style.display = 'none';
         emailInput.required = false;
-        form.setAttribute('target', '_blank'); // Open download in new tab
+        form.setAttribute('target', '_blank');
     }
 }
 </script>
-
 </body>
 </html>

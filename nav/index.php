@@ -1,8 +1,12 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+if (!isset($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit();
+}
+if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "assistant_manager" && $_SESSION["role"] !== "cashier") {
+    header("Location: index.php"); // Not authorized
     exit();
 }
 
@@ -41,9 +45,11 @@ $role = $_SESSION['role'];
                         You are logged in as: <strong><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $role))); ?></strong>
                     </p>
 
+                    <?php if ($role == 'cashier' || $role == 'manager' || $role == 'assistant_manager'): ?>
                     <form action="pos.php" method="get" class="mb-2">
                         <button type="submit" class="btn btn-pos fw-bold w-100">Go to Point of Sale (POS)</button>
                     </form>
+                    <?php endif; ?>
                     
                     <?php if ($role == 'cashier'): ?>
                         <form action="sales_history.php" method="get" class="mb-2">

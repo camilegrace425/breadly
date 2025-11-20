@@ -2,15 +2,32 @@
 session_start();
 require_once '../src/UserManager.php';
 
+// Check authentication
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'manager') {
     header('Location: index.php');
     exit();
 }
 
 $userManager = new UserManager();
+$current_user_id = $_SESSION['user_id'];
+
+// --- Flash Message Logic (From Structure) ---
+$flash_message = $_SESSION['flash_message'] ?? '';
+$flash_type = $_SESSION['flash_type'] ?? 'info';
+unset($_SESSION['flash_message']);
+unset($_SESSION['flash_type']);
+
+// --- Local Alert Logic (From Features) ---
 $alert_message = '';
 $alert_type = ''; 
 
+// If we have a flash message, map it to the local alert variables if they are empty
+if ($flash_message && empty($alert_message)) {
+    $alert_message = $flash_message;
+    $alert_type = $flash_type;
+}
+
+// --- User Management Logic (Retained) ---
 $is_edit = false;
 $edit_user_id = 0;
 $edit_data = [];
@@ -27,11 +44,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-    $role = $_POST['role'];
-    $email = trim($_POST['email']); 
-    $phone = trim($_POST['phone']); 
+    // Handle Settings Update (From Structure)
+    if (isset($_POST['action']) && $_POST['action'] === 'update_settings') {
+        $phone = $_POST['my_phone_number'] ?? '';
+        $daily = isset($_POST['enable_daily_report']) ? 1 : 0;
+        
+        if ($userManager->updateMySettings($current_user_id, $phone, $daily)) {
+            $_SESSION['flash_message'] = 'Settings updated successfully.';
+            $_SESSION['flash_type'] = 'success';
+        } else {
+            $_SESSION['flash_message'] = 'Failed to update settings.';
+            $_SESSION['flash_type'] = 'danger';
+        }
+        header("Location: account_management.php");
+        exit();
+    }
+
+    // Handle User Management Actions
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? '';
+    $email = trim($_POST['email'] ?? ''); 
+    $phone = trim($_POST['phone'] ?? ''); 
     
     if ($email === '') $email = null;
 
@@ -57,7 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $result = $userManager->updateUser($id_to_update, $username, $password, $role, $email, $phone);
             if ($result === true) {
-                header('Location: account_management.php?msg=updated');
+                $_SESSION['flash_message'] = "User account updated successfully!";
+                $_SESSION['flash_type'] = "success";
+                header('Location: account_management.php');
                 exit();
             } else {
                 $alert_message = $result;
@@ -76,8 +112,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
         $alert_type = 'danger';
     } else {
         if ($userManager->deleteUser($delete_id)) {
-            $alert_message = "User deleted successfully.";
-            $alert_type = 'success';
+            $_SESSION['flash_message'] = "User deleted successfully.";
+            $_SESSION['flash_type'] = "success";
+            header('Location: account_management.php');
+            exit();
         } else {
             $alert_message = "Failed to delete user.";
             $alert_type = 'danger';
@@ -85,12 +123,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
     }
 }
 
-if (isset($_GET['msg']) && $_GET['msg'] === 'updated') {
+if (isset($_GET['msg']) && $_GET['msg'] === 'updated' && empty($alert_message)) {
     $alert_message = "User account updated successfully!";
     $alert_type = 'success';
 }
 
+// Fetch Data
 $users = $userManager->getAllUsers();
+$userSettings = $userManager->getUserSettings($current_user_id);
+
+// Set Active Nav Link
+$active_nav_link = 'account_management';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -123,7 +166,7 @@ $users = $userManager->getAllUsers();
                 </div>
                 <ul class="nav flex-column sidebar-nav">
                     <li class="nav-item">
-                        <a class="nav-link active" href="account_management.php">
+                        <a class="nav-link <?php echo ($active_nav_link == 'account_management') ? 'active' : ''; ?>" href="account_management.php">
                             <i class="bi bi-people me-2"></i> User Management
                         </a>
                     </li>
@@ -146,6 +189,10 @@ $users = $userManager->getAllUsers();
                             <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                                <i class="bi bi-gear me-2"></i>My Settings
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
                         </ul>
                     </div>
@@ -216,6 +263,7 @@ $users = $userManager->getAllUsers();
                                                     <a href="account_management.php?action=edit&id=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil-square"></i></a>
                                                     <a href="account_management.php?action=delete&id=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?');"><i class="bi bi-trash"></i></a>
                                                 <?php else: ?>
+                                                    <a href="account_management.php?action=edit&id=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil-square"></i></a>
                                                     <button class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-trash"></i></button>
                                                 <?php endif; ?>
                                             </td>
@@ -245,10 +293,12 @@ $users = $userManager->getAllUsers();
                                 
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted">Role</label>
-                                    <select class="form-select" name="role" required>
-                                        <option value="cashier" <?php if($is_edit && $edit_data['role'] == 'cashier') echo 'selected'; ?>>Cashier</option>
-                                        <option value="assistant_manager" <?php if($is_edit && $edit_data['role'] == 'assistant_manager') echo 'selected'; ?>>Assistant Manager</option>
+                                        <select class="form-select" name="role" required>
+
                                         <option value="manager" <?php if($is_edit && $edit_data['role'] == 'manager') echo 'selected'; ?>>Manager</option>
+                                        <option value="assistant_manager" <?php if($is_edit && $edit_data['role'] == 'assistant_manager') echo 'selected'; ?>>Assistant Manager</option>
+                                        <option value="cashier" <?php if($is_edit && $edit_data['role'] == 'cashier') echo 'selected'; ?>>Cashier</option>
+
                                     </select>
                                 </div>
 
@@ -298,6 +348,46 @@ $users = $userManager->getAllUsers();
         </main>
     </div>
 </div>
+
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="settingsModalLabel">My Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="settings-form" action="account_management.php" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="update_settings">
+                    <div class="mb-3">
+                        <label for="my_phone_number" class="form-label">My Phone Number</label>
+                        <input type="text" class="form-control" name="my_phone_number" id="my_phone_number" 
+                               value="<?php echo htmlspecialchars($userSettings['phone_number'] ?? ''); ?>" 
+                               placeholder="e.g., 09171234567"
+                               maxlength="12">
+                        <div class="form-text">Your number for receiving all notifications, including password resets and daily reports.</div>
+                    </div>
+                    <hr>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="enable_daily_report" 
+                               name="enable_daily_report" value="1" 
+                               <?php if (!empty($userSettings['enable_daily_report'])) echo 'checked'; ?>>
+                        <label class="form-check-label" for="enable_daily_report">Receive Automatic Daily Reports</label>
+                    </div>
+                    <p class="text-muted small">
+                        If checked, you will automatically receive the "Sales & Recall Report" via SMS at the end of each day. 
+                        (Note: This requires a server Cron Job to be set up by the administrator).
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
