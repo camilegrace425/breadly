@@ -18,12 +18,33 @@ $userManager = new UserManager();
 $inventoryManager = new InventoryManager(); 
 $current_user_id = $_SESSION['user_id'];
 
-// --- Handle POST requests (unchanged) ---
+// --- Handle POST requests ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_summary_report') {
-    // ...
+    $phone_number = $_POST['phone_number'] ?? '';
+    $p_start = $_POST['date_start'];
+    $p_end = $_POST['date_end'];
+    
+    $success = $dashboardManager->sendDailySummaryReport($phone_number, $p_start, $p_end);
+    
+    if ($success) {
+        $_SESSION['flash_message'] = "SMS Report sent successfully.";
+        $_SESSION['flash_type'] = "success";
+    } else {
+        $_SESSION['flash_message'] = "Failed to send SMS Report.";
+        $_SESSION['flash_type'] = "danger";
+    }
+    header("Location: dashboard_panel.php?date_start=$p_start&date_end=$p_end");
+    exit();
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_settings') {
-    // ...
+    $phone = $_POST['my_phone_number'] ?? '';
+    $daily = isset($_POST['enable_daily_report']) ? 1 : 0;
+    
+    $userManager->updateMySettings($current_user_id, $phone, $daily);
+    $_SESSION['flash_message'] = "Settings updated.";
+    $_SESSION['flash_type'] = "success";
+    header("Location: dashboard_panel.php");
+    exit();
 }
 
 // --- Read flash message ---
@@ -46,12 +67,54 @@ $totalReturnsCount = $dateRangeSummary['totalReturnsCount'] ?? 0;
 $netRevenue = $grossRevenue - $totalReturnsValue;
 
 $topProducts = $dashboardManager->getTopSellingProducts($date_start, $date_end, 5);
+
+// --- NEW: Fetch Daily Trend Data (Sales & Returns) ---
+$dailySalesRaw = $dashboardManager->getDailySalesTrend($date_start, $date_end);
+$dailyReturnsRaw = $dashboardManager->getDailyReturnsTrend($date_start, $date_end);
+
+// Align data by date
+$trendData = [];
+$period = new DatePeriod(
+     new DateTime($date_start),
+     new DateInterval('P1D'),
+     (new DateTime($date_end))->modify('+1 day')
+);
+
+foreach ($period as $date) {
+    $d = $date->format('Y-m-d');
+    $trendData[$d] = [
+        'date' => $d,
+        'sales' => 0.00,
+        'returns' => 0.00
+    ];
+}
+
+// Map Sales
+foreach ($dailySalesRaw as $s) {
+    if (isset($trendData[$s['sale_date']])) {
+        $trendData[$s['sale_date']]['sales'] = (float)$s['daily_revenue'];
+    }
+}
+
+// Map Returns
+foreach ($dailyReturnsRaw as $r) {
+    if (isset($trendData[$r['return_date']])) {
+        $trendData[$r['return_date']]['returns'] = (float)$r['daily_return_value'];
+    }
+}
+
+$dailyTrendData = array_values($trendData);
+// --- END NEW ---
+
 $recalledStockValue = $dashboardManager->getRecalledStockValue($date_start, $date_end);
-$priorityAlert = $dashboardManager->getActiveLowStockAlerts(1);
+$priorityAlert = $dashboardManager->getActiveLowStockAlerts(1); 
 $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
-$lowStockCount = $dashboardManager->getLowStockAlertsCount();
 $recalledStockCountToday = $dashboardManager->getRecallCountForToday();
+
+// --- Fetch Expiration Data ---
+$expiringBatches = $dashboardManager->getExpiringBatches(7); 
+$expiringCount = count($expiringBatches);
 
 // --- DATA FOR "IN STOCK" CARD ---
 $allProducts = $inventoryManager->getProductsInventory();
@@ -63,6 +126,15 @@ foreach ($allProducts as $product) {
 }
 $productsWithStockCount = count($productsWithStock);
 
+// --- Calculate Low Stock Based on Reorder Level ---
+$allIngredients = $inventoryManager->getIngredientsInventory();
+$lowStockCount = 0;
+foreach ($allIngredients as $ing) {
+    if ($ing['stock_qty'] <= $ing['reorder_level']) {
+        $lowStockCount++;
+    }
+}
+
 // --- Friendly date range text ---
 if ($date_start == $date_end) {
     if (empty($_GET['date_start']) && empty($_GET['date_end'])) {
@@ -72,19 +144,6 @@ if ($date_start == $date_end) {
     }
 } else {
     $date_range_text = date('M d, Y', strtotime($date_start)) . ' to ' . date('M d, Y', strtotime($date_end));
-}
-
-$lowStockIngredient = 'N/A';
-$lowStockDetails = 'All items are well-stocked.';
-$lowStockUnit = '';
-$lowStockReorder = '';
-
-if (!empty($priorityAlert)) {
-    $alert = $priorityAlert[0];
-    $lowStockIngredient = htmlspecialchars($alert['ingredient_name']);
-    $lowStockUnit = htmlspecialchars($alert['unit'] ?? '');
-    $lowStockReorder = htmlspecialchars($alert['reorder_level'] ?? '');
-    $lowStockDetails = "Only <strong>" . ($alert['current_stock'] ?? '0') . " {$lowStockUnit}</strong> left.";
 }
 
 $active_nav_link = 'dashboard'; 
@@ -266,14 +325,28 @@ $active_nav_link = 'dashboard';
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-lg-12">
+
+                            <div class="row mt-3">
+                                <div class="col-lg-6 mb-3">
                                     <div class="chart-container">
-                                        <h3 class="chart-title">Top Selling Products (<?php echo $date_range_text; ?>)</h3>
-                                        <canvas id="topProductsChart" data-products="<?php echo htmlspecialchars(json_encode($topProducts)); ?>" data-date-range="<?php echo htmlspecialchars($date_range_text); ?>"></canvas>
+                                        <h3 class="chart-title">Top Selling Products</h3>
+                                        <canvas id="topProductsChart" 
+                                                data-products="<?php echo htmlspecialchars(json_encode($topProducts)); ?>" 
+                                                data-date-range="<?php echo htmlspecialchars($date_range_text); ?>">
+                                        </canvas>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-6 mb-3">
+                                    <div class="chart-container">
+                                        <h3 class="chart-title">Revenue vs Returns Trend</h3>
+                                        <canvas id="dailyTrendChart" 
+                                                data-trend="<?php echo htmlspecialchars(json_encode($dailyTrendData)); ?>">
+                                        </canvas>
                                     </div>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </div>
@@ -281,11 +354,11 @@ $active_nav_link = 'dashboard';
                 <div class="tab-pane fade <?php echo ($active_tab == 'inventory') ? 'show active' : ''; ?>" id="inventory-pane" role="tabpanel">
                     <div class="card shadow-sm mt-3">
                         <div class="card-header">
-                            <span class="fs-5">Inventory Tracking</span>
+                            <span class="fs-5">Inventory Tracking (Daily)</span>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-lg-4 col-md-6">
+                            <div class="row g-3">
+                                <div class="col-xl-3 col-md-6">
                                     <a href="#" class="stat-card-link" data-bs-toggle="modal" data-bs-target="#stockListModal">
                                         <div class="stat-card h-100" style="background-color: var(--card-bg-3);">
                                             <h1 style="color: <?php echo ($productsWithStockCount > 0) ? '#0a58ca' : '#198754'; ?>;">
@@ -296,27 +369,54 @@ $active_nav_link = 'dashboard';
                                         </div>
                                     </a>
                                 </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <a href="inventory_management.php#ingredients-pane" class="low-stock-card h-100 d-block">
-                                        <h3>Priority Low Stock</h3>
-                                        <p class="best-seller-name mb-2"><?php echo $lowStockIngredient; ?></p>
-                                        <?php if (!empty($priorityAlert)): ?>
-                                            <div class="low-stock-warning mb-1"><i class="bi bi-exclamation-triangle-fill"></i> Urgent!</div>
-                                            <p class="low-stock-details mb-2"><?php echo $lowStockDetails; ?></p>
-                                            <p class="text-muted small">Reorder Level: <?php echo $lowStockReorder; ?> <?php echo $lowStockUnit; ?></p>
-                                        <?php else: ?>
-                                            <div class="low-stock-warning text-success mb-1"><i class="bi bi-check-circle-fill"></i> Fully Stocked</div>
-                                            <p class="low-stock-details mb-2"><?php echo $lowStockDetails; ?></p>
-                                        <?php endif; ?>
-                                        <span class="mt-auto">View all ingredients <i class="bi bi-arrow-right-short"></i></span>
+                                
+                                <div class="col-xl-3 col-md-6">
+                                    <a href="#" class="stat-card-link" data-bs-toggle="modal" data-bs-target="#ingredientStockModal">
+                                        <div class="stat-card h-100" style="background-color: <?php echo ($lowStockCount > 0) ? '#f8d7da' : '#d1e7dd'; ?>;">
+                                            <h1 style="color: <?php echo ($lowStockCount > 0) ? '#dc3545' : '#198754'; ?>;">
+                                                <?php echo $lowStockCount; ?>
+                                            </h1>
+                                            <p>Low Stock Ingredients</p>
+                                            <span class="percent-change text-muted">
+                                                <?php if ($lowStockCount > 0): ?>
+                                                    <span class="text-danger">Action Required</span>
+                                                <?php else: ?>
+                                                    <span class="text-success">Fully Stocked</span>
+                                                <?php endif; ?>
+                                                <br>
+                                                <small>Click to view list</small>
+                                            </span>
+                                        </div>
                                     </a>
                                 </div>
-                                <div class="col-lg-4 col-md-6">
+                                <div class="col-xl-3 col-md-6">
                                     <a href="inventory_management.php?active_tab=recall" class="stat-card-link">
                                         <div class="stat-card h-100" style="background-color: var(--card-bg-4);">
-                                            <h1 style="color: red;"><?php echo $recalledStockCountToday; ?></h1>
+                                            <?php if ($recalledStockCountToday == 0) echo '<h1 style="color: green;">0</h1>'; else echo 
+                                                '<h1 style="color: red;">' . $recalledStockCountToday . '</h1>'; ?>
                                             <p>Total Recalled Products</p>
                                             <span class="percent-change text-muted">Today<br><small>Click to view recall log</small></span>
+                                        </div>
+                                    </a>
+                                </div>
+                                
+                                <div class="col-xl-3 col-md-6">
+                                    <a href="#" class="stat-card-link" data-bs-toggle="modal" data-bs-target="#expirationModal">
+                                        <div class="stat-card h-100" style="background-color: #fff3cd;">
+                                            <h1 style="color: <?php echo ($expiringCount > 0) ? '#d9534f' : '#198754'; ?>;">
+                                                <?php echo $expiringCount; ?>
+                                            </h1>
+                                            <p>Expiring Batches</p>
+                                            <span class="percent-change text-muted">
+                                                Next 7 Days<br>
+                                                <small>
+                                                <?php if($expiringCount > 0): ?>
+                                                    <span class="text-danger">Action Required</span>
+                                                <?php else: ?>
+                                                    <span class="text-success">No upcoming expirations</span>
+                                                <?php endif; ?>
+                                                </small>
+                                            </span>
                                         </div>
                                     </a>
                                 </div>
@@ -400,7 +500,6 @@ $active_nav_link = 'dashboard';
     </div>
 </div>
 
-<?php /* Re-include other modals to ensure file completeness if copy-pasting */ ?>
 <div class="modal fade" id="sendReportModal" tabindex="-1" aria-labelledby="sendReportModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -545,7 +644,7 @@ $active_nav_link = 'dashboard';
                                 <th data-sort-by="stock">Current Stock</th>
                             </tr>
                         </thead>
-                        <tbody id="stock-list-tbody">
+                        <tbody class="sortable-tbody">
                             <?php if ($productsWithStockCount == 0): ?>
                                 <tr>
                                     <td colspan="2" class="text-center text-muted">
@@ -567,6 +666,144 @@ $active_nav_link = 'dashboard';
             <div class="modal-footer">
                 <a href="inventory_management.php?active_tab=products" class="btn btn-primary">
                     <i class="bi bi-box me-1"></i> Go to Inventory
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="ingredientStockModal" tabindex="-1" aria-labelledby="ingredientStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ingredientStockModalLabel">Ingredient Stock Levels</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="filterLowStock">
+                        <label class="form-check-label" for="filterLowStock">Show Low Stock Only</label>
+                    </div>
+                     <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Sort By: <span class="current-sort-text">Name (A-Z)</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
+                            <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
+                            <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Stock (High-Low)</a></li>
+                            <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Stock (Low-High)</a></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="table-responsive stock-list-container">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th data-sort-by="name">Ingredient</th>
+                                <th data-sort-by="stock">Current Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody class="sortable-tbody">
+                            <?php if (empty($allIngredients)): ?>
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted">
+                                        <i class="bi bi-box-fill"></i> No ingredients found.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($allIngredients as $ing): 
+                                    // Check stock level
+                                    $is_low = ($ing['stock_qty'] <= $ing['reorder_level']);
+                                ?>
+                                    <tr data-name="<?php echo htmlspecialchars(strtolower($ing['name'])); ?>" 
+                                        data-stock="<?php echo $ing['stock_qty']; ?>"
+                                        data-is-low="<?php echo $is_low ? '1' : '0'; ?>">
+                                        
+                                        <td data-label="Ingredient"><?php echo htmlspecialchars($ing['name']); ?></td>
+                                        <?php if ($is_low): ?>
+                                            <td data-label="Stock"><strong class="text-danger"><?php echo number_format($ing['stock_qty'], decimals: 2) . ' ' . htmlspecialchars($ing['unit']); ?></strong></td>
+                                        <?php else: ?>
+                                            <td data-label="Stock"><strong><?php echo number_format($ing['stock_qty'], decimals: 2) . ' ' . htmlspecialchars($ing['unit']); ?></strong></td>
+                                        <?php endif; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="inventory_management.php?active_tab=ingredients" class="btn btn-primary">
+                    <i class="bi bi-box me-1"></i> Go to Inventory
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="expirationModal" tabindex="-1" aria-labelledby="expirationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning-subtle">
+                <h5 class="modal-title" id="expirationModalLabel"><i class="bi bi-hourglass-split me-2"></i>Expiring Batches (Next 7 Days)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ingredient</th>
+                                <th>Batch Expiry</th>
+                                <th>Status</th>
+                                <th>Remaining Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($expiringBatches)): ?>
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="bi bi-check-circle-fill text-success fs-4 d-block mb-2"></i>
+                                        No batches are expiring soon.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($expiringBatches as $batch): 
+                                    $days = $batch['days_remaining'];
+                                    $rowClass = '';
+                                    $badgeClass = 'bg-warning text-dark';
+                                    $statusText = "Expires in $days days";
+
+                                    if ($days < 0) {
+                                        $rowClass = 'table-danger';
+                                        $badgeClass = 'bg-danger';
+                                        $statusText = "Expired " . abs($days) . " days ago";
+                                    } elseif ($days == 0) {
+                                        $rowClass = 'table-danger';
+                                        $badgeClass = 'bg-danger';
+                                        $statusText = "Expires Today!";
+                                    }
+                                ?>
+                                    <tr class="<?php echo $rowClass; ?>">
+                                        <td class="fw-bold"><?php echo htmlspecialchars($batch['ingredient_name']); ?></td>
+                                        <td><?php echo date('M d, Y', strtotime($batch['expiration_date'])); ?></td>
+                                        <td><span class="badge <?php echo $badgeClass; ?>"><?php echo $statusText; ?></span></td>
+                                        <td><?php echo $batch['quantity'] . ' ' . $batch['unit']; ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="inventory_management.php?active_tab=ingredients" class="btn btn-primary">
+                    <i class="bi bi-arrow-right-circle me-1"></i> Manage Ingredients
                 </a>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
@@ -602,6 +839,30 @@ function toggleEmailField(show, type) {
         form.setAttribute('target', '_blank');
     }
 }
+
+// New script to handle Low Stock filtering
+document.addEventListener('DOMContentLoaded', function() {
+    const filterCheckbox = document.getElementById('filterLowStock');
+    if (filterCheckbox) {
+        filterCheckbox.addEventListener('change', function() {
+            const showLowOnly = this.checked;
+            const rows = document.querySelectorAll('#ingredientStockModal tbody tr');
+            
+            rows.forEach(row => {
+                if (showLowOnly) {
+                    const isLow = row.getAttribute('data-is-low') === '1';
+                    if (!isLow) {
+                        row.classList.add('d-none');
+                    } else {
+                        row.classList.remove('d-none');
+                    }
+                } else {
+                     row.classList.remove('d-none');
+                }
+            });
+        });
+    }
+});
 </script>
 </body>
 </html>

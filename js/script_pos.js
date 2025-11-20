@@ -27,11 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const subtotalPriceEl = document.getElementById('subtotal-price');
     const discountAmountEl = document.getElementById('discount-amount');
     const discountLineText = document.querySelector('#discount-line .text-discount');
-    // ------------------------------------
 
-    /**
-     * Called when a product card is clicked.
-     */
+     // Called when a product card is clicked.
     window.addToCart = function(cardElement) {
         const productId = parseInt(cardElement.dataset.id);
         const name = cardElement.dataset.name;
@@ -56,9 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Sets an item's quantity to a specific value.
-     */
+    
+    //Sets an item's quantity to a specific value.
     function setQuantity(productId, newQuantity) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
@@ -79,9 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
     }
 
-    /**
-     * Updates an item's quantity (from + / - buttons).
-     */
+    // Updates an item's quantity (from + / - buttons).
     window.updateQuantity = function(productId, change) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
@@ -93,11 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if(clearButton) {
         clearButton.addEventListener('click', () => {
             cart = [];
-            
-            // --- FIX: EXPLICITLY RESET DISCOUNT ---
             discountPercent = 0; // Set the variable to 0
             if (discountInput) discountInput.value = ''; // Clear the modal input
-            
             renderCart(); // This will now call renderCart to show the P0.00 state
         });
     }
@@ -190,9 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalPriceEl.textContent = `P${finalTotal.toFixed(2)}`;
     }
 
-    /**
-     * Handles the 'Complete Sale' button click.
-     */
+    // Handles the 'Complete Sale' button click.
     if(payButton) {
         payButton.addEventListener('click', () => {
             if (cart.length === 0) return;
@@ -212,9 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /**
-     * Sends the cart data to the server (pos.php) to be processed.
-     */
+    // Sends the cart data to the server (pos.php) to be processed.
     function processSale() {
         Swal.fire({
             title: 'Processing Sale...',
@@ -258,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
         card.addEventListener('click', () => addToCart(card));
     });
 
-    // --- MODIFIED: Search Filter Logic ---
     const searchHandler = () => { // Create a reusable handler
         const searchTerm = searchInput.value.toLowerCase();
         const searchType = searchTypeSelect.value; // Get selected search type: 'name' or 'code'
@@ -275,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 dataToSearch = col.dataset.productCode || '';
             }
 
-            // --- THIS IS THE MODIFIED LINE ---
             // Use .includes() for a "contains" search
             if (dataToSearch.includes(searchTerm)) {
                 col.style.display = '';
@@ -295,16 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('keyup', searchHandler);
         searchTypeSelect.addEventListener('change', searchHandler); // Re-filter when dropdown changes
     }
-    // --- END MODIFIED: Search Filter Logic ---
 
-
-    // --- ::: NEW SORTING LOGIC ::: ---
-    
-    /**
-     * Gets a comparable value from a product card's data attribute.
-     * @param {HTMLElement} col - The .col element
-     * @param {string} sortBy - The data attribute key (e.g., 'productPrice')
-     */
     function getSortableValue(col, sortBy) {
         let value = col.dataset[sortBy]; // e.g., col.dataset['productPrice']
         
@@ -321,9 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Sorts the product cards in the grid based on the sort dropdown.
-     */
+    // Sorts the product cards in the grid based on the sort dropdown.
     function sortProducts() {
         if (!sortTypeSelect || !productListContainer) return;
 
@@ -370,16 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sortTypeSelect.addEventListener('change', sortProducts);
     }
 
-    // Apply initial default sort on page load
+    // Initial sort on page load
     sortProducts();
-    
-    // --- ::: END NEW SORTING LOGIC ::: ---
 
-
-    // --- New Discount Modal Event Listeners ---
-    
-    // --- MODIFIED: Use global modal instance ---
-    // Listener for the "Apply" button INSIDE the modal
     if (applyDiscountBtn && window.bootstrapDiscountModal) {
         applyDiscountBtn.addEventListener('click', () => {
             let percent = parseFloat(discountInput.value);
@@ -397,7 +364,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // --- MODIFIED: Use global modal instance ---
     // Listener for the "No Discount" button INSIDE the modal
     if (removeDiscountBtn && window.bootstrapDiscountModal) {
         removeDiscountBtn.addEventListener('click', () => {
