@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Re-attach event listeners for mobile cart ---
-        // (This is crucial because we copied innerHTML)
         if (mobileCart) {
             mobileCart.querySelectorAll('.btn-dec').forEach(btn => {
                 btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), -1));
@@ -100,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- ::: THIS IS THE FIX FOR THE MOBILE DISCOUNT BUTTON ::: ---
     const mobileDiscountBtn = document.getElementById('mobile-discount-btn');
     if (mobileDiscountBtn) {
         mobileDiscountBtn.addEventListener('click', () => {
@@ -110,5 +108,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // --- ::: END FIX ::: ---
 });
