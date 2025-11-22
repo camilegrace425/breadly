@@ -939,7 +939,7 @@ CREATE TABLE `alerts` (
   `message` text NOT NULL,
   `status` enum('unread','resolved') NOT NULL DEFAULT 'unread',
   `date_triggered` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `alerts`
@@ -960,7 +960,7 @@ CREATE TABLE `ingredients` (
   `unit` varchar(50) DEFAULT NULL,
   `stock_qty` float DEFAULT 0,
   `reorder_level` float DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `ingredients`
@@ -1012,7 +1012,7 @@ CREATE TABLE `ingredient_batches` (
   `quantity` float NOT NULL DEFAULT 0,
   `expiration_date` date DEFAULT NULL,
   `date_received` date NOT NULL DEFAULT curdate()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `ingredient_batches`
@@ -1067,7 +1067,7 @@ CREATE TABLE `login_history` (
   `status` enum('success','failure') NOT NULL,
   `device_type` varchar(50) DEFAULT 'Unknown',
   `timestamp` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `login_history`
@@ -1137,7 +1137,7 @@ CREATE TABLE `password_resets` (
   `otp_code` varchar(10) DEFAULT NULL,
   `expiration` datetime DEFAULT NULL,
   `used` tinyint(1) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `password_resets`
@@ -1178,7 +1178,7 @@ CREATE TABLE `production` (
   `product_id` int(11) NOT NULL,
   `qty_baked` int(11) NOT NULL,
   `date` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `production`
@@ -1214,7 +1214,7 @@ CREATE TABLE `products` (
   `stock_unit` varchar(20) NOT NULL DEFAULT 'pcs',
   `is_sellable` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1 = Appears on POS, 0 = Intermediate product',
   `batch_size` int(11) NOT NULL DEFAULT 1 COMMENT 'Number of units produced per recipe'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `products`
@@ -1266,7 +1266,7 @@ CREATE TABLE `product_recalls` (
   `status` enum('active','completed') NOT NULL DEFAULT 'active',
   `affected_batch_date_start` date DEFAULT NULL,
   `affected_batch_date_end` date DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1281,7 +1281,7 @@ CREATE TABLE `recalled_stock_log` (
   `qty_removed` int(11) NOT NULL,
   `date_removed` datetime NOT NULL,
   `notes` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1295,7 +1295,7 @@ CREATE TABLE `recipes` (
   `ingredient_id` int(11) NOT NULL,
   `qty_needed` float NOT NULL,
   `unit` varchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `recipes`
@@ -1505,7 +1505,7 @@ CREATE TABLE `returns` (
   `return_value` decimal(10,2) NOT NULL COMMENT 'Value of the items returned',
   `reason` varchar(255) DEFAULT NULL,
   `timestamp` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `returns`
@@ -1532,7 +1532,7 @@ CREATE TABLE `sales` (
   `discount_percent` decimal(5,2) NOT NULL DEFAULT 0.00,
   `qty_returned` int(11) NOT NULL DEFAULT 0,
   `timestamp` datetime DEFAULT current_timestamp() COMMENT 'Was DATE, now DATETIME'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `sales`
@@ -1654,7 +1654,7 @@ CREATE TABLE `stock_adjustments` (
   `adjustment_qty` float NOT NULL COMMENT 'Can be positive (add) or negative (remove)',
   `reason` varchar(255) DEFAULT NULL,
   `timestamp` datetime DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `stock_adjustments`
@@ -1763,7 +1763,7 @@ CREATE TABLE `unit_conversions` (
   `unit` varchar(20) NOT NULL,
   `base_unit` enum('g','ml','pcs') NOT NULL,
   `to_base_factor` float NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `unit_conversions`
@@ -1795,7 +1795,7 @@ CREATE TABLE `users` (
   `phone_number` varchar(11) NOT NULL,
   `enable_daily_report` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'For daily SMS reports',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `users`
