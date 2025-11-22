@@ -3,9 +3,9 @@ date_default_timezone_set('Asia/Manila');
 
 // --- Database Configuration ---
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'bakery');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_NAME', 'u840675236_breadly');
+define('DB_USER', 'u840675236_givano550');
+define('DB_PASS', 'Giand299404!');
 
 // --- SMS API Configuration ---
 define('SMS_API_TOKEN', '4882e7a9d4704d5afc136eebb463d298d1f15c20');

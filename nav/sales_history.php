@@ -11,7 +11,7 @@ if (!isset($_SESSION["user_id"])) {
     exit();
 }
 if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "assistant_manager" && $_SESSION["role"] !== "cashier") {
-    header("Location: index.php"); // Not authorized
+    header("Location: ../index.php"); // Not authorized
     exit();
 }
 
@@ -221,7 +221,7 @@ $active_nav_link = 'sales';
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">
+                        <a class="nav-link" href="../index.php">
                             <i class="bi bi-arrow-left me-2"></i> Main Menu
                         </a>
                     </li>
@@ -251,7 +251,7 @@ $active_nav_link = 'sales';
                 <h1>Sales & Transaction History</h1>
                 
                 <?php if ($current_role === 'cashier'): ?>
-                <a href="index.php" class="btn btn-outline-secondary">
+                <a href="../index.php" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left me-1"></i> Back to Main Menu
                 </a>
                 <?php endif; ?>

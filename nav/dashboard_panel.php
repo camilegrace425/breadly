@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 if (!in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit();
 }
 
@@ -198,7 +198,7 @@ $active_nav_link = 'dashboard';
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">
+                        <a class="nav-link" href="../index.php">
                             <i class="bi bi-arrow-left me-2"></i> Main Menu
                         </a>
                     </li>

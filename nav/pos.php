@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 if ($_SESSION['role'] !== 'manager' && $_SESSION['role'] !== 'cashier' && $_SESSION['role'] !== 'assistant_manager') {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit();
 }
 
@@ -167,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#discountModal">
                     <i class="bi bi-percent me-1"></i> Discount
                 </button>
-                <a href="index.php" class="btn btn-sm btn-outline-secondary">
+                <a href="../index.php" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back to Menu
                 </a>
              </div>
@@ -207,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <strong id="mobile-cart-total">P0.00</strong>
     </div>
     <div class="btn-group">
-        <a href="index.php" class="btn btn-outline-secondary">
+        <a href="../index.php" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i>
         </a>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mobileCartModal">

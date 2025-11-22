@@ -8,7 +8,7 @@ if (!isset($_SESSION["user_id"])) {
     exit();
 }
 if ($_SESSION["role"] !== "manager") {
-    header("Location: index.php"); // Not authorized
+    header("Location: ../index.php"); // Not authorized
     exit();
 }
 
@@ -63,7 +63,7 @@ $active_nav_link = 'login_history';
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">
+                        <a class="nav-link" href="../index.php">
                             <i class="bi bi-arrow-left me-2"></i> Main Menu
                         </a>
                     </li>

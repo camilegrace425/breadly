@@ -155,9 +155,10 @@ class UserManager {
                 $user_id = $user['user_id'];
                 $otp = (string)rand(100000, 999999);
 
-                // Direct insert for OTP tracking
-                $stmt = $this->conn->prepare("INSERT INTO password_resets (user_id, reset_method, otp_code, expiration, used) VALUES (?, 'email_token', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), 0)");
-                $stmt->execute([$user_id, $otp]);
+                $expiration = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+                $stmt = $this->conn->prepare("INSERT INTO password_resets (user_id, reset_method, otp_code, expiration, used) VALUES (?, 'email_token', ?, ?, 0)");
+                $stmt->execute([$user_id, $otp, $expiration]);
                 $stmt->closeCursor();
 
                 $this->sendEmailOTP($email, $otp);

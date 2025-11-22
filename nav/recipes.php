@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 if ($_SESSION['role'] !== 'manager' && $_SESSION['role'] !== 'assistant_manager') {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit();
 }
 
@@ -38,9 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $qty_needed = $_POST['qty_needed'];
             $unit = $_POST['unit'];
             
-            $bakeryManager->addIngredientToRecipe($product_id, $ingredient_id, $qty_needed, $unit);
-            $_SESSION['message'] = 'Ingredient added to recipe.';
-            $_SESSION['message_type'] = 'success';
+            // Capture the result ("success" or "duplicate")
+            $result = $bakeryManager->addIngredientToRecipe($product_id, $ingredient_id, $qty_needed, $unit);
+            
+            if ($result === 'success') {
+                $_SESSION['message'] = 'Ingredient added to recipe.';
+                $_SESSION['message_type'] = 'success';
+            } else {
+                $_SESSION['message'] = 'Warning: This ingredient is already in the recipe.';
+                $_SESSION['message_type'] = 'warning'; // This makes the alert yellow
+            }
         
         } elseif ($action === 'delete_recipe_item') {
             $recipe_id = $_POST['recipe_id'];
@@ -166,7 +173,7 @@ $active_nav_link = 'recipes';
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">
+                        <a class="nav-link" href="../index.php">
                             <i class="bi bi-arrow-left me-2"></i> Main Menu
                         </a>
                     </li>

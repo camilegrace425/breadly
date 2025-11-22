@@ -1,6 +1,14 @@
 <?php
-// Ensure strict path resolution to config
-require_once __DIR__ . '/config.php';
+// FIX: Correctly locating config.php regardless of where this file is included from
+$configPath = __DIR__ . '/config.php';
+
+if (file_exists($configPath)) {
+    require_once $configPath;
+} else {
+    // Fallback logging if file is missing
+    error_log("CRITICAL: config.php not found at " . $configPath);
+    die("System Error: Configuration file missing.");
+}
 
 class Database {
     private $host = DB_HOST;
@@ -24,11 +32,15 @@ class Database {
             ];
 
             $this->conn = new PDO($dsn, $this->username, $this->password, $options);
+            
+            // --- FIX: FORCE PHILIPPINE TIMEZONE (+08:00) ---
+            // This ensures NOW() and CURRENT_TIMESTAMP match your local time
+            $this->conn->exec("SET time_zone = '+08:00';");
 
         } catch (PDOException $e) {
+            // Log the error but don't show password to user
             error_log("Database Connection Failed: " . $e->getMessage());
-            // In production, show a generic message to the user
-            die("A critical database connection error occurred. Please contact support.");
+            die("Database Connection Error. Check error logs.");
         }
     }
 
@@ -36,3 +48,4 @@ class Database {
         return $this->conn;
     }
 }
+?>

@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php");
+    header("Location: nav/login.php");
     exit();
 }
 if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "assistant_manager" && $_SESSION["role"] !== "cashier") {
@@ -46,32 +46,32 @@ $role = $_SESSION['role'];
                     </p>
 
                     <?php if ($role == 'cashier' || $role == 'manager' || $role == 'assistant_manager'): ?>
-                    <form action="pos.php" method="get" class="mb-2">
+                    <form action="nav/pos.php" method="get" class="mb-2">
                         <button type="submit" class="btn btn-pos fw-bold w-100">Go to Point of Sale (POS)</button>
                     </form>
                     <?php endif; ?>
                     
                     <?php if ($role == 'cashier'): ?>
-                        <form action="sales_history.php" method="get" class="mb-2">
+                        <form action="nav/sales_history.php" method="get" class="mb-2">
                             <button type="submit" class="btn btn-secondary fw-bold w-100">Go to Sales History</button>
                         </form>
                     <?php endif; ?>
                     
                     <?php if ($role == 'manager' || $role == 'assistant_manager'): ?>
-                        <form action="dashboard_panel.php" method="get" class="mb-2">
+                        <form action="nav/dashboard_panel.php" method="get" class="mb-2">
                             <button type="submit" class="btn btn-dash fw-bold w-100">Manager Dashboard</button>
                         </form>
                     <?php endif; ?>
 
                     <?php if ($role == 'manager'): ?>
-                        <form action="account_management.php" method="get" class="mb-2">
+                        <form action="nav/account_management.php" method="get" class="mb-2">
                             <button type="submit" class="btn btn-dark fw-bold w-100">
                                 <i class="bi bi-people-fill me-2"></i> Account Management
                             </button>
                         </form>
                     <?php endif; ?>
 
-                    <form action="logout.php" method="post" class="mt-3">
+                    <form action="nav/logout.php" method="post" class="mt-3">
                         <button type="submit" class="btn btn-logout fw-bold w-100">Logout</button>
                     </form>
                 </div>

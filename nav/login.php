@@ -13,7 +13,7 @@ function getDeviceType() {
 
 // --- Redirect if already logged in ---
 if (isset($_SESSION['user_id'])) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit();
 }
 
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
             session_regenerate_id(true);
-            header('Location: index.php');
+            header('Location: ../index.php');
             exit();
         } else {
             // Role Mismatch
