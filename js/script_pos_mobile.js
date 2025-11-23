@@ -14,8 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileDiscountLine = document.getElementById('discount-line-mobile');
     const desktopDiscountAmount = document.getElementById('discount-amount');
     const mobileDiscountAmount = document.getElementById('discount-amount-mobile');
-    const desktopDiscountText = document.querySelector('#discount-line .text-discount');
-    const mobileDiscountText = document.querySelector('#discount-line-mobile .text-discount');
+    
+    // FIX: Target the first span inside the discount line for the text label
+    const desktopDiscountText = desktopDiscountLine ? desktopDiscountLine.querySelector('span') : null;
+    const mobileDiscountText = mobileDiscountLine ? mobileDiscountLine.querySelector('span') : null;
 
     const desktopTotal = document.getElementById('total-price');
     const mobileTotal = document.getElementById('total-price-mobile');
@@ -32,79 +34,85 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const observer = new MutationObserver((mutations) => {
         // Sync cart items
-        if (mobileCart) mobileCart.innerHTML = desktopCart.innerHTML;
+        if (mobileCart && desktopCart) mobileCart.innerHTML = desktopCart.innerHTML;
         
         // Sync summary lines
-        if (mobileSubtotalLine) mobileSubtotalLine.style.display = desktopSubtotalLine.style.display;
-        if (mobileSubtotalPrice) mobileSubtotalPrice.textContent = desktopSubtotalPrice.textContent;
+        if (mobileSubtotalLine && desktopSubtotalLine) mobileSubtotalLine.style.display = desktopSubtotalLine.style.display;
+        if (mobileSubtotalPrice && desktopSubtotalPrice) mobileSubtotalPrice.textContent = desktopSubtotalPrice.textContent;
         
-        if (mobileDiscountLine) mobileDiscountLine.style.display = desktopDiscountLine.style.display;
-        if (mobileDiscountAmount) mobileDiscountAmount.textContent = desktopDiscountAmount.textContent;
-        if (mobileDiscountText) mobileDiscountText.textContent = desktopDiscountText.textContent;
+        if (mobileDiscountLine && desktopDiscountLine) mobileDiscountLine.style.display = desktopDiscountLine.style.display;
+        if (mobileDiscountAmount && desktopDiscountAmount) mobileDiscountAmount.textContent = desktopDiscountAmount.textContent;
+        if (mobileDiscountText && desktopDiscountText) mobileDiscountText.innerHTML = desktopDiscountText.innerHTML;
 
         // Sync main total
-        if (mobileTotal) mobileTotal.textContent = desktopTotal.textContent;
+        if (mobileTotal && desktopTotal) mobileTotal.textContent = desktopTotal.textContent;
         
         // Sync button states
-        if (mobilePayBtn) mobilePayBtn.disabled = desktopPayBtn.disabled;
+        if (mobilePayBtn && desktopPayBtn) mobilePayBtn.disabled = desktopPayBtn.disabled;
         
         // Sync mobile summary bar
-        if (mobileSummaryTotal) mobileSummaryTotal.textContent = desktopTotal.textContent;
-        if (mobileSummaryCount) {
-            // Calculate item count (this is tricky, let's just grab it from the original script's `cart` variable)
-            // A simpler way: count the items in the list.
-            const itemCount = desktopCart.querySelectorAll('.cart-item').length;
-            mobileSummaryCount.textContent = `${itemCount} Item${itemCount === 1 ? '' : 's'}`;
+        if (mobileSummaryTotal && desktopTotal) mobileSummaryTotal.textContent = desktopTotal.textContent;
+        if (mobileSummaryCount && desktopCart) {
+            const itemCount = desktopCart.querySelectorAll('.flex.justify-between').length;
+            mobileSummaryCount.textContent = `${itemCount} Item${itemCount !== 1 ? 's' : ''}`;
         }
 
         // --- Re-attach event listeners for mobile cart ---
         if (mobileCart) {
             mobileCart.querySelectorAll('.btn-dec').forEach(btn => {
-                btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), -1));
+                btn.addEventListener('click', () => {
+                    if(window.updateQuantity) window.updateQuantity(parseInt(btn.dataset.id), -1);
+                });
             });
             mobileCart.querySelectorAll('.btn-inc').forEach(btn => {
-                btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), 1));
+                btn.addEventListener('click', () => {
+                    if(window.updateQuantity) window.updateQuantity(parseInt(btn.dataset.id), 1);
+                });
             });
             mobileCart.querySelectorAll('.btn-remove').forEach(btn => {
-                btn.addEventListener('click', () => window.setQuantity(parseInt(btn.dataset.id), 0));
+                btn.addEventListener('click', () => {
+                    if(window.setQuantity) window.setQuantity(parseInt(btn.dataset.id), 0);
+                });
             });
             mobileCart.querySelectorAll('.cart-quantity-input').forEach(input => {
                 input.addEventListener('change', (e) => {
-                    window.setQuantity(parseInt(e.target.dataset.id, 10), parseInt(e.target.value, 10));
+                    if(window.setQuantity) window.setQuantity(parseInt(e.target.dataset.id, 10), parseInt(e.target.value, 10));
                 });
             });
         }
     });
 
-    // Start observing the desktop cart for changes
-    observer.observe(desktopCart, { childList: true, subtree: true });
+    // FIX: Add safety checks before observing to prevent "parameter 1 is not of type 'Node'" error
+    if (desktopCart) observer.observe(desktopCart, { childList: true, subtree: true });
     
-    // Also observe the summary lines for text/style changes
-    observer.observe(desktopTotal, { characterData: true, childList: true });
-    observer.observe(desktopSubtotalPrice, { characterData: true, childList: true });
-    observer.observe(desktopDiscountAmount, { characterData: true, childList: true });
-    observer.observe(desktopDiscountText, { characterData: true, childList: true });
-    observer.observe(desktopPayBtn, { attributes: true, attributeFilter: ['disabled'] });
+    // Use optional chaining or if-checks for specific elements
+    if (desktopTotal) observer.observe(desktopTotal, { characterData: true, childList: true, subtree: true });
+    if (desktopSubtotalPrice) observer.observe(desktopSubtotalPrice, { characterData: true, childList: true, subtree: true });
+    if (desktopDiscountAmount) observer.observe(desktopDiscountAmount, { characterData: true, childList: true, subtree: true });
+    if (desktopDiscountText) observer.observe(desktopDiscountText, { characterData: true, childList: true, subtree: true });
+    if (desktopPayBtn) observer.observe(desktopPayBtn, { attributes: true, attributeFilter: ['disabled'] });
 
     // --- Sync button clicks from mobile to desktop ---
-    // (The original script's listeners are only on the desktop buttons)
-    if (mobilePayBtn) {
+    if (mobilePayBtn && desktopPayBtn) {
         mobilePayBtn.addEventListener('click', () => {
-            desktopPayBtn.click(); // Trigger the original pay button
+            desktopPayBtn.click(); 
         });
     }
-    if (mobileClearBtn) {
+    
+    if (mobileClearBtn && desktopClearBtn) {
         mobileClearBtn.addEventListener('click', () => {
-            desktopClearBtn.click(); // Trigger the original clear button
+            desktopClearBtn.click();
         });
     }
 
     const mobileDiscountBtn = document.getElementById('mobile-discount-btn');
     if (mobileDiscountBtn) {
         mobileDiscountBtn.addEventListener('click', () => {
-            // Access the global modal instance created in script_pos.js
-            if (window.bootstrapDiscountModal) {
-                window.bootstrapDiscountModal.show();
+            if (window.toggleModal) {
+                // Close mobile cart modal first
+                window.toggleModal('mobileCartModal');
+                // Open discount modal
+                window.toggleModal('discountModal');
             }
         });
     }

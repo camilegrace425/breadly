@@ -8,10 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const payButton = document.getElementById('pay-button');
     const clearButton = document.getElementById('clear-button');
     
-    // --- FIX: Separate Wrapper and Grid Container ---
+    // Wrapper/Grid Container references
     const productListWrapper = document.getElementById('product-list');
-    // We need to target the .grid div INSIDE the #product-list wrapper
-    // If it doesn't exist (e.g. empty), fallback to wrapper to prevent errors
     const productListContainer = productListWrapper ? productListWrapper.querySelector('.grid') || productListWrapper : null;
 
     const searchInput = document.getElementById('product-search');
@@ -29,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountLine = document.getElementById('discount-line');
     const subtotalPriceEl = document.getElementById('subtotal-price');
     const discountAmountEl = document.getElementById('discount-amount');
-    const discountLineText = document.querySelector('#discount-line .text-red-500') || document.getElementById('discount-line');
+    const discountLineText = document.querySelector('#discount-line span:first-child') || document.getElementById('discount-line');
 
     // --- Helper: Toggle Modal ---
     function safeToggleModal(modalId) {
@@ -37,7 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
             window.toggleModal(modalId);
         } else {
             const modal = document.getElementById(modalId);
-            if (modal) modal.classList.toggle('hidden');
+            if (modal) {
+                modal.classList.toggle('hidden');
+                // Basic Aria toggle if helper not found
+                const isHidden = modal.classList.contains('hidden');
+                modal.setAttribute('aria-hidden', isHidden ? 'true' : 'false');
+            }
         }
     }
 
@@ -60,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 return;
             }
-            setQuantity(productId, existingItem.quantity + 1);
+            window.setQuantity(productId, existingItem.quantity + 1);
         } else {
             if (1 > maxStock) {
                 Swal.fire({
@@ -76,8 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    //Sets an item's quantity to a specific value.
-    function setQuantity(productId, newQuantity) {
+    // UPDATED: Made global
+    window.setQuantity = function(productId, newQuantity) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
 
@@ -102,13 +105,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
     }
 
-    // Updates an item's quantity (from + / - buttons).
+    // UPDATED: Made global
     window.updateQuantity = function(productId, change) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
         
         const newQuantity = item.quantity + change;
-        setQuantity(productId, newQuantity);
+        window.setQuantity(productId, newQuantity);
     }
 
     if(clearButton) {
@@ -186,16 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 orderItemsContainer.appendChild(itemEl);
             });
 
-            // Render for Mobile Modal as well if it exists
-            const mobileContainer = document.getElementById('order-items-container-mobile');
-            if (mobileContainer) {
-                // Clone the contents to the mobile container
-                mobileContainer.innerHTML = orderItemsContainer.innerHTML;
-                
-                // Re-attach listeners for mobile buttons (since cloning removes events)
-                attachCartListeners(mobileContainer);
-            }
-
+            // Mobile Modal is handled by the Observer in script_pos_mobile.js
+            
             // Attach listeners to desktop buttons
             attachCartListeners(orderItemsContainer);
 
@@ -247,21 +242,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function attachCartListeners(container) {
         container.querySelectorAll('.btn-dec').forEach(btn => {
-            btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), -1));
+            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), -1));
         });
         container.querySelectorAll('.btn-inc').forEach(btn => {
-            btn.addEventListener('click', () => updateQuantity(parseInt(btn.dataset.id), 1));
+            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), 1));
         });
         container.querySelectorAll('.btn-remove').forEach(btn => {
             btn.addEventListener('click', () => {
-                setQuantity(parseInt(btn.dataset.id), 0);
+                window.setQuantity(parseInt(btn.dataset.id), 0);
             });
         });
         container.querySelectorAll('.cart-quantity-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 const newQty = parseInt(e.target.value, 10);
                 const productId = parseInt(e.target.dataset.id, 10);
-                setQuantity(productId, newQty);
+                window.setQuantity(productId, newQty);
             });
             input.addEventListener('click', (e) => e.target.select()); // Auto-select text on click
         });
@@ -272,11 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         payButton.addEventListener('click', confirmSale);
     }
     
-    const mobilePayBtn = document.getElementById('pay-button-mobile');
-    if(mobilePayBtn) {
-        mobilePayBtn.addEventListener('click', confirmSale);
-    }
-
     function confirmSale() {
         if (cart.length === 0) return;
         
@@ -350,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach click handlers to product cards
     document.querySelectorAll('.product-card').forEach(card => {
-        card.addEventListener('click', () => addToCart(card));
+        card.addEventListener('click', () => window.addToCart(card));
     });
 
     const searchHandler = () => { 
@@ -419,7 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!sortBy) return; 
 
-        // Updated selector to match Tailwind layout
         const allProductCols = Array.from(productListContainer.querySelectorAll('.col-product[data-product-name]'));
 
         allProductCols.sort((a, b) => {
@@ -440,11 +429,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sortTypeSelect.addEventListener('change', sortProducts);
     }
 
-    // Initial sort
     sortProducts();
 
     // --- Modal Logic (No Bootstrap) ---
-    
     if (applyDiscountBtn) {
         applyDiscountBtn.addEventListener('click', () => {
             let percent = parseFloat(discountInput.value);

@@ -98,27 +98,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </script>
     <style>
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-        
-        /* Hide number input spinners */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none; 
-            margin: 0; 
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="bg-breadly-light h-screen overflow-hidden text-breadly-dark font-sans selection:bg-orange-200">
@@ -126,21 +110,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="h-full w-full p-2 lg:p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
     
     <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden h-full border border-orange-100">
-        
         <div class="p-4 border-b border-gray-100 bg-white z-10">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                
                 <h2 class="text-xl font-bold text-breadly-dark flex items-center gap-2">
                     <i class='bx bxs-store-alt text-breadly-btn'></i> Products
                 </h2>
-
                 <div class="relative w-full md:w-64">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class='bx bx-search text-gray-400 text-lg'></i>
-                    </span>
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class='bx bx-search text-gray-400 text-lg'></i></span>
                     <input type="text" id="product-search" class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-breadly-btn focus:ring-1 focus:ring-breadly-btn transition-colors text-sm" placeholder="Search items...">
                 </div>
-
                 <div class="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                     <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
                         <label class="text-xs text-gray-500 whitespace-nowrap">Search:</label>
@@ -149,7 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="code">Code</option>
                         </select>
                     </div>
-
                     <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
                         <label class="text-xs text-gray-500 whitespace-nowrap">Sort:</label>
                         <select id="sort-type" class="bg-transparent text-sm border-none focus:ring-0 text-gray-700 font-medium py-1 pr-6 cursor-pointer outline-none">
@@ -183,22 +160,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          data-image="<?= htmlspecialchars($product['image_url'] ?? '') ?>">
                          
                         <div class="absolute inset-0 bg-breadly-btn/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-                        
                         <span class="absolute top-2 right-3 text-sm font-mono font-bold text-gray-400 bg-white/80 px-1 rounded"><?= htmlspecialchars($product['product_id']) ?></span>
 
-                        <?php 
-                        $image_path = !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : '../images/breadlylogo.png'; 
-                        ?>
+                        <?php $image_path = !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : '../images/breadlylogo.png'; ?>
                         <div class="w-20 h-20 shrink-0">
                             <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['name']) ?>" class="w-full h-full object-cover rounded-lg border border-gray-100 bg-white">
                         </div>
                         
                         <div class="flex flex-col flex-1 min-w-0 h-full justify-between py-1">
-                            <div class="pr-6"> <h3 class="font-semibold text-gray-800 leading-tight text-sm line-clamp-2 group-hover:text-breadly-btn transition-colors mt-3">
+                            <div class="pr-6"> 
+                                <h3 class="font-semibold text-gray-800 leading-tight text-sm line-clamp-2 group-hover:text-breadly-btn transition-colors mt-3">
                                     <?= htmlspecialchars($product['name']) ?>
                                 </h3>
                             </div>
-                            
                             <div class="flex justify-between items-end">
                                 <span class="text-breadly-btn font-bold">P<?= htmlspecialchars(number_format($product['price'], 2)) ?></span>
                                 <span class="text-[13px] text-gray-1000 bg-gray-200 px-2 py-0.5 rounded-full"><b>Stock:</b>
@@ -207,6 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <?php else: ?>
                                         <span class="text-green-700 font-semibold"><?= htmlspecialchars($product['stock_qty']) ?></span>
                                     <?php endif; ?>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -350,7 +325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
-<div id="discountModal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4">
+<div id="discountModal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4" aria-hidden="true">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleModal('discountModal')"></div>
     
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 overflow-hidden transform transition-all scale-100">
@@ -393,8 +368,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (modal) {
             if (modal.classList.contains('hidden')) {
                 modal.classList.remove('hidden');
+                modal.setAttribute('aria-hidden', 'false');
             } else {
                 modal.classList.add('hidden');
+                modal.setAttribute('aria-hidden', 'true');
             }
         }
     }
