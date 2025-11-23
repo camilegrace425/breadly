@@ -3,7 +3,6 @@ session_start();
 require_once "../src/SalesManager.php";
 require_once "../src/InventoryManager.php";
 require_once "../src/BakeryManager.php";
-// No longer need UserManager
 
 // --- Security Check: MANAGERS AND CASHIERS ---
 if (!isset($_SESSION["user_id"])) {
@@ -32,12 +31,8 @@ if (isset($_SESSION["message"])) {
     unset($_SESSION["message_type"]);
 }
 
-// --- POST HANDLING FOR RETURNS (Managers AND Cashiers) ---
-if (
-    $_SERVER["REQUEST_METHOD"] === "POST" &&
-    isset($_POST["action"]) &&
-    $_POST["action"] === "process_return"
-) {
+// --- POST HANDLING FOR RETURNS ---
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "process_return") {
     $sale_id = $_POST["sale_id"];
     $return_qty = $_POST["return_qty"];
     $max_qty = $_POST["max_qty"];
@@ -45,28 +40,20 @@ if (
     $user_id = $_SESSION["user_id"];
 
     if ($return_qty > $max_qty) {
-        $_SESSION[
-            "message"
-        ] = "Error: Cannot return more than the $max_qty items from this sale.";
-        $_SESSION["message_type"] = "danger";
+        $_SESSION["message"] = "Error: Cannot return more than the $max_qty items from this sale.";
+        $_SESSION["message_type"] = "error";
     } elseif ($return_qty <= 0) {
-        $_SESSION["message"] =
-            "Error: Return quantity must be a positive number.";
-        $_SESSION["message_type"] = "danger";
+        $_SESSION["message"] = "Error: Return quantity must be a positive number.";
+        $_SESSION["message_type"] = "error";
     } else {
-        $status = $bakeryManager->returnSale(
-            $sale_id,
-            $user_id,
-            $return_qty,
-            $reason
-        );
+        $status = $bakeryManager->returnSale($sale_id, $user_id, $return_qty, $reason);
 
         if (strpos($status, "Success") !== false) {
             $_SESSION["message"] = $status;
             $_SESSION["message_type"] = "success";
         } else {
             $_SESSION["message"] = $status;
-            $_SESSION["message_type"] = "danger";
+            $_SESSION["message_type"] = "error";
         }
     }
 
@@ -90,17 +77,8 @@ $active_tab = $_GET["active_tab"] ?? "sales";
 $sort_column = $_GET["sort"] ?? "date";
 $sort_direction = $_GET["order"] ?? "DESC";
 
-function getSortLink(
-    $column,
-    $currentSort,
-    $currentOrder,
-    $dateStart,
-    $dateEnd,
-    $activeTab
-) {
-    $newOrder =
-        $currentSort == $column && $currentOrder == "ASC" ? "DESC" : "ASC";
-
+function getSortLink($column, $currentSort, $currentOrder, $dateStart, $dateEnd, $activeTab) {
+    $newOrder = $currentSort == $column && $currentOrder == "ASC" ? "DESC" : "ASC";
     $params = http_build_query([
         "date_start" => $dateStart,
         "date_end" => $dateEnd,
@@ -111,9 +89,7 @@ function getSortLink(
     return "sales_history.php?" . $params;
 }
 
-function getCurrentSortText($sort_column, $sort_direction)
-{
-    // --- MODIFIED MAP ---
+function getCurrentSortText($sort_column, $sort_direction) {
     $column_map = [
         "sale_id" => "Sale ID",
         "date" => "Timestamp",
@@ -129,14 +105,8 @@ function getCurrentSortText($sort_column, $sort_direction)
     return "{$column_text} ({$direction_text})";
 }
 
-$sales = $salesManager->getSalesHistory(
-    $date_start,
-    $date_end,
-    $sort_column,
-    $sort_direction
-);
+$sales = $salesManager->getSalesHistory($date_start, $date_end, $sort_column, $sort_direction);
 $return_history = $salesManager->getReturnHistory();
-// Login history removed
 
 $total_sales_revenue = 0;
 foreach ($sales as $sale) {
@@ -149,15 +119,12 @@ $end_date_obj = new DateTime($date_end . ' 23:59:59');
 
 foreach ($return_history as $log) {
     $return_date_obj = new DateTime($log['timestamp']);
-    
     if ($return_date_obj >= $start_date_obj && $return_date_obj <= $end_date_obj) {
         $total_return_value += $log["return_value"];
     }
 }
 
 $net_revenue = $total_sales_revenue - $total_return_value;
-
-// --- Active Nav Link for Sidebar ---
 $active_nav_link = 'sales'; 
 ?>
 
@@ -168,520 +135,447 @@ $active_nav_link = 'sales';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales & Transactions</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../styles/global.css"> 
-    <link rel="stylesheet" href="../styles/dashboard.css"> 
-    <link rel="stylesheet" href="../styles/responsive.css?v=3"> 
-    
-    <?php if ($current_role === 'cashier'): ?>
-    <style>
-        .sidebar-toggle-btn {
-            display: none !important;
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: {
+                        breadly: {
+                            bg: '#FFFBF5',
+                            sidebar: '#FDEEDC',
+                            dark: '#6a381f',
+                            secondary: '#7a7a7a',
+                            btn: '#af6223',
+                            'btn-hover': '#9b4a10',
+                        }
+                    }
+                }
+            }
         }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
-    <?php endif; ?>
-    </head>
-<body class="dashboard">
-<div class="container-fluid">
-    <div class="row">
-        <?php if ($current_role === 'manager' || $current_role === 'assistant_manager'): ?>
-        <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
-            
-            <div class="offcanvas-header d-lg-none">
-                <h5 class="offcanvas-title" id="sidebarMenuLabel">BREADLY</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
-            </div>
+</head>
+<body class="bg-breadly-bg text-breadly-dark font-sans h-screen flex overflow-hidden selection:bg-orange-200">
 
-            <div class="offcanvas-body d-flex flex-column p-0">
-                 <div class="sidebar-brand">
-                    <img src="../images/kzklogo.png" alt="BREADLY Logo">
-                    <h5>BREADLY</h5>
-                    <p>Kz & Khyle's Bakery</p>
+    <aside class="hidden lg:flex w-64 flex-col bg-breadly-sidebar h-full border-r border-orange-100 shrink-0 transition-all duration-300" id="sidebar">
+        <div class="p-6 text-center border-b border-orange-100/50">
+            <img src="../images/kzklogo.png" alt="BREADLY Logo" class="w-16 mx-auto mb-2">
+            <h5 class="font-bold text-lg text-breadly-dark">BREADLY</h5>
+            <p class="text-xs text-breadly-secondary">Kz & Khyle's Bakery</p>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <?php if ($current_role !== 'cashier'): ?>
+            <a href="dashboard_panel.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
+                <i class='bx bxs-dashboard text-xl'></i><span class="font-medium">Dashboard</span>
+            </a>
+            <a href="inventory_management.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
+                <i class='bx bxs-box text-xl'></i><span class="font-medium">Inventory</span>
+            </a>
+            <a href="recipes.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
+                <i class='bx bxs-book-bookmark text-xl'></i><span class="font-medium">Recipes</span>
+            </a>
+            <?php endif; ?>
+            
+            <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors bg-breadly-dark text-white shadow-md">
+                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales History</span>
+            </a>
+            
+            <div class="my-4 border-t border-orange-200"></div>
+            
+            <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark transition-colors">
+                <i class='bx bx-arrow-back text-xl'></i><span class="font-medium">Main Menu</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-orange-200">
+            <div class="flex items-center gap-3 px-2 mb-3">
+                <div class="w-10 h-10 rounded-full bg-orange-200 flex items-center justify-center text-breadly-dark font-bold"><i class='bx bxs-user'></i></div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-breadly-dark truncate"><?php echo htmlspecialchars($_SESSION['username']); ?></p>
+                    <p class="text-xs text-breadly-secondary uppercase"><?php echo str_replace('_', ' ', $current_role); ?></p>
                 </div>
-                <ul class="nav flex-column sidebar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'dashboard') ? 'active' : ''; ?>" href="dashboard_panel.php">
-                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'inventory') ? 'active' : ''; ?>" href="inventory_management.php">
-                            <i class="bi bi-box me-2"></i> Inventory
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'recipes') ? 'active' : ''; ?>" href="recipes.php">
-                            <i class="bi bi-journal-bookmark me-2"></i> Recipes
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
-                            <i class="bi bi-clock-history me-2"></i> Sales & Transactions
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="../index.php">
-                            <i class="bi bi-arrow-left me-2"></i> Main Menu
-                        </a>
-                    </li>
-                </ul>
-                <div class="sidebar-user">
-                    <hr>
-                    <div class="dropdown">
-                        <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-circle me-2 fs-4"></i>
-                            <strong><?php echo htmlspecialchars($_SESSION["username"]); ?></strong>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
-                            <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div> 
-        </aside>
+            </div>
+            <a href="logout.php" class="flex items-center justify-center gap-1 py-2 text-xs font-medium text-red-500 bg-white border border-red-100 rounded-lg hover:bg-red-50 transition-colors">
+                <i class='bx bx-log-out'></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <div id="mobileSidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    
+    <div id="mobileSidebar" class="fixed inset-y-0 left-0 w-64 bg-breadly-sidebar z-50 transform -translate-x-full transition-transform duration-300 lg:hidden flex flex-col h-full shadow-2xl">
+        <div class="p-6 text-center border-b border-orange-100/50">
+            <div class="flex justify-end mb-2">
+                <button onclick="toggleSidebar()" class="text-breadly-secondary hover:text-breadly-dark"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <img src="../images/kzklogo.png" alt="BREADLY Logo" class="w-16 mx-auto mb-2">
+            <h5 class="font-bold text-lg text-breadly-dark">BREADLY</h5>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <?php if ($current_role !== 'cashier'): ?>
+                <a href="dashboard_panel.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
+                    <i class='bx bxs-dashboard text-xl'></i> Dashboard
+                </a>
+                <a href="inventory_management.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
+                    <i class='bx bxs-box text-xl'></i> Inventory
+                </a>
+                <a href="recipes.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
+                    <i class='bx bxs-book-bookmark text-xl'></i> Recipes
+                </a>
+            <?php endif; ?>
+            
+            <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-breadly-dark text-white">
+                <i class='bx bx-history text-xl'></i> Sales History
+            </a>
+            
+            <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary mt-4 border-t border-orange-200 pt-4">
+                <i class='bx bx-arrow-back text-xl'></i> Main Menu
+            </a>
+        </nav>
+        <div class="p-4 border-t border-orange-200">
+            <a href="logout.php" class="block w-full py-2 text-center text-sm bg-red-50 text-red-600 rounded-lg">Logout</a>
+        </div>
+    </div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+        <div class="p-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-breadly-bg z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden text-breadly-dark text-2xl"><i class='bx bx-menu'></i></button>
+                <h1 class="text-2xl font-bold text-breadly-dark">Sales & Transactions</h1>
+            </div>
+        </div>
+
+        <?php if ($message): ?>
+        <div class="px-6">
+            <div class="<?php echo ($message_type === 'success') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'; ?> border px-4 py-3 rounded-lg flex justify-between items-center mb-4 shadow-sm">
+                <span><?php echo htmlspecialchars($message); ?></span>
+                <button onclick="this.parentElement.remove()" class="text-lg font-bold">&times;</button>
+            </div>
+        </div>
         <?php endif; ?>
 
-        <main class="<?php echo ($current_role === 'manager' || $current_role === 'assistant_manager') ? 'col-lg-10 col-md-9' : 'col-12'; ?> main-content">
-            <div class="header d-flex justify-content-between align-items-center">
-                <button class="btn btn-outline-secondary d-lg-none sidebar-toggle-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
-                    <i class="bi bi-list"></i>
+        <div class="px-6 border-b border-gray-200 bg-breadly-bg overflow-x-auto">
+            <div class="flex gap-6 min-w-max" id="historyTabs">
+                <button onclick="switchTab('sales')" id="tab-sales" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'sales') ? 'border-breadly-btn text-breadly-btn' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
+                    <i class='bx bi-cash-coin text-lg'></i> Sales History
                 </button>
-            
-                <h1>Sales & Transaction History</h1>
-                
-                <?php if ($current_role === 'cashier'): ?>
-                <a href="../index.php" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left me-1"></i> Back to Main Menu
-                </a>
-                <?php endif; ?>
+                <button onclick="switchTab('returns')" id="tab-returns" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'returns') ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
+                    <i class='bx bi-arrow-return-left text-lg'></i> Returns Log
+                </button>
             </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 pb-20 bg-breadly-bg">
             
-            <?php if ($message): ?>
-            <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($message); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php endif; ?>
+            <div id="pane-sales" class="<?php echo ($active_tab == 'sales') ? '' : 'hidden'; ?>">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                    
+                    <div class="p-4 border-b border-orange-100">
+                        <form method="GET" action="sales_history.php" class="flex flex-col md:flex-row gap-4 items-end">
+                            <input type="hidden" name="active_tab" value="sales">
+                            <div class="w-full md:w-auto flex-1">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">Start Date</label>
+                                <input type="date" name="date_start" value="<?php echo htmlspecialchars($date_start); ?>" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
+                            </div>
+                            <div class="w-full md:w-auto flex-1">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">End Date</label>
+                                <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
+                            </div>
+                            <div class="w-full md:w-auto">
+                                <button type="submit" class="w-full md:w-auto px-6 py-2 bg-breadly-btn text-white rounded-lg hover:bg-breadly-btn-hover transition-colors text-sm font-medium">Filter</button>
+                            </div>
+                        </form>
+                    </div>
 
-            <ul class="nav nav-tabs" id="historyTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo $active_tab === "sales"
-                        ? "active"
-                        : ""; ?>" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales-pane" type="button" role="tab">
-                        <i class="bi bi-cash-coin me-1"></i> Sales History
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link text-info <?php echo $active_tab ===
-                    "returns"
-                        ? "active"
-                        : ""; ?>" id="returns-tab" data-bs-toggle="tab" data-bs-target="#returns-pane" type="button" role="tab">
-                        <i class="bi bi-arrow-return-left me-1"></i> Returns Log
-                    </button>
-                </li>
-                </ul>
-
-            <div class="tab-content" id="historyTabContent">
-
-                <div class="tab-pane fade <?php echo $active_tab === "sales"
-                    ? "show active"
-                    : ""; ?>" id="sales-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3">
-                        <div class="card-header">
-                             <form method="GET" action="sales_history.php" class="row g-3 align-items-center">
-                                <input type="hidden" name="active_tab" value="sales">
-                                <div class="col-md-4">
-                                    <label for="date_start" class="form-label">Start Date</label>
-                                    <input type="date" class="form-control" name="date_start" id="date_start" value="<?php echo htmlspecialchars(
-                                        $date_start
-                                    ); ?>">
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="date_end" class="form-label">End Date</label>
-                                    <input type="date" class="form-control" name="date_end" id="date_end" value="<?php echo htmlspecialchars(
-                                        $date_end
-                                    ); ?>">
-                                </div>
-                                <div class="col-md-4">
-                                     <label class="form-label">&nbsp;</label>
-                                     <button type="submit" class="btn btn-primary w-100">Filter</button>
-                                </div>
-                            </form>
-                            <hr>
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="sales-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="sales-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="sales-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" id="sales-next-btn">
-                                            <i class="bi bi-arrow-right"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Sort By: <?php echo getCurrentSortText(
-                                            $sort_column,
-                                            $sort_direction
-                                        ); ?>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="sortDropdown">
-                                        <li><a class="dropdown-item <?php if ($sort_column == "date") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("date", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Timestamp <?php if ($sort_column == "date") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                        <li><a class="dropdown-item <?php if ($sort_column == "product") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("product", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Product <?php if ($sort_column == "product") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                        <li><a class="dropdown-item <?php if ($sort_column == "qty") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("qty", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Quantity <?php if ($sort_column == "qty") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                        <li><a class="dropdown-item <?php if ($sort_column == "subtotal") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("subtotal", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Subtotal <?php if ($sort_column == "subtotal") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                        <li><a class="dropdown-item <?php if ($sort_column == "discount_amt") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("discount_amt", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Discount <?php if ($sort_column == "discount_amt") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                        <li><a class="dropdown-item <?php if ($sort_column == "price") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("price", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Net Total <?php if ($sort_column == "price") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                        <li><a class="dropdown-item <?php if ($sort_column == "cashier") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("cashier", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Cashier <?php if ($sort_column == "cashier") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                        <li><a class="dropdown-item <?php if ($sort_column == "sale_id") { echo "active"; } ?>" 
-                                               href="<?php echo getSortLink("sale_id", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>">
-                                               Sale ID <?php if ($sort_column == "sale_id") { echo $sort_direction == "ASC" ? "(Asc)" : "(Desc)"; } ?></a></li>
-                                    </ul>
-                                </div>
-                            </div>
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                        <div class="flex items-center gap-1 text-sm">
+                            <span class="text-gray-500">Show:</span>
+                            <select id="sales-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="all">All</option>
+                            </select>
                         </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Timestamp</th>
-                                            <th>Sale ID</th>
-                                            <th>Product</th>
-                                            <th>Quantity</th>
-                                            <th>Subtotal</th>
-                                            <th>Discount</th>
-                                            <th>Net Total</th>
-                                            <th>Cashier</th>
-                                            <th class="btn-return-access">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="sales-table-body">
-                                        <?php if (empty($sales)): ?>
-                                            <tr>
-                                                <td colspan="9" class="text-center text-muted">No sales found for this period.</td> </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($sales as $sale): ?>
-                                            <?php $qty_available_to_return =
-                                                $sale["qty_sold"] -
-                                                $sale["qty_returned"]; ?>
-                                            <tr>
-                                                <td data-label="Timestamp"><?php echo htmlspecialchars(
-                                                    date(
-                                                        "M d, Y h:i A",
-                                                        strtotime($sale["date"])
-                                                    )
-                                                ); ?></td>
-                                                <td>
-                                                    <?php echo $sale["sale_id"]; ?>
-                                                </td>
-                                                <td data-label="Product"><?php echo htmlspecialchars(
-                                                    $sale["product_name"]
-                                                ); ?>
-                                                </td>
-                                                <td data-label="Quantity">
-                                                    <?php echo htmlspecialchars(
-                                                        $sale["qty_sold"]
-                                                    ); ?>
-                                                    <?php if (
-                                                        $sale["qty_returned"] >
-                                                        0
-                                                    ): ?>
-                                                        <span class="badge bg-info text-dark ms-1">-<?php echo $sale[
-                                                            "qty_returned"
-                                                        ]; ?> returned</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                
-                                                <td data-label="Subtotal" class="text-muted">₱<?php echo htmlspecialchars(
-                                                    number_format(
-                                                        $sale["subtotal"],
-                                                        2
-                                                    )
-                                                ); ?></td>
-                                                <td data-label="Discount" class="text-danger">
-                                                    <?php if (isset($sale["discount_amount"]) && $sale["discount_amount"] > 0.005): ?>
-                                                        (₱<?php echo htmlspecialchars(number_format($sale["discount_amount"], 2)); ?>)
-                                                        <span class="badge bg-danger ms-1"><?php echo htmlspecialchars($sale["discount_percent"]); ?>%</span>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">₱0.00</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td data-label="Net Total"><strong>₱<?php echo htmlspecialchars(
-                                                    number_format(
-                                                        $sale["total_price"],
-                                                        2
-                                                    )
-                                                ); ?></strong></td>
-                                                <td data-label="Cashier"><?php echo htmlspecialchars(
-                                                    $sale["cashier_username"]
-                                                ); ?></td>
-                                                <td data-label="Sale ID" class="d-none"><?php echo $sale[
-                                                    "sale_id"
-                                                ]; ?></td>
-                                                <td class="btn-return-access">
-                                                    <button class="btn btn-info btn-sm"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#returnSaleModal"
-                                                            data-sale-id="<?php echo $sale[
-                                                                "sale_id"
-                                                            ]; ?>"
-                                                            data-product-name="<?php echo htmlspecialchars(
-                                                                $sale[
-                                                                    "product_name"
-                                                                ]
-                                                            ); ?>"
-                                                            data-qty-available="<?php echo $qty_available_to_return; ?>"
-                                                            data-sale-date="<?php echo htmlspecialchars(
-                                                                date(
-                                                                    "M d, Y h:i A",
-                                                                    strtotime(
-                                                                        $sale[
-                                                                            "date"
-                                                                        ]
-                                                                    )
-                                                                )
-                                                            ); ?>"
-                                                            <?php if (
-                                                                $qty_available_to_return <=
-                                                                0
-                                                            ) {
-                                                                echo "disabled";
-                                                            } ?>>
-                                                        <i class="bi bi-arrow-return-left"></i> 
-                                                        <?php echo $qty_available_to_return <=
-                                                        0
-                                                            ? "Returned"
-                                                            : "Return"; ?>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div class="flex items-center gap-1">
+                            <button id="sales-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                            <button id="sales-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                         </div>
-                        <div class="card-footer">
-                            <div class="d-flex justify-content-end fw-bold">
-                                <span class="me-3 text-muted">Gross Revenue:</span>
-                                <span class="text-muted">₱<?php echo htmlspecialchars(
-                                    number_format($total_sales_revenue, 2)
-                                ); ?></span>
-                            </div>
-                            <div class="d-flex justify-content-end fw-bold">
-                                <span class="me-3 text-info">Less Returns:</span>
-                                <span class="text-info">(₱<?php echo htmlspecialchars(
-                                    number_format($total_return_value, 2)
-                                ); ?>)</span>
-                            </div>
-                            <hr class="my-1">
-                            <div class="d-flex justify-content-end fw-bold fs-5">
-                                <span class="me-3">Net Revenue:</span>
-                                <span>₱<?php echo htmlspecialchars(
-                                    number_format($net_revenue, 2)
-                                ); ?></span>
-                            </div>
-                        </div>
-                        </div>
-                </div> 
-                
-                <div class="tab-pane fade <?php echo $active_tab ===
-                "returns"
-                    ? "show active"
-                    : ""; ?>" id="returns-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3 border-info">
-                        <div class="card-header bg-info-subtle d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <span class="fs-5">Returns Log</span>
-                            
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="returns-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="returns-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="returns-prev-btn" disabled>
-                                            <i class="bi bi-arrow-left"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" id="returns-next-btn">
-                                            <i class="bi bi-arrow-right"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Sort By: <span class="current-sort-text">Timestamp (Newest First)</span>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Timestamp (Newest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Timestamp (Oldest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="sale_id" data-sort-dir="desc" data-sort-type="number" href="#">Sale ID (High-Low)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="sale_id" data-sort-dir="asc" data-sort-type="number" href="#">Sale ID (Low-High)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Product (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Product (Z-A)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">Cashier (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="qty" data-sort-dir="asc" data-sort-type="number" href="#">Quantity (Low-High)</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
-                                            <th data-sort-by="sale_id" data-sort-type="number">Sale ID</th>
-                                            <th data-sort-by="item">Product</th>
-                                            <th data-sort-by="qty" data-sort-type="number">Quantity</th>
-                                            <th data-sort-by="value" data-sort-type="number">Refunded Value</th>
-                                            <th data-sort-by="user">Cashier</th>
-                                            <th>Reason</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="returns-table-body">
-                                        <?php if (empty($return_history)): ?>
-                                            <tr><td colspan="7" class="text-center text-muted">No return history found.</td></tr>
-                                        <?php else: ?>
-                                            <?php foreach (
-                                                $return_history
-                                                as $log
-                                            ): ?>
-                                            <tr>
-                                                <td data-label="Timestamp"><?php echo htmlspecialchars(
-                                                    date(
-                                                        "M d, Y h:i A",
-                                                        strtotime(
-                                                            $log["timestamp"]
-                                                        )
-                                                    )
-                                                ); ?></td>
-                                                <td>
-                                                    <?php echo htmlspecialchars(
-                                                        $log["sale_id"]
-                                                    ); ?>
-                                                </td>
-                                                <td data-label="Product"><?php echo htmlspecialchars(
-                                                    $log["product_name"] ??
-                                                        "Item Deleted"
-                                                ); ?> 
-                                                </td>
-                                                <td data-label="Sale ID" class="d-none"><?php echo htmlspecialchars(
-                                                    $log["sale_id"]
-                                                ); ?></td>
-                                                <td data-label="Quantity">
-                                                    <strong class="text-success">+<?php echo number_format(
-                                                        $log["qty_returned"],
-                                                        0
-                                                    ); ?></strong>
-                                                </td>
-                                                <td data-label="Refunded Value">
-                                                    <span class="text-info">(₱<?php echo htmlspecialchars(
-                                                        number_format(
-                                                            $log[
-                                                                "return_value"
-                                                            ],
-                                                            2
-                                                        )
-                                                    ); ?>)</span>
-                                                </td>
-                                                <td data-label="Cashier"><?php echo htmlspecialchars(
-                                                    $log["username"] ?? "N/A"
-                                                ); ?></td>
-                                                <td data-label="Reason"><?php echo htmlspecialchars(
-                                                    $log["reason"]
-                                                ); ?></td>
-                                            </tr>
-             
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
+                        
+                        <div class="relative group">
+                            <button class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                Sort By: <?php echo getCurrentSortText($sort_column, $sort_direction); ?> <i class='bx bx-chevron-down'></i>
+                            </button>
+                            <div class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden group-hover:block z-20">
+                                <a href="<?php echo getSortLink("date", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Timestamp</a>
+                                <a href="<?php echo getSortLink("sale_id", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Sale ID</a>
+                                <a href="<?php echo getSortLink("product", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Product</a>
+                                <a href="<?php echo getSortLink("price", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Net Total</a>
                             </div>
                         </div>
                     </div>
-                </div> 
-                
-            </div> 
-        </main>
-    </div>
-</div>
-
-<div class="modal fade" id="returnSaleModal" tabindex="-1" aria-labelledby="returnSaleModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="returnSaleModalLabel">Process Return</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="sales_history.php?date_start=<?php echo htmlspecialchars(
-          $date_start
-      ); ?>&date_end=<?php echo htmlspecialchars($date_end); ?>" method="POST">
-        <div class="modal-body">
-            <input type="hidden" name="action" value="process_return">
-            <input type="hidden" name="sale_id" id="return_sale_id">
-            <input type="hidden" name="max_qty" id="return_max_qty">
-            
-            <p><strong>Product:</strong> <span id="return_product_name"></span></p>
-            <p><strong>Original Sale:</strong> <span id="return_sale_date"></span></p>
-            
-            <div class="mb-3">
-                <label for="return_qty" class="form-label">Quantity to Return</label>
-                <input type="number" class="form-control" id="return_qty" name="return_qty" min="1" required>
-                <div class="form-text">
-                    Max <span id="return_qty_sold_text"></span> items can be returned from this sale.
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Timestamp</th>
+                                    <th class="px-6 py-3">Sale ID</th>
+                                    <th class="px-6 py-3">Product</th>
+                                    <th class="px-6 py-3">Qty</th>
+                                    <th class="px-6 py-3">Subtotal</th>
+                                    <th class="px-6 py-3">Discount</th>
+                                    <th class="px-6 py-3">Net Total</th>
+                                    <th class="px-6 py-3">Cashier</th>
+                                    <th class="px-6 py-3 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100" id="sales-table-body">
+                                <?php if (empty($sales)): ?>
+                                    <tr><td colspan="9" class="px-6 py-8 text-center text-gray-400">No sales found.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($sales as $sale): 
+                                        $qty_available = $sale["qty_sold"] - $sale["qty_returned"];
+                                    ?>
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($sale["date"]))); ?></td>
+                                        <td class="px-6 py-3 text-gray-600"><?php echo $sale["sale_id"]; ?></td>
+                                        <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($sale["product_name"]); ?></td>
+                                        <td class="px-6 py-3">
+                                            <?php echo $sale["qty_sold"]; ?>
+                                            <?php if ($sale["qty_returned"] > 0): ?>
+                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded ml-1">-<?php echo $sale["qty_returned"]; ?> returned</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-6 py-3 text-gray-500">₱<?php echo number_format($sale["subtotal"], 2); ?></td>
+                                        <td class="px-6 py-3 text-red-500">
+                                            <?php if (isset($sale["discount_amount"]) && $sale["discount_amount"] > 0.005): ?>
+                                                (₱<?php echo number_format($sale["discount_amount"], 2); ?>)
+                                                <span class="bg-red-100 text-red-800 text-xs px-1 rounded ml-1"><?php echo $sale["discount_percent"]; ?>%</span>
+                                            <?php else: ?>
+                                                <span class="text-gray-400">₱0.00</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-6 py-3 font-bold text-green-700">₱<?php echo number_format($sale["total_price"], 2); ?></td>
+                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($sale["cashier_username"]); ?></td>
+                                        <td class="px-6 py-3 text-center">
+                                            <button onclick="openReturnModal(this)" 
+                                                class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-medium flex items-center gap-1 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                                                data-sale-id="<?php echo $sale["sale_id"]; ?>"
+                                                data-product-name="<?php echo htmlspecialchars($sale["product_name"]); ?>"
+                                                data-qty-available="<?php echo $qty_available; ?>"
+                                                data-sale-date="<?php echo htmlspecialchars(date("M d, Y", strtotime($sale["date"]))); ?>"
+                                                <?php if ($qty_available <= 0) echo "disabled"; ?>>
+                                                <i class='bx bx-undo'></i> <?php echo $qty_available <= 0 ? "Returned" : "Return"; ?>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-gray-50 p-4 border-t border-gray-200">
+                        <div class="flex flex-col items-end gap-1 text-sm">
+                            <div class="flex justify-between w-48 text-gray-600">
+                                <span>Gross Revenue:</span>
+                                <span>₱<?php echo number_format($total_sales_revenue, 2); ?></span>
+                            </div>
+                            <div class="flex justify-between w-48 text-red-500">
+                                <span>Less Returns:</span>
+                                <span>(₱<?php echo number_format($total_return_value, 2); ?>)</span>
+                            </div>
+                            <div class="w-48 border-t border-gray-300 my-1"></div>
+                            <div class="flex justify-between w-48 font-bold text-lg text-breadly-dark">
+                                <span>Net Revenue:</span>
+                                <span>₱<?php echo number_format($net_revenue, 2); ?></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="mb-3">
-                <label for="return_reason" class="form-label">Reason for Return</label>
-                <input type="text" class="form-control" id="return_reason" name="reason" placeholder="e.g., Customer refund, Wrong item" required>
+
+            <div id="pane-returns" class="<?php echo ($active_tab == 'returns') ? '' : 'hidden'; ?>">
+                <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                    <div class="p-4 border-b border-blue-100 bg-blue-50/30 flex justify-between items-center">
+                        <h5 class="font-bold text-lg text-blue-800">Returns Log</h5>
+                        
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-1 text-sm">
+                                <span class="text-gray-500">Show:</span>
+                                <select id="returns-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button id="returns-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                                <button id="returns-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Timestamp</th>
+                                    <th class="px-6 py-3">Sale ID</th>
+                                    <th class="px-6 py-3">Product</th>
+                                    <th class="px-6 py-3">Quantity</th>
+                                    <th class="px-6 py-3">Refunded</th>
+                                    <th class="px-6 py-3">Cashier</th>
+                                    <th class="px-6 py-3">Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100" id="returns-table-body">
+                                <?php if (empty($return_history)): ?>
+                                    <tr><td colspan="7" class="px-6 py-8 text-center text-gray-400">No returns found.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($return_history as $log): ?>
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
+                                        <td class="px-6 py-3 text-gray-600"><?php echo $log["sale_id"]; ?></td>
+                                        <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($log["product_name"] ?? "Deleted"); ?></td>
+                                        <td class="px-6 py-3 font-bold text-green-600">+<?php echo $log["qty_returned"]; ?></td>
+                                        <td class="px-6 py-3 text-blue-600">(₱<?php echo number_format($log["return_value"], 2); ?>)</td>
+                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["username"] ?? "N/A"); ?></td>
+                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["reason"]); ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <p class="text-info small"><i class="bi bi-info-circle-fill"></i> This will add the item(s) back to stock and create a log in the "Returns Log" tab. The original sale will be updated.</p>
+
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-info">Process Return</button>
+    </main>
+
+    <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
+
+    <div id="returnSaleModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Process Return</h5>
+                <button onclick="closeModal('returnSaleModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="sales_history.php?date_start=<?php echo htmlspecialchars($date_start); ?>&date_end=<?php echo htmlspecialchars($date_end); ?>" method="POST" class="p-6">
+                <input type="hidden" name="action" value="process_return">
+                <input type="hidden" name="sale_id" id="return_sale_id">
+                <input type="hidden" name="max_qty" id="return_max_qty">
+                
+                <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+                    <p><strong>Product:</strong> <span id="return_product_name" class="text-blue-800"></span></p>
+                    <p><strong>Date:</strong> <span id="return_sale_date" class="text-blue-800"></span></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity to Return</label>
+                    <input type="number" name="return_qty" id="return_qty" min="1" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <p class="text-xs text-gray-500 mt-1">Max <span id="return_qty_sold_text"></span> items available.</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                    <input type="text" name="reason" id="return_reason" required placeholder="e.g. Refund, Wrong item" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('returnSaleModal')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Confirm</button>
+                </div>
+            </form>
         </div>
-      </form>
     </div>
-  </div>
-</div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php $js_version = file_exists("../js/script_sales_history.js") ? filemtime("../js/script_sales_history.js") : "1"; ?>
+    <script src="../js/script_sales_history.js?v=<?php echo $js_version; ?>"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('mobileSidebarOverlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
 
-<?php
-$js_file = "../js/script_sales_history.js";
-$js_version = file_exists($js_file) ? filemtime($js_file) : "1";
-?>
-<script src="../js/script_sales_history.js?v=<?php echo $js_version; ?>"></script>
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const backdrop = document.getElementById('modalBackdrop');
+            if (modal) {
+                modal.classList.remove('hidden');
+                if(backdrop) backdrop.classList.remove('hidden');
+            }
+        }
 
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const backdrop = document.getElementById('modalBackdrop');
+            if (modal) modal.classList.add('hidden');
+            if(backdrop) backdrop.classList.add('hidden');
+        }
+        
+        function closeAllModals() {
+            document.querySelectorAll('.fixed.z-50').forEach(el => el.classList.add('hidden'));
+            const backdrop = document.getElementById('modalBackdrop');
+            if(backdrop) backdrop.classList.add('hidden');
+        }
+
+        function openReturnModal(button) {
+            const modal = document.getElementById('returnSaleModal');
+            
+            // Populate Data
+            document.getElementById('return_sale_id').value = button.dataset.saleId;
+            document.getElementById('return_product_name').textContent = button.dataset.productName;
+            document.getElementById('return_sale_date').textContent = button.dataset.saleDate;
+            
+            const qtyAvailable = parseInt(button.dataset.qtyAvailable);
+            const qtyInput = document.getElementById('return_qty');
+            
+            qtyInput.value = qtyAvailable;
+            qtyInput.max = qtyAvailable;
+            document.getElementById('return_max_qty').value = qtyAvailable;
+            document.getElementById('return_qty_sold_text').textContent = qtyAvailable;
+            document.getElementById('return_reason').value = '';
+
+            openModal('returnSaleModal');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('[id^="pane-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('pane-' + tabName).classList.remove('hidden');
+            
+            const salesBtn = document.getElementById('tab-sales');
+            const returnsBtn = document.getElementById('tab-returns');
+            
+            // Reset
+            salesBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700';
+            returnsBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700';
+            
+            if (tabName === 'sales') {
+                salesBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-breadly-btn text-breadly-btn';
+            } else {
+                returnsBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-blue-500 text-blue-600';
+            }
+        }
+    </script>
 </body>
 </html>

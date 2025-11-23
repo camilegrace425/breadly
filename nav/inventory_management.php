@@ -7,7 +7,6 @@ require_once "../src/BakeryManager.php";
 // 1. SECURITY & AUTHENTICATION
 // =================================================================
 if (!isset($_SESSION["user_id"])) {
-    // If this is an AJAX/API request, return JSON 403
     if (isset($_SERVER['HTTP_CONTENT_TYPE']) && strpos($_SERVER['HTTP_CONTENT_TYPE'], 'application/json') !== false) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -27,9 +26,10 @@ if (!in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
 // =================================================================
 $inventoryManager = new InventoryManager();
 $bakeryManager = new BakeryManager();
+$current_role = $_SESSION["role"];
 
 // =================================================================
-// 3. HANDLE JSON API REQUESTS (Batch Actions)
+// 3. HANDLE JSON API REQUESTS
 // =================================================================
 $input_data = json_decode(file_get_contents('php://input'), true);
 if ($input_data && isset($input_data['action'])) {
@@ -42,21 +42,21 @@ if ($input_data && isset($input_data['action'])) {
         switch ($action) {
             case 'update_expiry':
                 if (!isset($input_data['batch_id']) || !array_key_exists('expiration_date', $input_data)) {
-                    throw new Exception('Missing parameters (batch_id or expiration_date)');
+                    throw new Exception('Missing parameters');
                 }
                 $response = $inventoryManager->updateBatchExpiry($input_data['batch_id'], $input_data['expiration_date']);
                 break;
 
             case 'update_quantity':
-                if (!isset($input_data['batch_id']) || !isset($input_data['new_quantity']) || !isset($input_data['reason'])) {
-                    throw new Exception('Missing parameters (batch_id, new_quantity, or reason)');
+                if (!isset($input_data['batch_id']) || !isset($input_data['new_quantity'])) {
+                    throw new Exception('Missing parameters');
                 }
                 $response = $inventoryManager->updateBatchQuantity($input_data['batch_id'], $userId, $input_data['new_quantity'], $input_data['reason']);
                 break;
 
             case 'delete_batch':
-                if (!isset($input_data['batch_id']) || !isset($input_data['reason'])) {
-                    throw new Exception('Missing parameters (batch_id or reason)');
+                if (!isset($input_data['batch_id'])) {
+                    throw new Exception('Missing parameters');
                 }
                 $response = $inventoryManager->deleteBatch($input_data['batch_id'], $userId, $input_data['reason']);
                 break;
@@ -70,7 +70,7 @@ if ($input_data && isset($input_data['action'])) {
 }
 
 // =================================================================
-// 4. HANDLE STANDARD FORM SUBMISSIONS (POST)
+// 4. HANDLE FORM SUBMISSIONS
 // =================================================================
 $message = "";
 $message_type = "";
@@ -92,12 +92,9 @@ if (isset($_POST["active_tab"])) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
     function handleProductImageUpload($file_input_name) {
         $target_dir = "../uploads/products/"; 
-        if (!file_exists($target_dir)) {
-            mkdir($target_dir, 0777, true);
-        }
+        if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
 
         if (isset($_FILES[$file_input_name]) && $_FILES[$file_input_name]['error'] == 0) {
             $file = $_FILES[$file_input_name];
@@ -107,192 +104,97 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $check = getimagesize($file["tmp_name"]);
             if ($check === false) return [null, "File is not an image."];
-            if ($file["size"] > 20000000) return [null, "Sorry, your file is too large (20MB limit)."];
+            if ($file["size"] > 20000000) return [null, "File too large (20MB limit)."];
             
-            $allowed_types = ['jpg', 'png', 'jpeg', 'gif'];
-            if (!in_array($file_extension, $allowed_types)) return [null, "Sorry, only JPG, JPEG, PNG & GIF files are allowed."];
+            $allowed = ['jpg', 'png', 'jpeg', 'gif'];
+            if (!in_array($file_extension, $allowed)) return [null, "Only JPG, PNG & GIF allowed."];
 
-            if (move_uploaded_file($file["tmp_name"], $target_file)) {
-                return [$target_file, null]; 
-            } else {
-                return [null, "Sorry, there was an error uploading your file."];
-            }
+            if (move_uploaded_file($file["tmp_name"], $target_file)) return [$target_file, null]; 
+            return [null, "Error uploading file."];
         }
         return [null, null]; 
     }
 
     $action = $_POST["action"] ?? "";
     $form_active_tab = $_POST["active_tab"] ?? "products"; 
+    $current_user_id = $_SESSION["user_id"]; 
 
     try {
         $success_message = "";
         $error_message = "";
-        $current_user_id = $_SESSION["user_id"]; 
 
         switch ($action) {
-            // --- INGREDIENT ACTIONS ---
             case "add_ingredient":
-                $result = $bakeryManager->addIngredient(
-                    $_POST["name"],
-                    $_POST["unit"],
-                    $_POST["stock_qty"],
-                    $_POST["reorder_level"]
-                );
-
-                if ($result === 'duplicate') {
-                    $error_message = "Warning: An ingredient with this name already exists.";
-                } elseif ($result === 'success') {
-                    $success_message = "Successfully added new ingredient!";
-                } else {
-                    $error_message = "Error adding ingredient.";
-                }
+                $result = $bakeryManager->addIngredient($_POST["name"], $_POST["unit"], $_POST["stock_qty"], $_POST["reorder_level"]);
+                if ($result === 'duplicate') $error_message = "Ingredient name already exists.";
+                elseif ($result === 'success') $success_message = "Ingredient added!";
+                else $error_message = "Error adding ingredient.";
                 break;
 
-            // ... (Restock and Edit Ingredient cases remain the same) ...
-
-            // --- PRODUCT ACTIONS ---
-            case "add_product":
-                list($image_path, $upload_error) = handleProductImageUpload('product_image');
-                if ($upload_error) {
-                    $error_message = $upload_error;
-                    break;
-                }
-    
-                $result = $bakeryManager->addProduct($_POST["name"], $_POST["price"], $image_path);
-                
-                if ($result === 'duplicate') {
-                    $error_message = "Warning: A product with this name already exists.";
-                    // Clean up uploaded image if duplicate
-                    if ($image_path && file_exists($image_path)) { @unlink($image_path); }
-                } elseif ($result === 'success') {
-                    $success_message = "Successfully added new product!";
-                } else {
-                    $error_message = "Error adding product.";
-                }
+            case "restock_ingredient":
+                $expiry = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
+                $result = $inventoryManager->createBatch($_POST['ingredient_id'], $current_user_id, $_POST['adjustment_qty'], $expiry, $_POST['reason_note']);
+                if ($result['success']) $success_message = $result['message'];
+                else $error_message = $result['message'];
                 break;
 
             case "edit_ingredient":
-                $bakeryManager->ingredientUpdate(
-                    $_POST["ingredient_id"],
-                    $_POST["name"],
-                    $_POST["unit"],
-                    $_POST["reorder_level"]
-                );
-                $success_message = "Successfully updated ingredient!";
+                $bakeryManager->ingredientUpdate($_POST["ingredient_id"], $_POST["name"], $_POST["unit"], $_POST["reorder_level"]);
+                $success_message = "Ingredient updated!";
                 break;
 
             case "delete_ingredient":
                 $status = $bakeryManager->ingredientDelete($_POST["ingredient_id"]);
-                if (strpos($status, "Success") !== false) {
-                    $success_message = $status;
-                } else {
-                    $error_message = $status; 
-                }
+                if (strpos($status, "Success") !== false) $success_message = $status;
+                else $error_message = $status; 
                 break;
 
-            // --- PRODUCT ACTIONS ---
             case "add_product":
                 list($image_path, $upload_error) = handleProductImageUpload('product_image');
-                if ($upload_error) {
-                    $error_message = $upload_error;
-                    break;
-                }
-    
-                $bakeryManager->addProduct($_POST["name"], $_POST["price"], $image_path);
-                $success_message = "Successfully added new product!";
+                if ($upload_error) { $error_message = $upload_error; break; }
+                $result = $bakeryManager->addProduct($_POST["name"], $_POST["price"], $image_path);
+                if ($result === 'duplicate') { $error_message = "Product name exists."; if($image_path) @unlink($image_path); }
+                elseif ($result === 'success') $success_message = "Product added!";
+                else $error_message = "Error adding product.";
                 break;
 
             case "adjust_product":
                 $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
-                $adjustment_type = $_POST["adjustment_type"];
-                $reason_note = $_POST["reason_note"];
-                $combined_reason = "[$adjustment_type] $reason_note";
-
-                $status = $bakeryManager->adjustProductStock(
-                    $_POST["product_id"],
-                    $user_id_to_pass,
-                    $_POST["adjustment_qty"],
-                    $combined_reason
-                );
-
-                if (strpos($status, "Success") !== false) {
-                    $success_message = $status;
-                } else {
-                    $error_message = $status; 
-                }
+                $status = $bakeryManager->adjustProductStock($_POST["product_id"], $user_id_to_pass, $_POST["adjustment_qty"], "[{$_POST["adjustment_type"]}] {$_POST["reason_note"]}");
+                if (strpos($status, "Success") !== false) $success_message = $status;
+                else $error_message = $status; 
                 break;
 
             case "edit_product":
-                $old_image_path = $_POST['current_image_path'] ?? null;
-                list($image_path, $upload_error) = handleProductImageUpload('edit_product_image');
-                if ($upload_error) {
-                    $error_message = $upload_error;
-                    break;
-                }
-                
-                $success = $bakeryManager->productUpdate(
-                    $_POST["product_id"],
-                    $_POST["name"],
-                    $_POST["price"],
-                    $_POST["status"],
-                    $image_path 
-                );
-
-                if ($success) {
-                    $success_message = "Successfully updated product!";
-                    if ($image_path && $old_image_path) {
-                        if (file_exists($old_image_path)) {
-                            @unlink($old_image_path); 
-                        }
-                    }
-                } else {
-                    $error_message = "Error: Could not update product in database.";
-                    if ($image_path && file_exists($image_path)) {
-                        @unlink($image_path);
-                    }
-                }
+                $old_image = $_POST['current_image_path'] ?? null;
+                list($new_image, $upload_error) = handleProductImageUpload('edit_product_image');
+                if ($upload_error) { $error_message = $upload_error; break; }
+                $success = $bakeryManager->productUpdate($_POST["product_id"], $_POST["name"], $_POST["price"], $_POST["status"], $new_image);
+                if ($success) { $success_message = "Product updated!"; if($new_image && $old_image && file_exists($old_image)) @unlink($old_image); }
+                else { $error_message = "Update failed."; if($new_image) @unlink($new_image); }
                 break;
 
             case "delete_product":
                 $status = $bakeryManager->productDelete($_POST["product_id"]);
-                if (strpos($status, "Success") !== false) {
-                    $success_message = $status;
-                } else {
-                    $error_message = $status; 
-                }
+                if (strpos($status, "Success") !== false) $success_message = $status;
+                else $error_message = $status; 
                 break;
 
-            // --- NEW: UNDO RECALL ACTION ---
             case "undo_recall":
                 $result = $inventoryManager->undoRecall($_POST["adjustment_id"], $current_user_id);
-                if ($result['success']) {
-                    $success_message = $result['message'];
-                } else {
-                    $error_message = $result['message'];
-                }
-                // Force stay on the recall tab
+                if ($result['success']) $success_message = $result['message'];
+                else $error_message = $result['message'];
                 $form_active_tab = "recall";
                 break;
         }
 
-        if ($error_message) {
-            $_SESSION["message"] = $error_message;
-            $_SESSION["message_type"] = "danger";
-        } else {
-            $_SESSION["message"] = $success_message;
-            $_SESSION["message_type"] = "success";
-        }
+        if ($error_message) { $_SESSION["message"] = $error_message; $_SESSION["message_type"] = "danger"; }
+        else { $_SESSION["message"] = $success_message; $_SESSION["message_type"] = "success"; }
         $_SESSION["active_tab"] = $form_active_tab; 
-
         header("Location: inventory_management.php"); 
         exit();
     } catch (PDOException $e) {
-        error_log("Database Error in inventory_management.php: " . $e->getMessage());
-        $user_error = "A database error occurred. Please try again.";
-        if (strpos($e->getMessage(), "Duplicate entry") !== false) {
-            $user_error = "Error: An item with this name already exists.";
-        }
-        $_SESSION["message"] = $user_error;
+        $_SESSION["message"] = "Database Error: " . $e->getMessage();
         $_SESSION["message_type"] = "danger";
         $_SESSION["active_tab"] = $form_active_tab; 
         header("Location: inventory_management.php");
@@ -300,27 +202,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 } 
 
-// =================================================================
-// 5. FETCH DATA FOR VIEW
-// =================================================================
 $products = $inventoryManager->getProductsInventory();
 $ingredients = $inventoryManager->getIngredientsInventory();
 $discontinued_products = $inventoryManager->getDiscontinuedProducts();
-if (method_exists($inventoryManager, "getAdjustmentHistory")) {
-    $adjustment_history = $inventoryManager->getAdjustmentHistory();
-} else {
-    $adjustment_history = [];
-}
-
-// Fetch recall data
+$adjustment_history = $inventoryManager->getAdjustmentHistory();
 $recall_history = $inventoryManager->getRecallHistoryByDate("1970-01-01", "2099-12-31");
-$total_recall_value = 0;
-foreach ($recall_history as $log) {
-    $total_recall_value += $log["removed_value"];
-}
+$total_recall_value = array_reduce($recall_history, function($sum, $log) { return $sum + $log["removed_value"]; }, 0);
 
 $unit_options = ["kg", "g", "L", "ml", "pcs", "pack", "tray", "can", "bottle"];
-$product_status_options = ["available", "discontinued"];
 $active_nav_link = 'inventory';
 ?>
 
@@ -331,873 +220,748 @@ $active_nav_link = 'inventory';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Management</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../styles/global.css"> 
-    <link rel="stylesheet" href="../styles/dashboard.css"> 
-    <link rel="stylesheet" href="../styles/recipes.css?v=3"> 
-    <link rel="stylesheet" href="../styles/responsive.css?v=3"> 
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: {
+                        breadly: {
+                            bg: '#FFFBF5',
+                            sidebar: '#FDEEDC',
+                            dark: '#6a381f',
+                            secondary: '#7a7a7a',
+                            btn: '#af6223',
+                            'btn-hover': '#9b4a10',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 </head>
-<body class="dashboard">
-<div class="container-fluid">
-    <div class="row">
-        <aside class="col-lg-2 col-md-3 sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
-            <div class="offcanvas-header d-lg-none">
-                <h5 class="offcanvas-title" id="sidebarMenuLabel">BREADLY</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
-            </div>
-            <div class="offcanvas-body d-flex flex-column p-0">
-                <div class="sidebar-brand">
-                    <img src="../images/kzklogo.png" alt="BREADLY Logo">
-                    <h5>BREADLY</h5>
-                    <p>Kz & Khyle's Bakery</p>
-                </div>
-                <ul class="nav flex-column sidebar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'dashboard') ? 'active' : ''; ?>" href="dashboard_panel.php">
-                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'inventory') ? 'active' : ''; ?>" href="inventory_management.php">
-                            <i class="bi bi-box me-2"></i> Inventory
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'recipes') ? 'active' : ''; ?>" href="recipes.php">
-                            <i class="bi bi-journal-bookmark me-2"></i> Recipes
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo ($active_nav_link == 'sales') ? 'active' : ''; ?>" href="sales_history.php">
-                            <i class="bi bi-clock-history me-2"></i> Sales & Transactions
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="../index.php">
-                            <i class="bi bi-arrow-left me-2"></i> Main Menu
-                        </a>
-                    </li>
-                </ul>
-                <div class="sidebar-user">
-                    <hr>
-                    <div class="dropdown">
-                        <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-circle me-2 fs-4"></i>
-                            <strong><?php echo htmlspecialchars($_SESSION["username"]); ?></strong>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userMenu">
-                            <li><a class="dropdown-item" href="logout.php">Sign out</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div> 
-        </aside>
+<body class="bg-breadly-bg text-breadly-dark font-sans h-screen flex overflow-hidden selection:bg-orange-200">
 
-        <main class="col-lg-10 col-md-9 main-content">
-            <div class="header d-flex justify-content-between align-items-center">
-                <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
-                    <i class="bi bi-list"></i>
+    <aside class="hidden lg:flex w-64 flex-col bg-breadly-sidebar h-full border-r border-orange-100 shrink-0 transition-all duration-300" id="sidebar">
+        <div class="p-6 text-center border-b border-orange-100/50">
+            <img src="../images/kzklogo.png" alt="BREADLY Logo" class="w-16 mx-auto mb-2">
+            <h5 class="font-bold text-lg text-breadly-dark">BREADLY</h5>
+            <p class="text-xs text-breadly-secondary">Kz & Khyle's Bakery</p>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <a href="dashboard_panel.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
+                <i class='bx bxs-dashboard text-xl'></i><span class="font-medium">Dashboard</span>
+            </a>
+            <a href="inventory_management.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors bg-breadly-dark text-white shadow-md">
+                <i class='bx bxs-box text-xl'></i><span class="font-medium">Inventory</span>
+            </a>
+            <a href="recipes.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
+                <i class='bx bxs-book-bookmark text-xl'></i><span class="font-medium">Recipes</span>
+            </a>
+            <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
+                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales History</span>
+            </a>
+            <div class="my-4 border-t border-orange-200"></div>
+            <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark transition-colors">
+                <i class='bx bx-arrow-back text-xl'></i><span class="font-medium">Main Menu</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-orange-200">
+            <div class="flex items-center gap-3 px-2 mb-3">
+                <div class="w-10 h-10 rounded-full bg-orange-200 flex items-center justify-center text-breadly-dark font-bold"><i class='bx bxs-user'></i></div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-breadly-dark truncate"><?php echo htmlspecialchars($_SESSION['username']); ?></p>
+                    <p class="text-xs text-breadly-secondary uppercase"><?php echo str_replace('_', ' ', $current_role); ?></p>
+                </div>
+            </div>
+            <a href="logout.php" class="flex items-center justify-center gap-1 py-2 text-xs font-medium text-red-500 bg-white border border-red-100 rounded-lg hover:bg-red-50 transition-colors">
+                <i class='bx bx-log-out'></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <div id="mobileSidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    
+    <div id="mobileSidebar" class="fixed inset-y-0 left-0 w-64 bg-breadly-sidebar z-50 transform -translate-x-full transition-transform duration-300 lg:hidden flex flex-col h-full shadow-2xl">
+        <div class="p-6 text-center border-b border-orange-100/50">
+            <div class="flex justify-end mb-2">
+                <button onclick="toggleSidebar()" class="text-breadly-secondary hover:text-breadly-dark"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <img src="../images/kzklogo.png" alt="BREADLY Logo" class="w-16 mx-auto mb-2">
+            <h5 class="font-bold text-lg text-breadly-dark">BREADLY</h5>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <a href="dashboard_panel.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
+                <i class='bx bxs-dashboard text-xl'></i> Dashboard
+            </a>
+            <a href="inventory_management.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-breadly-dark text-white">
+                <i class='bx bxs-box text-xl'></i> Inventory
+            </a>
+            <a href="recipes.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
+                <i class='bx bxs-book-bookmark text-xl'></i> Recipes
+            </a>
+            <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
+                <i class='bx bx-history text-xl'></i> Sales History
+            </a>
+            <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary mt-4 border-t border-orange-200 pt-4">
+                <i class='bx bx-arrow-back text-xl'></i> Main Menu
+            </a>
+        </nav>
+        <div class="p-4 border-t border-orange-200">
+            <a href="logout.php" class="block w-full py-2 text-center text-sm bg-red-50 text-red-600 rounded-lg">Logout</a>
+        </div>
+    </div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+        <div class="p-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-breadly-bg z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden text-breadly-dark text-2xl"><i class='bx bx-menu'></i></button>
+                <h1 class="text-2xl font-bold text-breadly-dark">Inventory Management</h1>
+            </div>
+        </div>
+
+        <?php if ($message): ?>
+        <div class="px-6">
+            <div class="<?php echo ($message_type === 'success') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'; ?> border px-4 py-3 rounded-lg flex justify-between items-center mb-4 shadow-sm">
+                <span><?php echo htmlspecialchars($message); ?></span>
+                <button onclick="this.parentElement.remove()" class="text-lg font-bold">&times;</button>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="px-6 border-b border-gray-200 bg-breadly-bg overflow-x-auto">
+            <div class="flex gap-6 min-w-max" id="inventoryTabs">
+                <button onclick="switchTab('products')" id="tab-products" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'products') ? 'border-breadly-btn text-breadly-btn' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
+                    <i class='bx bxs-package text-lg'></i> Active Products
                 </button>
-
-                <h1>Inventory Management</h1>
+                <button onclick="switchTab('ingredients')" id="tab-ingredients" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'ingredients') ? 'border-breadly-btn text-breadly-btn' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
+                    <i class='bx bxs-flask text-lg'></i> Ingredients
+                </button>
+                <button onclick="switchTab('discontinued')" id="tab-discontinued" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'discontinued') ? 'border-breadly-btn text-breadly-btn' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
+                    <i class='bx bxs-x-circle text-lg'></i> Discontinued
+                </button>
+                <button onclick="switchTab('recall')" id="tab-recall" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'recall') ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
+                    <i class='bx bxs-error text-lg'></i> Recall Log
+                </button>
+                <button onclick="switchTab('history')" id="tab-history" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'history') ? 'border-breadly-btn text-breadly-btn' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
+                    <i class='bx bx-history text-lg'></i> History
+                </button>
             </div>
+        </div>
 
-            <?php if ($message): ?>
-            <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($message); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php endif; ?>
-
-            <ul class="nav nav-tabs" id="inventoryTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo $active_tab === "products" ? "active" : ""; ?>" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-pane" type="button" role="tab">
-                        <i class="bi bi-archive me-1"></i> Active Products
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo $active_tab === "ingredients" ? "active" : ""; ?>" id="ingredients-tab" data-bs-toggle="tab" data-bs-target="#ingredients-pane" type="button" role="tab">
-                        <i class="bi bi-droplet me-1"></i> Ingredients
-                    </button>
-                </li>
-                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo $active_tab === "discontinued" ? "active" : ""; ?>" id="discontinued-tab" data-bs-toggle="tab" data-bs-target="#discontinued-pane" type="button" role="tab">
-                        <i class="bi bi-slash-circle me-1"></i> Discontinued
-                    </button>
-                </li>
-                 <li class="nav-item" role="presentation">
-                    <button class="nav-link text-warning <?php echo $active_tab === "recall" ? "active" : ""; ?>" id="recall-tab" data-bs-toggle="tab" data-bs-target="#recall-pane" type="button" role="tab">
-                        <i class="bi bi-exclamation-triangle me-1"></i> Recall Log
-                    </button>
-                </li>
-                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo $active_tab === "history" ? "active" : ""; ?>" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab">
-                        <i class="bi bi-clock-history me-1"></i> Adjustment History
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content" id="inventoryTabContent">
-
-                <div class="tab-pane fade <?php echo $active_tab === "products" ? "show active" : ""; ?>" id="products-pane" role="tabpanel">
-                   <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <span class="fs-5">Active Products</span>
-                            <div class="input-group" style="max-width: 400px;">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" id="product-search-input" class="form-control" placeholder="Search products...">
+        <div class="flex-1 overflow-y-auto p-6 pb-20 bg-breadly-bg">
+            
+            <div id="pane-products" class="<?php echo ($active_tab == 'products') ? '' : 'hidden'; ?>">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                    <div class="p-4 border-b border-orange-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div class="relative w-full sm:w-64">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class='bx bx-search text-gray-400'></i></span>
+                            <input type="text" id="product-search-input" class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn focus:border-breadly-btn outline-none" placeholder="Search products...">
+                        </div>
+                        <button onclick="openModal('addProductModal')" class="flex items-center gap-2 px-4 py-2 bg-breadly-btn text-white rounded-lg hover:bg-breadly-btn-hover transition-colors text-sm font-medium w-full sm:w-auto justify-center">
+                            <i class='bx bx-plus-circle'></i> Add Product
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="product-card-list">
+                        <?php if (empty($products)): ?>
+                            <div class="col-span-full text-center py-10 text-gray-400">
+                                <i class='bx bxs-package text-4xl mb-2'></i><p>No active products found.</p>
                             </div>
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="product-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="product-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="product-prev-btn" disabled><i class="bi bi-arrow-left"></i></button>
-                                        <button type="button" class="btn btn-outline-secondary" id="product-next-btn"><i class="bi bi-arrow-right"></i></button>
+                        <?php else: ?>
+                            <?php foreach ($products as $product): ?>
+                                <?php 
+                                $image_path = !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : '../images/breadlylogo.png'; 
+                                $stock_class = $product['stock_qty'] <= 0 ? 'text-red-600' : 'text-gray-800';
+                                ?>
+                                <div class="product-item group bg-white rounded-xl border border-gray-100 hover:border-breadly-btn hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden h-full" data-product-name="<?php echo htmlspecialchars(strtolower($product["name"])); ?>">
+                                    <div class="relative pt-[75%] bg-gray-50 border-b border-gray-100">
+                                        <img src="<?php echo $image_path; ?>" class="absolute inset-0 w-full h-full object-cover">
+                                        <div class="absolute top-2 right-2">
+                                            <span class="bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-breadly-dark shadow-sm border border-gray-100">
+                                                Stock: <span class="<?php echo $stock_class; ?>"><?php echo $product["stock_qty"]; ?></span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="p-4 flex flex-col flex-1">
+                                        <h5 class="font-semibold text-breadly-dark mb-1 line-clamp-1"><?php echo htmlspecialchars($product["name"]); ?></h5>
+                                        <p class="text-sm text-gray-500 mb-4">₱<?php echo number_format($product["price"], 2); ?></p>
+                                        <div class="mt-auto grid grid-cols-2 gap-2">
+                                            <button onclick="openModal('editProductModal', this)" 
+                                                    class="px-2 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+                                                    data-product-id="<?php echo $product["product_id"]; ?>"
+                                                    data-product-name="<?php echo htmlspecialchars($product["name"]); ?>"
+                                                    data-product-price="<?php echo $product["price"]; ?>"
+                                                    data-product-status="<?php echo $product["status"]; ?>">
+                                                <i class='bx bx-edit'></i> Edit
+                                            </button>
+                                            <button onclick="openModal('adjustProductModal', this)" 
+                                                    class="px-2 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 rounded hover:bg-orange-100 transition-colors flex items-center justify-center gap-1"
+                                                    data-product-id="<?php echo $product["product_id"]; ?>"
+                                                    data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
+                                                <i class='bx bx-slider-alt'></i> Adjust
+                                            </button>
+                                            <button onclick="openModal('deleteProductModal', this)" 
+                                                    class="col-span-2 px-2 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors flex items-center justify-center gap-1"
+                                                    data-product-id="<?php echo $product["product_id"]; ?>"
+                                                    data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
+                                                <i class='bx bx-trash'></i> Delete
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="dropdown d-inline-block">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Sort By: <span class="current-sort-text">Name (A-Z)</span>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="asc" data-sort-type="number" href="#">Price (Low-High)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="desc" data-sort-type="number" href="#">Price (High-Low)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Stock (Low-High)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Stock (High-Low)</a></li>
-                                    </ul>
-                                </div>
-                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                                    <i class="bi bi-plus-circle me-1"></i> Add New Product
-                                </button>
-                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pane-ingredients" class="<?php echo ($active_tab == 'ingredients') ? '' : 'hidden'; ?>">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                    <div class="p-4 border-b border-orange-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div class="relative w-full sm:w-64">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class='bx bx-search text-gray-400'></i></span>
+                            <input type="text" id="ingredient-search-input" class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn focus:border-breadly-btn outline-none" placeholder="Search ingredients...">
                         </div>
-                        <div class="card-body">
-                            <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3" id="product-card-list">
-                                <?php if (empty($products)): ?>
-                                    <div class="col-12"><p class="text-center text-muted">No active products found.</p></div>
+                        <button onclick="openModal('addIngredientModal')" class="flex items-center gap-2 px-4 py-2 bg-breadly-btn text-white rounded-lg hover:bg-breadly-btn-hover transition-colors text-sm font-medium w-full sm:w-auto justify-center">
+                            <i class='bx bx-plus-circle'></i> Add Ingredient
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Name</th>
+                                    <th class="px-6 py-3">Unit</th>
+                                    <th class="px-6 py-3 text-right">Stock</th>
+                                    <th class="px-6 py-3 text-right">Reorder</th>
+                                    <th class="px-6 py-3 text-center">Status</th>
+                                    <th class="px-6 py-3 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100" id="ingredient-table-body">
+                                <?php if (empty($ingredients)): ?>
+                                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No ingredients found.</td></tr>
                                 <?php else: ?>
-                                    <?php foreach ($products as $product): ?>
-                                        <?php 
-                                        $image_path = !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : '../images/breadlylogo.png'; 
-                                        $stock_class = $product['stock_qty'] <= 0 ? 'text-danger' : 'text-dark';
-                                        ?>
-                                        <div class="col product-item" 
-                                             data-product-name="<?php echo htmlspecialchars(strtolower($product["name"])); ?>"
-                                             data-product-price="<?php echo $product["price"]; ?>"
-                                             data-product-stock="<?php echo $product["stock_qty"]; ?>"
-                                             data-product-status="<?php echo $product["status"]; ?>">
-                                            
-                                            <div class="product-card h-100 d-flex flex-column"> 
-                                                <img src="<?php echo $image_path; ?>" alt="<?php echo htmlspecialchars($product["name"]); ?>" class="img-fluid rounded mb-2" style="height: 150px; object-fit: cover;">
-                                                <h5 class="product-name mb-1"><?php echo htmlspecialchars($product["name"]); ?></h5>
-                                                <p class="text-muted mb-1">₱<?php echo number_format($product["price"], 2); ?></p>
-                                                <p class="fw-bold <?php echo $stock_class; ?> mb-2">Stock: <?php echo $product["stock_qty"]; ?></p>
-                                                <div class="mt-auto d-grid gap-2">
-                                                     <button class="btn btn-outline-primary btn-sm"
-                                                            data-bs-toggle="modal" data-bs-target="#editProductModal"
-                                                            data-product-id="<?php echo $product["product_id"]; ?>"
-                                                            data-product-name="<?php echo htmlspecialchars($product["name"]); ?>"
-                                                            data-product-price="<?php echo $product["price"]; ?>"
-                                                            data-product-status="<?php echo $product["status"]; ?>"
-                                                            data-product-image="<?php echo htmlspecialchars($product["image_url"] ?? ''); ?>">
-                                                        <i class="bi bi-pencil-square"></i> Edit
-                                                    </button>
-                                                    <button class="btn btn-outline-secondary btn-sm"
-                                                            data-bs-toggle="modal" data-bs-target="#adjustProductModal"
-                                                            data-product-id="<?php echo $product["product_id"]; ?>"
-                                                            data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
-                                                        Adjust Stock
-                                                    </button>
-                                                    <button class="btn btn-outline-danger btn-sm"
-                                                            data-bs-toggle="modal" data-bs-target="#deleteProductModal"
-                                                            data-product-id="<?php echo $product["product_id"]; ?>"
-                                                            data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
-                                                        <i class="bi bi-trash"></i> Delete
-                                                    </button>
-                                                </div>
+                                    <?php foreach ($ingredients as $ing): ?>
+                                    <tr class="hover:bg-gray-50 transition-colors <?php echo $ing["stock_surplus"] <= 0 ? "bg-red-50/50" : ""; ?>">
+                                        <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($ing["name"]); ?></td>
+                                        <td class="px-6 py-3 text-gray-600"><?php echo htmlspecialchars($ing["unit"]); ?></td>
+                                        <td class="px-6 py-3 text-right font-bold"><?php echo number_format($ing["stock_qty"], 2); ?></td>
+                                        <td class="px-6 py-3 text-right text-gray-600"><?php echo number_format($ing["reorder_level"], 2); ?></td>
+                                        <td class="px-6 py-3 text-center">
+                                            <?php if ($ing["stock_surplus"] <= 0): ?>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Low Stock</span>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">In Stock</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-6 py-3 text-center">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button onclick="openModal('editIngredientModal', this)" class="flex items-center gap-1 bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors text-xs font-medium"
+                                                    data-ingredient-id="<?php echo $ing["ingredient_id"]; ?>" 
+                                                    data-ingredient-name="<?php echo htmlspecialchars($ing["name"]); ?>" 
+                                                    data-ingredient-unit="<?php echo htmlspecialchars($ing["unit"]); ?>" 
+                                                    data-ingredient-reorder="<?php echo $ing["reorder_level"]; ?>">
+                                                    <i class='bx bx-edit'></i> Edit
+                                                </button>
+                                                <button onclick="openModal('restockIngredientModal', this)" class="flex items-center gap-1 bg-green-50 text-green-600 px-3 py-1.5 rounded hover:bg-green-100 transition-colors text-xs font-medium"
+                                                    data-ingredient-id="<?php echo $ing['ingredient_id']; ?>" 
+                                                    data-ingredient-name="<?php echo htmlspecialchars($ing['name']); ?>" 
+                                                    data-ingredient-unit="<?php echo $ing['unit']; ?>">
+                                                    <i class='bx bx-plus-circle'></i> Restock
+                                                </button>
+                                                <button onclick="openModal('batchesModal', this)" class="flex items-center gap-1 bg-purple-50 text-purple-600 px-3 py-1.5 rounded hover:bg-purple-100 transition-colors text-xs font-medium"
+                                                    data-id="<?php echo $ing['ingredient_id']; ?>" 
+                                                    data-name="<?php echo htmlspecialchars($ing['name']); ?>" 
+                                                    data-unit="<?php echo $ing['unit']; ?>">
+                                                    <i class='bx bx-layer'></i> Batches
+                                                </button>
+                                                <button onclick="openModal('deleteIngredientModal', this)" class="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 transition-colors text-xs font-medium"
+                                                    data-ingredient-id="<?php echo $ing["ingredient_id"]; ?>" 
+                                                    data-ingredient-name="<?php echo htmlspecialchars($ing["name"]); ?>">
+                                                    <i class='bx bx-trash'></i> Delete
+                                                </button>
                                             </div>
-                                        </div>
+                                        </td>
+                                    </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
-                                <div class="col-12" id="product-no-results" style="display: none;"><p class="text-center text-muted">No products match your search.</p></div>
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
 
-                <div class="tab-pane fade <?php echo $active_tab === "ingredients" ? "show active" : ""; ?>" id="ingredients-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <span class="fs-5">All Ingredients</span>
-                            <div class="input-group" style="max-width: 400px;">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" id="ingredient-search-input" class="form-control" placeholder="Search ingredients...">
-                            </div>
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="ingredient-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="ingredient-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="ingredient-prev-btn" disabled><i class="bi bi-arrow-left"></i></button>
-                                        <button type="button" class="btn btn-outline-secondary" id="ingredient-next-btn"><i class="bi bi-arrow-right"></i></button>
-                                    </div>
-                                </div>
-                                <div class="dropdown d-inline-block">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Sort By: <span class="current-sort-text">Name (A-Z)</span></button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Stock (Low-High)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Stock (High-Low)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="reorder" data-sort-dir="asc" data-sort-type="number" href="#">Reorder (Low-High)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="reorder" data-sort-dir="desc" data-sort-type="number" href="#">Reorder (High-Low)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="status" data-sort-dir="desc" data-sort-type="text" href="#">Status (Low Stock First)</a></li>
-                                         <li><a class="dropdown-item sort-trigger" data-sort-by="status" data-sort-dir="asc" data-sort-type="text" href="#">Status (In Stock First)</a></li>
-                                    </ul>
-                                </div>
-                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addIngredientModal"><i class="bi bi-plus-circle me-1"></i> Add New Ingredient</button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                             <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="name">Name</th>
-                                            <th data-sort-by="unit">Unit</th>
-                                            <th data-sort-by="stock" data-sort-type="number">Current Stock</th>
-                                            <th data-sort-by="reorder" data-sort-type="number">Reorder Level</th>
-                                            <th data-sort-by="status">Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ingredient-table-body">
-                                        <?php if (empty($ingredients)): ?>
-                                            <tr><td colspan="6" class="text-center text-muted">No ingredients found. Add one to get started!</td></tr>
+            <div id="pane-discontinued" class="<?php echo ($active_tab == 'discontinued') ? '' : 'hidden'; ?>">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                    <div class="p-4 border-b border-orange-100">
+                        <h5 class="font-bold text-lg text-breadly-dark">Discontinued Products</h5>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Name</th>
+                                    <th class="px-6 py-3">Price</th>
+                                    <th class="px-6 py-3">Status</th>
+                                    <th class="px-6 py-3">Last Stock</th>
+                                    <th class="px-6 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <?php foreach ($discontinued_products as $product): ?>
+                                <tr>
+                                    <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($product["name"]); ?></td>
+                                    <td class="px-6 py-3">₱<?php echo number_format($product["price"], 2); ?></td>
+                                    <td class="px-6 py-3"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold"><?php echo htmlspecialchars(ucfirst($product["status"])); ?></span></td>
+                                    <td class="px-6 py-3"><?php echo $product["stock_qty"]; ?></td>
+                                    <td class="px-6 py-3 text-right">
+                                        <div class="flex justify-end gap-2">
+                                            <button onclick="openModal('editProductModal', this)" 
+                                                class="flex items-center gap-1 bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors text-xs font-medium"
+                                                data-product-id="<?php echo $product["product_id"]; ?>" 
+                                                data-product-name="<?php echo htmlspecialchars($product["name"]); ?>" 
+                                                data-product-price="<?php echo $product["price"]; ?>" 
+                                                data-product-status="<?php echo $product["status"]; ?>">
+                                                <i class='bx bx-refresh'></i> Restore
+                                            </button>
+                                            <button onclick="openModal('deleteProductModal', this)" 
+                                                class="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 transition-colors text-xs font-medium"
+                                                data-product-id="<?php echo $product["product_id"]; ?>" 
+                                                data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
+                                                <i class='bx bx-trash'></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pane-recall" class="<?php echo ($active_tab == 'recall') ? '' : 'hidden'; ?>">
+                 <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                    <div class="p-4 border-b border-orange-100 bg-red-50/30">
+                        <h5 class="font-bold text-lg text-red-800">Recall Log</h5>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Date</th>
+                                    <th class="px-6 py-3">Product</th>
+                                    <th class="px-6 py-3">Qty</th>
+                                    <th class="px-6 py-3">Value</th>
+                                    <th class="px-6 py-3">Reason</th>
+                                    <th class="px-6 py-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <?php foreach ($recall_history as $log): $isUndone = strpos($log['reason'], '(Undone)') !== false; ?>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
+                                    <td class="px-6 py-3 font-medium"><?php echo htmlspecialchars($log["item_name"] ?? "Deleted"); ?></td>
+                                    <td class="px-6 py-3 text-red-600 font-bold"><?php echo number_format($log["adjustment_qty"], 0); ?></td>
+                                    <td class="px-6 py-3 text-red-600">(₱<?php echo htmlspecialchars(number_format(abs($log["removed_value"]), 2)); ?>)</td>
+                                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["reason"]); ?></td>
+                                    <td class="px-6 py-3 text-right">
+                                        <?php if (!$isUndone): ?>
+                                        <form method="POST" action="inventory_management.php" onsubmit="return confirm('Undo recall?');" class="inline">
+                                            <input type="hidden" name="action" value="undo_recall">
+                                            <input type="hidden" name="adjustment_id" value="<?php echo $log['adjustment_id']; ?>">
+                                            <button type="submit" class="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 transition-colors text-xs font-medium border border-gray-300 ml-auto">
+                                                <i class='bx bx-undo'></i> Undo
+                                            </button>
+                                        </form>
                                         <?php else: ?>
-                                            <?php foreach ($ingredients as $ing): ?>
-                                            <tr class="<?php echo $ing["stock_surplus"] <= 0 ? "table-danger" : ""; ?>">
-                                                <td data-label="Name"><?php echo htmlspecialchars($ing["name"]); ?></td>
-                                                <td data-label="Unit"><?php echo htmlspecialchars($ing["unit"]); ?></td>
-                                                <td data-label="Current Stock"><strong><?php echo number_format($ing["stock_qty"], 2); ?></strong></td>
-                                                <td data-label="Reorder Level"><?php echo number_format($ing["reorder_level"], 2); ?></td>
-                                                <td data-label="Status"><?php if ($ing["stock_surplus"] <= 0): ?><span class="badge bg-danger">Low Stock</span><?php else: ?><span class="badge bg-success">In Stock</span><?php endif; ?></td>
-                                                <td>
-                                                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editIngredientModal" data-ingredient-id="<?php echo $ing["ingredient_id"]; ?>" data-ingredient-name="<?php echo htmlspecialchars($ing["name"]); ?>" data-ingredient-unit="<?php echo htmlspecialchars($ing["unit"]); ?>" data-ingredient-reorder="<?php echo $ing["reorder_level"]; ?>"><i class="bi bi-pencil-square"></i> Edit</button>
-                                                    <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#restockIngredientModal" data-ingredient-id="<?php echo $ing['ingredient_id']; ?>" data-ingredient-name="<?php echo htmlspecialchars($ing['name']); ?>" data-ingredient-unit="<?php echo $ing['unit']; ?>"><i class="bi bi-plus-lg"></i> Restock</button>
-                                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteIngredientModal" data-ingredient-id="<?php echo $ing["ingredient_id"]; ?>" data-ingredient-name="<?php echo htmlspecialchars($ing["name"]); ?>"><i class="bi bi-trash"></i> Delete</button>
-                                                    <button class="btn btn-sm btn-info text-white view-batches-btn" data-bs-toggle="modal" data-bs-target="#batchesModal" data-id="<?php echo $ing['ingredient_id']; ?>" data-name="<?php echo htmlspecialchars($ing['name']); ?>" data-unit="<?php echo $ing['unit']; ?>" title="Manage Batches"><i class="bi bi-layers"></i> Batch Details</button>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
+                                            <span class="bg-gray-100 text-gray-400 px-2 py-1 rounded text-xs">Undone</span>
                                         <?php endif; ?>
-                                        <tr id="ingredient-no-results" style="display: none;"><td colspan="6" class="text-center text-muted">No ingredients match your search.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                 </div>
+            </div>
+
+            <div id="pane-history" class="<?php echo ($active_tab == 'history') ? '' : 'hidden'; ?>">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                    <div class="p-4 border-b border-orange-100">
+                        <h5 class="font-bold text-lg text-breadly-dark">Adjustment History</h5>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Date</th>
+                                    <th class="px-6 py-3">User</th>
+                                    <th class="px-6 py-3">Item</th>
+                                    <th class="px-6 py-3">Type</th>
+                                    <th class="px-6 py-3">Qty</th>
+                                    <th class="px-6 py-3">Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <?php foreach ($adjustment_history as $log): ?>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
+                                    <td class="px-6 py-3"><?php echo htmlspecialchars($log["username"] ?? "N/A"); ?></td>
+                                    <td class="px-6 py-3 font-medium"><?php echo htmlspecialchars($log["item_name"] ?? "Deleted"); ?></td>
+                                    <td class="px-6 py-3">
+                                        <span class="px-2 py-0.5 rounded text-xs font-semibold <?php echo $log["item_type"] == "product" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"; ?>">
+                                            <?php echo ucfirst($log["item_type"]); ?>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-3 font-bold <?php echo $log["adjustment_qty"] > 0 ? 'text-green-600' : 'text-red-600'; ?>">
+                                        <?php echo ($log["adjustment_qty"] > 0 ? '+' : '') . number_format($log["adjustment_qty"], 2); ?>
+                                    </td>
+                                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["reason"]); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
 
-                <div class="tab-pane fade <?php echo $active_tab === "discontinued" ? "show active" : ""; ?>" id="discontinued-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <span class="fs-5">Discontinued Products</span>
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="discontinued-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="discontinued-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="discontinued-prev-btn" disabled><i class="bi bi-arrow-left"></i></button>
-                                        <button type="button" class="btn btn-outline-secondary" id="discontinued-next-btn"><i class="bi bi-arrow-right"></i></button>
-                                    </div>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Sort By: <span class="current-sort-text">Name (A-Z)</span></button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text" href="#">Name (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text" href="#">Name (Z-A)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="asc" data-sort-type="number" href="#">Price (Low-High)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="price" data-sort-dir="desc" data-sort-type="number" href="#">Price (High-Low)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="asc" data-sort-type="number" href="#">Last Stock (Low-High)</a></li>
-                                         <li><a class="dropdown-item sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number" href="#">Last Stock (High-Low)</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="name">Name</th>
-                                            <th data-sort-by="price" data-sort-type="number">Price</th>
-                                            <th data-sort-by="status">Status</th>
-                                            <th data-sort-by="stock" data-sort-type="number">Last Stock</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="discontinued-table-body">
-                                        <?php if (empty($discontinued_products)): ?>
-                                            <tr><td colspan="5" class="text-center text-muted">No discontinued products found.</td></tr>
-                                        <?php else: ?>
-                                            <?php foreach ($discontinued_products as $product): ?>
-                                            <tr>
-                                                <td data-label="Name"><?php echo htmlspecialchars($product["name"]); ?></td>
-                                                <td data-label="Price">₱<?php echo number_format($product["price"], 2); ?></td>
-                                                <td data-label="Status"><span class="badge bg-secondary"><?php echo htmlspecialchars(ucfirst($product["status"])); ?></span></td>
-                                                <td data-label="Last Stock"><?php echo $product["stock_qty"]; ?></td>
-                                                <td>
-                                                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editProductModal" data-product-id="<?php echo $product["product_id"]; ?>" data-product-name="<?php echo htmlspecialchars($product["name"]); ?>" data-product-price="<?php echo $product["price"]; ?>" data-product-status="<?php echo $product["status"]; ?>"><i class="bi bi-pencil-square"></i> Edit Status</button>
-                                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteProductModal" data-product-id="<?php echo $product["product_id"]; ?>" data-product-name="<?php echo htmlspecialchars($product["name"]); ?>"><i class="bi bi-trash"></i> Delete</button>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        </div>
+    </main>
 
-                <div class="tab-pane fade <?php echo $active_tab === "recall" ? "show active" : ""; ?>" id="recall-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3 border-warning">
-                        <div class="card-header bg-warning-subtle d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <span class="fs-5">Recall Log</span>
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="recall-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="recall-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="recall-prev-btn" disabled><i class="bi bi-arrow-left"></i></button>
-                                        <button type="button" class="btn btn-outline-secondary" id="recall-next-btn"><i class="bi bi-arrow-right"></i></button>
-                                    </div>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Sort By: <span class="current-sort-text">Date (Newest First)</span></button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Timestamp (Newest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Timestamp (Oldest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Product (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Product (Z-A)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">Cashier (A-Z)</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
-                                            <th data-sort-by="item">Product</th>
-                                            <th data-sort-by="qty" data-sort-type="number">Quantity</th>
-                                            <th data-sort-by="value" data-sort-type="number">Total Price</th>
-                                            <th data-sort-by="user">Cashier</th>
-                                            <th>Reason</th>
-                                            <th>Actions</th> </tr>
-                                    </thead>
-                                    <tbody id="recall-table-body">
-                                        <?php if (empty($recall_history)): ?>
-                                            <tr><td colspan="7" class="text-center text-muted">No recall history found.</td></tr>
-                                        <?php else: ?>
-                                            <?php foreach ($recall_history as $log): 
-                                                $isUndone = strpos($log['reason'], '(Undone)') !== false;
-                                            ?>
-                                            <tr>
-                                                <td data-label="Timestamp"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
-                                                <td data-label="Product"><?php echo htmlspecialchars($log["item_name"] ?? "Item Deleted"); ?></td>
-                                                <td data-label="Quantity">
-                                                    <?php if ($log["adjustment_qty"] < 0): ?>
-                                                        <strong class="text-danger"><?php echo number_format($log["adjustment_qty"], 0); ?></strong>
-                                                    <?php else: ?>
-                                                        <strong class="text-success">+<?php echo number_format($log["adjustment_qty"], 0); ?></strong>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td data-label="Total Price">
-                                                    <?php if ($log["removed_value"] < 0): ?>
-                                                        <span class="text-danger">(₱<?php echo htmlspecialchars(number_format(abs($log["removed_value"]), 2)); ?>)</span>
-                                                    <?php else: ?>
-                                                        ₱0.00
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td data-label="Cashier"><?php echo htmlspecialchars($log["username"] ?? "N/A"); ?></td>
-                                                <td data-label="Reason"><?php echo htmlspecialchars($log["reason"]); ?></td>
-                                                
-                                                <td>
-                                                    <?php if (!$isUndone): ?>
-                                                    <form method="POST" action="inventory_management.php" onsubmit="return confirm('Are you sure you want to undo this recall? Stock will be added back.');">
-                                                        <input type="hidden" name="action" value="undo_recall">
-                                                        <input type="hidden" name="active_tab" value="recall">
-                                                        <input type="hidden" name="adjustment_id" value="<?php echo $log['adjustment_id']; ?>">
-                                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Undo Recall">
-                                                            <i class="bi bi-arrow-counterclockwise"></i> Undo
-                                                        </button>
-                                                    </form>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-secondary">Undone</span>
-                                                    <?php endif; ?>
-                                                </td>
+    <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
 
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="d-flex justify-content-end fw-bold fs-5">
-                                <span class="me-3 text-danger">Total Removed Value:</span>
-                                <span class="text-danger">₱<?php echo htmlspecialchars(number_format(abs($total_recall_value), 2)); ?></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade <?php echo $active_tab === "history" ? "show active" : ""; ?>" id="history-pane" role="tabpanel">
-                    <div class="card shadow-sm mt-3">
-                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <span class="fs-5">Stock Adjustment History</span>
-                            <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <label for="history-rows-select" class="form-label mb-0 small text-muted flex-shrink-0">Show</label>
-                                    <select class="form-select form-select-sm" id="history-rows-select" style="width: auto;">
-                                        <option value="10" selected>10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                        <option value="100">100</option>
-                                        <option value="all">All</option>
-                                    </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" class="btn btn-outline-secondary" id="history-prev-btn" disabled><i class="bi bi-arrow-left"></i></button>
-                                        <button type="button" class="btn btn-outline-secondary" id="history-next-btn"><i class="bi bi-arrow-right"></i></button>
-                                    </div>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Sort By: <span class="current-sort-text">Date (Newest First)</span></button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item sort-trigger active" data-sort-by="timestamp" data-sort-dir="desc" data-sort-type="date" href="#">Date (Newest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="timestamp" data-sort-dir="asc" data-sort-type="date" href="#">Date (Oldest First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="asc" data-sort-type="text" href="#">Item Name (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="item" data-sort-dir="desc" data-sort-type="text" href="#">Item Name (Z-A)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="asc" data-sort-type="text" href="#">User (A-Z)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="user" data-sort-dir="desc" data-sort-type="text" href="#">User (Z-A)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="asc" data-sort-type="text" href="#">Type (Ingredient First)</a></li>
-                                        <li><a class="dropdown-item sort-trigger" data-sort-by="type" data-sort-dir="desc" data-sort-type="text" href="#">Type (Product First)</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th data-sort-by="timestamp" data-sort-type="date">Timestamp</th>
-                                            <th data-sort-by="user">User</th>
-                                            <th data-sort-by="item">Item Name</th>
-                                            <th data-sort-by="type">Type</th>
-                                            <th data-sort-by="qty" data-sort-type="number">Quantity</th>
-                                            <th data-sort-by="reason">Reason</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="history-table-body">
-                                        <?php if (empty($adjustment_history)): ?>
-                                            <tr><td colspan="6" class="text-center text-muted">No adjustment history found.</td></tr>
-                                        <?php else: ?>
-                                            <?php foreach ($adjustment_history as $log): ?>
-                                            <tr>
-                                                <td data-label="Timestamp"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
-                                                <td data-label="User"><?php echo htmlspecialchars($log["username"] ?? "N/A"); ?></td>
-                                                <td data-label="Item Name"><?php echo htmlspecialchars($log["item_name"] ?? "Item Deleted"); ?></td>
-                                                <td data-label="Type"><?php if ($log["item_type"] == "product"): ?><span class="badge bg-primary">Product</span><?php else: ?><span class="badge bg-secondary">Ingredient</span><?php endif; ?></td>
-                                                <td data-label="Quantity">
-                                                    <?php if ($log["adjustment_qty"] > 0): ?>
-                                                        <strong class="text-success">+<?php echo number_format($log["adjustment_qty"], 2); ?></strong>
-                                                    <?php elseif ($log["adjustment_qty"] < 0): ?>
-                                                        <strong class="text-danger"><?php echo number_format($log["adjustment_qty"], 2); ?></strong>
-                                                    <?php else: ?>
-                                                        <?php echo number_format($log["adjustment_qty"], 2); ?>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td data-label="Reason"><?php echo htmlspecialchars($log["reason"]); ?></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div> 
-        </main>
-    </div>
-</div>
-
-<div class="modal fade" id="addIngredientModal" tabindex="-1" aria-labelledby="addIngredientModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="addIngredientModalLabel">Add New Ingredient</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST">
-            <div class="modal-body">
+    <div id="addIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden transform transition-all scale-100 relative z-50">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Add New Ingredient</h5>
+                <button onclick="closeModal('addIngredientModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="inventory_management.php" method="POST" class="p-6">
                 <input type="hidden" name="action" value="add_ingredient">
                 <input type="hidden" name="active_tab" value="ingredients"> 
-                <div class="mb-3">
-                    <label for="add_ing_name" class="form-label">Ingredient Name</label>
-                    <input type="text" class="form-control" id="add_ing_name" name="name" required>
-                </div>
-                <div class="mb-3">
-                    <label for="add_ing_unit" class="form-label">Unit</label>
-                    <select class="form-select" id="add_ing_unit" name="unit" required>
-                        <option value="" selected disabled>Select a unit...</option>
-                        <?php foreach ($unit_options as $unit): ?>
-                            <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="add_ing_stock" class="form-label">Initial Stock Quantity</label>
-                    <input type="number" step="0.01" class="form-control" id="add_ing_stock" name="stock_qty" value="0" required min="0">
-                </div>
-                <div class="mb-3">
-                    <label for="add_ing_reorder" class="form-label">Reorder Level</label>
-                    <input type="number" step="0.01" class="form-control" id="add_ing_reorder" name="reorder_level" value="0" required min="0">
-                </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary">Add Ingredient</button>
-            </div>
-          </form>
-        </div>
-      </div>
-</div>
-
-<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
-     <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="addProductModalLabel">Add New Product</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST" enctype="multipart/form-data">
-            <div class="modal-body">
-                <input type="hidden" name="action" value="add_product">
-                <input type="hidden" name="active_tab" value="products">
-                <div class="mb-3">
-                    <label for="add_prod_name" class="form-label">Product Name</label>
-                    <input type="text" class="form-control" id="add_prod_name" name="name" required>
-                </div>
-                <div class="mb-3">
-                    <label for="add_prod_price" class="form-label">Price (PHP)</label>
-                    <input type="number" step="0.01" class="form-control" id="add_prod_price" name="price" required min="0">
-                </div>
-    
-                <div class="mb-3">
-                    <label for="add_prod_image" class="form-label">Product Image (Optional)</label>
-                    <input type="file" class="form-control" id="add_prod_image" name="product_image" accept="image/*">
-                </div>
-                <p class="text-muted small">Note: Initial stock is 0. Use "Adjust Stock" to add inventory and consume ingredients.</p>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary">Add Product</button>
-            </div>
-          </form>
-        </div>
-      </div>
-</div>
-
-<div class="modal fade" id="restockIngredientModal" tabindex="-1" aria-labelledby="restockIngredientModalLabel" aria-hidden="true">
-     <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="restockIngredientModalLabel">Restock Ingredient</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST">
-            <div class="modal-body">
-                <input type="hidden" name="action" value="restock_ingredient">
-                <input type="hidden" name="active_tab" value="ingredients"> 
-                <input type="hidden" name="ingredient_id" id="restock_ingredient_id">
-                <p>Restocking: <strong id="restock_ingredient_name"></strong> (<span id="restock_ingredient_unit"></span>)</p>
-                
-                <div class="mb-3">
-                    <label for="restock_ing_qty" class="form-label">Quantity Added</label>
-                    <input type="number" step="0.01" class="form-control" id="restock_ing_qty" name="adjustment_qty" required min="0.01">
-                </div>
-
-                <div class="mb-3">
-                    <label for="restock_ing_expiration" class="form-label">Expiration Date</label>
-                    <div class="input-group">
-                        <input type="date" class="form-control" id="restock_ing_expiration" name="expiration_date" required>
-                        <div class="input-group-text">
-                            <input class="form-check-input mt-0" type="checkbox" value="" id="restock_no_expiry" aria-label="No Expiration">
-                            <label class="form-check-label ms-2 mb-0 small" for="restock_no_expiry">N/A</label>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ingredient Name</label>
+                        <input type="text" name="name" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn focus:border-breadly-btn outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                        <select name="unit" required class="w-full p-2.5 border border-gray-300 rounded-lg">
+                            <option value="" selected disabled>Select...</option>
+                            <?php foreach ($unit_options as $unit) echo "<option value='$unit'>$unit</option>"; ?>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Initial Stock</label>
+                            <input type="number" step="0.01" name="stock_qty" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
+                            <input type="number" step="0.01" name="reorder_level" value="0" class="w-full p-2.5 border border-gray-300 rounded-lg">
                         </div>
                     </div>
-                    <div class="form-text">New stock will be added as a new batch.</div>
                 </div>
-
-                <div class="mb-3">
-                    <label for="restock_ing_reason_note" class="form-label">Reason / Note</label>
-                    <input type="text" class="form-control" id="restock_ing_reason_note" name="reason_note" placeholder="e.g., Invoice #1234" required>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('addIngredientModal')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-breadly-btn text-white rounded-lg hover:bg-breadly-btn-hover">Add Ingredient</button>
                 </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-success">Add Stock</button>
-            </div>
-          </form>
+            </form>
         </div>
-      </div>
-</div>
+    </div>
 
-<div class="modal fade" id="adjustProductModal" tabindex="-1" aria-labelledby="adjustProductModalLabel" aria-hidden="true">
-     <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="adjustProductModalLabel">Adjust Product Stock</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST">
-            <div class="modal-body">
+    <div id="addProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Add New Product</h5>
+                <button onclick="closeModal('addProductModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="inventory_management.php" method="POST" enctype="multipart/form-data" class="p-6">
+                <input type="hidden" name="action" value="add_product">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                        <input type="text" name="name" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Price (PHP)</label>
+                        <input type="number" step="0.01" name="price" required class="w-full p-2.5 border border-gray-300 rounded-lg outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Image (Optional)</label>
+                        <input type="file" name="product_image" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('addProductModal')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-breadly-btn text-white rounded-lg hover:bg-breadly-btn-hover">Add Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="adjustProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Adjust Product Stock</h5>
+                <button onclick="closeModal('adjustProductModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="inventory_management.php" method="POST" class="p-6">
                 <input type="hidden" name="action" value="adjust_product">
-                <input type="hidden" name="active_tab" value="products"> 
                 <input type="hidden" name="product_id" id="adjust_product_id">
-                <p>Adjusting: <strong id="adjust_product_name"></strong></p>
-                
-                <div class="mb-3">
-                    <label for="adjust_type" class="form-label">Adjustment Type</label>
-                    <select class="form-select" id="adjust_type" name="adjustment_type">
-                        <option value="Production" selected>Production (Add Stock, Deduct Ingredients)</option>
-                        <option value="Recall">Recall (Remove Stock)</option>
-                        <option value="Correction">Correction (Add/Remove Stock & Ingredients)</option>
-                    </select>
+                <input type="hidden" name="active_tab" value="products"> 
+                <p class="mb-4 text-sm text-gray-600">Adjusting: <strong id="adjust_product_name" class="text-breadly-dark"></strong></p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Adjustment Type</label>
+                        <select name="adjustment_type" id="adjust_type" class="w-full p-2.5 border border-gray-300 rounded-lg">
+                            <option value="Production">Production (Add Stock)</option>
+                            <option value="Recall">Recall (Remove Stock)</option>
+                            <option value="Correction">Correction (Manual +/-)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                        <input type="number" step="1" name="adjustment_qty" id="adjust_adjustment_qty" required class="w-full p-2.5 border border-gray-300 rounded-lg">
+                        <p class="text-xs text-gray-500 mt-1" id="adjust_qty_helper"></p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                        <input type="text" name="reason_note" required placeholder="e.g. Daily Bake" class="w-full p-2.5 border border-gray-300 rounded-lg">
+                    </div>
                 </div>
-                
-                <div class="mb-3">
-                    <label for="adjust_adjustment_qty" class="form-label">Adjustment Quantity</label>
-                    <input type="number" step="1" class="form-control" id="adjust_adjustment_qty" name="adjustment_qty" required>
-                    <div class="form-text" id="adjust_qty_helper">
-                        </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('adjustProductModal')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Save</button>
                 </div>
-
-                <div class="mb-3">
-                    <label for="adjust_reason_note" class="form-label">Reason / Note</label>
-                    <input type="text" class="form-control" id="adjust_reason_note" name="reason_note" placeholder="e.g., Daily bake, Expired items, Batch #123" required>
-                </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-warning">Save Adjustment</button>
-            </div>
-          </form>
+            </form>
         </div>
-      </div>
-</div>
+    </div>
 
-<div class="modal fade" id="editIngredientModal" tabindex="-1" aria-labelledby="editIngredientModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="editIngredientModalLabel">Edit Ingredient</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST">
-            <div class="modal-body">
+    <div id="editIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Edit Ingredient</h5>
+                <button onclick="closeModal('editIngredientModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="inventory_management.php" method="POST" class="p-6">
                 <input type="hidden" name="action" value="edit_ingredient">
                 <input type="hidden" name="active_tab" value="ingredients">
                 <input type="hidden" name="ingredient_id" id="edit_ingredient_id">
-                <div class="mb-3">
-                    <label for="edit_ingredient_name" class="form-label">Ingredient Name</label>
-                    <input type="text" class="form-control" name="name" id="edit_ingredient_name" required>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" name="name" id="edit_ingredient_name" required class="w-full p-2.5 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                        <select name="unit" id="edit_ingredient_unit" required class="w-full p-2.5 border border-gray-300 rounded-lg">
+                            <?php foreach ($unit_options as $unit) echo "<option value='$unit'>$unit</option>"; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
+                        <input type="number" step="0.01" name="reorder_level" id="edit_ingredient_reorder" required class="w-full p-2.5 border border-gray-300 rounded-lg">
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="edit_ingredient_unit" class="form-label">Unit</label>
-                    <select class="form-select" name="unit" id="edit_ingredient_unit" required>
-                        <?php foreach ($unit_options as $unit): ?>
-                            <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('editIngredientModal')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
                 </div>
-                <div class="mb-3">
-                    <label for="edit_ingredient_reorder" class="form-label">Reorder Level</label>
-                    <input type="number" step="0.01" class="form-control" name="reorder_level" id="edit_ingredient_reorder" required min="0">
-                </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
-            </div>
-          </form>
+            </form>
         </div>
-      </div>
-</div>
+    </div>
 
-<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
-     <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="editProductModalLabel">Edit Product</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST" enctype="multipart/form-data">
-            <div class="modal-body">
+    <div id="editProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Edit Product</h5>
+                <button onclick="closeModal('editProductModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="inventory_management.php" method="POST" enctype="multipart/form-data" class="p-6">
                 <input type="hidden" name="action" value="edit_product">
-                <input type="hidden" name="active_tab" id="edit_product_active_tab" value="products"> <input type="hidden" name="product_id" id="edit_product_id">
-                <div class="mb-3">
-                    <label for="edit_product_name" class="form-label">Product Name</label>
-                    <input type="text" class="form-control" name="name" id="edit_product_name" required>
-                </div>
-                <div class="mb-3">
-                    <label for="edit_product_price" class="form-label">Price (PHP)</label>
-                    <input type="number" step="0.01" class="form-control" name="price" id="edit_product_price" required min="0">
-                </div>
-                <div class="mb-3">
-                    <label for="edit_product_status" class="form-label">Status</label>
-                    <select class="form-select" name="status" id="edit_product_status" required>
-                        <option value="" disabled>Select status...</option>
-                        <?php foreach ($product_status_options as $status): ?>
-                            <option value="<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars(ucfirst($status)); ?></option>
-                        <?php endforeach; ?>
+                <input type="hidden" name="product_id" id="edit_product_id">
+                <input type="hidden" name="active_tab" id="edit_product_active_tab" value="products">
+                <div class="space-y-3">
+                    <input type="text" name="name" id="edit_product_name" class="w-full p-2 border rounded text-sm" placeholder="Name">
+                    <input type="number" step="0.01" name="price" id="edit_product_price" class="w-full p-2 border rounded text-sm" placeholder="Price">
+                    <select name="status" id="edit_product_status" class="w-full p-2 border rounded text-sm">
+                        <option value="available">Available</option>
+                        <option value="discontinued">Discontinued</option>
                     </select>
-                    <div class="form-text">Setting to "Discontinued" will move it to the Discontinued tab and remove it from POS.</div>
-                </div>
-    
-                <div class="mb-3">
-                    <label for="edit_product_image" class="form-label">Upload New Image (Optional)</label>
-                    <input type="file" class="form-control" id="edit_product_image" name="edit_product_image" accept="image/*">
-                    <div class="form-text">Leave blank to keep the current image.</div>
+                    <input type="file" name="edit_product_image" class="w-full text-sm">
                     <input type="hidden" name="current_image_path" id="edit_product_current_image">
                 </div>
+                <div class="mt-4 flex justify-end gap-2">
+                    <button type="submit" class="px-4 py-2 bg-breadly-btn text-white rounded text-sm">Save</button>
                 </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
-            </div>
-          </form>
+            </form>
         </div>
-      </div>
-</div>
+    </div>
 
-<div class="modal fade" id="deleteIngredientModal" tabindex="-1" aria-labelledby="deleteIngredientModalLabel" aria-hidden="true">
-     <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="deleteIngredientModalLabel">Delete Ingredient?</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <form action="inventory_management.php" method="POST">
-            <div class="modal-body">
+    <div id="restockIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Restock Ingredient</h5>
+                <button onclick="closeModal('restockIngredientModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="inventory_management.php" method="POST" class="p-6">
+                <input type="hidden" name="action" value="restock_ingredient">
+                <input type="hidden" name="ingredient_id" id="restock_ingredient_id">
+                <input type="hidden" name="active_tab" value="ingredients"> 
+                <p class="text-sm mb-3">Restocking: <strong id="restock_ingredient_name"></strong></p>
+                <div class="space-y-3">
+                    <input type="number" step="0.01" name="adjustment_qty" id="restock_ing_qty" placeholder="Qty Added" required class="w-full p-2 border rounded text-sm">
+                    <div class="flex gap-2">
+                        <input type="date" name="expiration_date" id="restock_ing_expiration" class="w-full p-2 border rounded text-sm">
+                        <div class="flex items-center gap-1 whitespace-nowrap">
+                            <input type="checkbox" id="restock_no_expiry"> <label for="restock_no_expiry" class="text-xs">No Expiry</label>
+                        </div>
+                    </div>
+                    <input type="text" name="reason_note" id="restock_ing_reason_note" placeholder="Note (e.g. Invoice #)" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div class="mt-4 flex justify-end gap-2">
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded text-sm">Restock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 bg-red-50">
+                <h5 class="font-bold text-red-800">Delete Ingredient?</h5>
+            </div>
+            <form action="inventory_management.php" method="POST" class="p-6">
                 <input type="hidden" name="action" value="delete_ingredient">
-                <input type="hidden" name="active_tab" value="ingredients">
+                <input type="hidden" name="active_tab" value="ingredients"> 
                 <input type="hidden" name="ingredient_id" id="delete_ingredient_id">
-                <p>Are you sure you want to permanently delete <strong id="delete_ingredient_name"></strong>?</p>
-                <p class="text-danger small">This action cannot be undone. Deletion will fail if the ingredient is currently used in any product recipes.</p>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-danger">Yes, Delete</button>
-            </div>
-          </form>
-        </div>
-      </div>
-</div>
-
-<div class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteProductModalLabel">Delete Product?</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="inventory_management.php" method="POST">
-        <div class="modal-body">
-            <input type="hidden" name="action" value="delete_product">
-            <input type="hidden" name="active_tab" id="delete_product_active_tab" value="products"> <input type="hidden" name="product_id" id="delete_product_id">
-            <p>Are you sure you want to permanently delete <strong id="delete_product_name"></strong>?</p>
-            <p class="text-danger small">This action cannot be undone. Deletion will fail if the product has associated sales or production history. Consider marking it as "Discontinued" instead.</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-danger">Yes, Delete</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="batchesModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg"> <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Batch Management: <span id="batch_modal_title"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered table-hover text-center align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 20%">Received</th>
-                                <th style="width: 25%">Expiration</th>
-                                <th style="width: 15%">Qty (<span id="batch_unit_display"></span>)</th>
-                                <th style="width: 15%">Status</th>
-                                <th style="width: 25%">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="batches_table_body">
-                            </tbody>
-                    </table>
+                <p class="mb-4 text-sm">Are you sure you want to delete <strong id="delete_ingredient_name"></strong>?</p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('deleteIngredientModal')" class="px-4 py-2 text-gray-600 bg-gray-100 rounded text-sm">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded text-sm">Delete</button>
                 </div>
-                <p class="small text-muted mt-2 text-center">
-                    Use <strong>Edit</strong> icon to change expiration. Use <strong>Correction</strong> for manual corrections.
-                </p>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 bg-red-50">
+                <h5 class="font-bold text-red-800">Delete Product?</h5>
+            </div>
+            <form action="inventory_management.php" method="POST" class="p-6">
+                <input type="hidden" name="action" value="delete_product">
+                <input type="hidden" name="product_id" id="delete_product_id">
+                <input type="hidden" name="active_tab" id="delete_product_active_tab" value="products">
+                <p class="mb-4 text-sm">Are you sure you want to delete <strong id="delete_product_name"></strong>?</p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('deleteProductModal')" class="px-4 py-2 text-gray-600 bg-gray-100 rounded text-sm">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded text-sm">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="batchesModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col m-4 overflow-hidden relative z-50">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Batch Details: <span id="batch_modal_title" class="text-breadly-btn"></span></h5>
+                <button onclick="closeModal('batchesModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="w-full text-center border-collapse">
+                    <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3 border-b">Received</th>
+                            <th class="px-4 py-3 border-b">Expiration</th>
+                            <th class="px-4 py-3 border-b">Qty</th>
+                            <th class="px-4 py-3 border-b">Status</th>
+                            <th class="px-4 py-3 border-b">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batches_table_body" class="divide-y divide-gray-100 text-sm"></tbody>
+                </table>
+            </div>
+            <div class="p-3 bg-gray-50 text-center text-xs text-gray-500 border-t border-gray-100">
+                Manage specific batch expirations and corrections here.
             </div>
         </div>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<?php 
-    $js_file = "../js/script_inventory.js";
-    // Get the last modification time of the file to bust cache
-    $js_version = file_exists($js_file) ? filemtime($js_file) : "1";
-?>
-<script src="../js/script_inventory.js?v=<?php echo $js_version; ?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php 
+        $js_file = "../js/script_inventory.js";
+        $js_version = file_exists($js_file) ? filemtime($js_file) : "1";
+    ?>
+    <script src="../js/script_inventory.js?v=<?php echo $js_version; ?>"></script>
 
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('mobileSidebarOverlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function openModal(modalId, triggerElement = null) {
+            const modal = document.getElementById(modalId);
+            const backdrop = document.getElementById('modalBackdrop');
+            if (modal) {
+                modal.classList.remove('hidden');
+                if(backdrop) backdrop.classList.remove('hidden');
+                
+                if (triggerElement) {
+                    const event = new CustomEvent('open-modal', { detail: { relatedTarget: triggerElement } });
+                    modal.dispatchEvent(event);
+                }
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const backdrop = document.getElementById('modalBackdrop');
+            if (modal) modal.classList.add('hidden');
+            if(backdrop) backdrop.classList.add('hidden');
+        }
+        
+        function closeAllModals() {
+            document.querySelectorAll('.fixed.z-50').forEach(el => el.classList.add('hidden'));
+            const backdrop = document.getElementById('modalBackdrop');
+            if(backdrop) backdrop.classList.add('hidden');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('[id^="pane-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('pane-' + tabName).classList.remove('hidden');
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700';
+            });
+            const activeBtn = document.getElementById('tab-' + tabName);
+            if (tabName === 'recall') {
+                activeBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-yellow-500 text-yellow-600';
+            } else {
+                activeBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-breadly-btn text-breadly-btn';
+            }
+        }
+    </script>
 </body>
 </html>

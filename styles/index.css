@@ -1,124 +1,149 @@
+/* breadly/styles/index.css */
 html, body {
     height: 100%;
     margin: 0;
     padding: 0;
 }
 
-.page-landing {
-    /* FIXED: Using the CSS variable for the background color */
-    background-color: var(--color-background-page); 
+.page-landing .landing-page {
+    min-height: 100vh;
+    background-color: var(--color-background-page);
+    position: relative;
 }
 
-/* MODIFIED: Mobile-first height */
-.page-landing .landing-page .row {
-    height: auto; /* Allow auto height on mobile */
-    margin: 0; 
+.page-landing .row {
+    margin: 0;
+    height: 100vh; /* Full height */
 }
 
+/* Text Column */
 .page-landing .text-column {
-    padding: 3rem 5rem; 
+    padding: 4rem 8%;
+    background-color: var(--color-background-page);
+    z-index: 10;
 }
 
-.page-landing .content-box h1 {
-    font-family: 'Lora', serif; 
-    color: #333; 
-    font-size: 4rem; 
-    line-height: 1.1;
-    margin-bottom: 1.5rem !important; 
+.page-landing .content-box {
+    max-width: 550px;
+    margin: 0 auto;
+}
+
+.page-landing h1 {
+    font-family: 'Lora', serif;
+    color: var(--color-text-dark);
+    font-size: 3.5rem;
+    line-height: 1.15;
+    margin-bottom: 1.5rem !important;
+    letter-spacing: -0.5px;
 }
 
 .page-landing .description-text {
-    font-size: 1.1rem;
-    color: #444;
-    line-height: 1.6;
-    margin-bottom: 1.5rem !important;
+    font-size: 1.15rem;
+    color: var(--color-text-muted);
+    line-height: 1.7;
+    margin-bottom: 2.5rem !important;
+    font-weight: 300;
 }
 
-.page-landing .powered-by-text {
-    font-size: 1.1rem;
-    color: #555; 
-    margin-bottom: 3rem !important; 
+.page-landing strong {
+    color: var(--color-primary-btn);
+    font-weight: 600;
 }
 
-.page-landing .powered-by-brand {
-    color: var(--color-panel); /* Using variable */
-}
-
-.page-landing .login-btn {
-    background-color: var(--color-login-btn); /* Using variable */
-    border-color: var(--color-login-btn); /* Using variable */
-    color: #1a1515;
-    padding: 0.75rem 3rem; 
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-    font-size: 1.125rem; 
+/* Buttons on Landing */
+.page-landing .btn {
+    padding: 0.85rem 1.5rem;
+    border-radius: 12px; /* Consistent with Login */
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
     transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    text-transform: uppercase;
+    font-size: 0.9rem;
 }
 
-.page-landing .login-btn:hover {
-    background-color: #b9662b;
-    border-color: #98582b;
-    color: #fff;
-    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+.btn-pos {
+    background: linear-gradient(135deg, #198754, #146c43);
+    color: white;
+}
+.btn-pos:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(25, 135, 84, 0.2);
+    color: white;
 }
 
-/* Right Image Column Styling */
+.btn-dash {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    color: white;
+}
+.btn-dash:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(13, 110, 253, 0.2);
+    color: white;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #5c636a);
+    color: white;
+}
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(108, 117, 125, 0.2);
+    color: white;
+}
+
+.btn-logout {
+    background: transparent;
+    border: 2px solid #dc3545;
+    color: #dc3545;
+    margin-top: 1rem;
+}
+.btn-logout:hover {
+    background-color: #dc3545;
+    color: white;
+    box-shadow: 0 4px 10px rgba(220, 53, 69, 0.2);
+}
+
+/* Image Column */
+.page-landing .bakery-column {
+    padding: 0;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
 .page-landing .bakery-img {
     object-fit: cover;
     height: 100%;
     width: 100%;
-    /* ADDED: Set a min-height for the image on mobile */
-    min-height: 300px;
+    transition: transform 10s ease;
 }
 
-.content-box form {
-    margin-bottom: 1rem;
-}
-.content-box .btn {
-    width: 100%;
-    max-width: 350px; /* Prevent buttons from being too wide */
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 1.1rem;
-    font-weight: bold;
-    transition: all 0.3s ease;
-}
-.btn-pos {
-    background-color: #198754; border-color: #198754; color: white;
-}
-.btn-pos:hover {
-    background-color: #157347; border-color: #146c43; color: white;
-}
-.btn-dash {
-    background-color: #0d6efd; border-color: #0d6efd; color: white;
-}
-.btn-dash:hover {
-    background-color: #0b5ed7; border-color: #0a58ca; color: white;
-}
-.btn-logout {
-    background-color: transparent;
-    border: 2px solid #dc3545;
-    color: #dc3545;
-}
-.btn-logout:hover {
-    background-color: #dc3545;
-    border-color: #dc3545;
-    color: white;
+/* Subtle zoom effect on image */
+.page-landing .bakery-img:hover {
+    transform: scale(1.05);
 }
 
-/* MODIFIED: Added media query for desktop styles */
-@media (min-width: 992px) { /* lg breakpoint */
-    .page-landing .landing-page .row {
-        height: 100%; /* Restore 100% height on desktop */
+/* Responsive */
+@media (max-width: 991px) {
+    .page-landing .row {
+        height: auto;
+        flex-direction: column-reverse; /* Image on top on mobile */
     }
-    .page-landing .landing-page {
-        height: 100vh; 
-    }
+
     .page-landing .bakery-column {
-        padding: 0;
-        height: 100vh; /* Restore 100vh on desktop */
+        height: 40vh;
+        min-height: 300px;
     }
-    .page-landing .bakery-img {
-        min-height: auto; /* Remove min-height on desktop */
+
+    .page-landing .text-column {
+        padding: 3rem 1.5rem;
+        text-align: center;
+    }
+
+    .page-landing h1 {
+        font-size: 2.5rem;
     }
 }

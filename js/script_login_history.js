@@ -4,27 +4,49 @@ document.addEventListener('DOMContentLoaded', () => {
     function addTablePagination(selectId, tableBodyId) {
         const select = document.getElementById(selectId);
         const tableBody = document.getElementById(tableBodyId);
+        
+        if (!select || !tableBody) return;
+
         const baseId = selectId.replace('-rows-select', '');
         const prevBtn = document.getElementById(`${baseId}-prev-btn`);
         const nextBtn = document.getElementById(`${baseId}-next-btn`);
         
-        if (!select || !tableBody || !prevBtn || !nextBtn) {
-            return;
-        }
+        if (!prevBtn || !nextBtn) return;
 
         let currentPage = 0; // 0-indexed page
 
         const updateTableRows = () => {
             const selectedValue = select.value;
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const visibleRows = Array.from(all_rows);
+            
+            // Get actual data rows (exclude message rows or hidden search results)
+            // We filter out rows that might be "No results" messages if they don't have data-label attributes
+            // or strictly rely on them not having an ID ending in -no-results
+            const all_rows = Array.from(tableBody.querySelectorAll('tr'));
+            
+            // Filter rows that are actual data entries
+            const visibleRows = all_rows.filter(row => {
+                // Skip rows that are just "No history found" messages (usually have colspan)
+                if (row.cells.length === 1 && row.cells[0].hasAttribute('colspan')) return false;
+                if (row.id && row.id.endsWith('-no-results')) return false;
+                
+                // Skip rows hidden by search filter (if any)
+                if (row.style.display === 'none' && row.dataset.paginatedHidden !== 'true') return false;
+                
+                return true;
+            });
+
+            // First, ensure filtered rows are flagged as visible before slicing
+            visibleRows.forEach(row => {
+                row.style.display = '';
+                row.dataset.paginatedHidden = 'false';
+            });
 
             if (selectedValue === 'all') {
-                visibleRows.forEach(row => {
-                    row.style.display = '';
-                });
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
+                // Apply classes for disabled state if needed
+                prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 return;
             }
 
@@ -32,41 +54,52 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalRows = visibleRows.length;
             const totalPages = Math.ceil(totalRows / limit);
 
-            // --- Apply pagination ---
+            // Adjust current page if out of bounds
+            if (currentPage >= totalPages && totalPages > 0) {
+                currentPage = totalPages - 1;
+            }
+
             const start = currentPage * limit;
             const end = start + limit;
 
             visibleRows.forEach((row, index) => {
-                row.style.display = (index >= start && index < end) ? '' : 'none';
+                if (index >= start && index < end) {
+                    row.style.display = '';
+                    row.dataset.paginatedHidden = 'false';
+                } else {
+                    row.style.display = 'none';
+                    row.dataset.paginatedHidden = 'true';
+                }
             });
 
-            // --- Update button states ---
+            // Update Button States
             prevBtn.disabled = currentPage === 0;
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
+            
+            // Visual feedback for Tailwind buttons
+            if (prevBtn.disabled) prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            else prevBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            if (nextBtn.disabled) nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            else nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         };
 
         prevBtn.addEventListener('click', () => {
-            if (currentPage > 0) {
+            if (!prevBtn.disabled) {
                 currentPage--;
                 updateTableRows();
             }
         });
 
         nextBtn.addEventListener('click', () => {
-            const selectedValue = select.value;
-            if (selectedValue === 'all') return;
-            const limit = parseInt(selectedValue, 10);
-            const totalRows = tableBody.querySelectorAll('tr:not([id$="-no-results"])').length;
-            const totalPages = Math.ceil(totalRows / limit);
-
-            if (currentPage < totalPages - 1) {
+            if (!nextBtn.disabled) {
                 currentPage++;
                 updateTableRows();
             }
         });
         
         select.addEventListener('change', () => {
-            currentPage = 0; // Reset to first page on limit change
+            currentPage = 0; 
             updateTableRows();
         });
         
@@ -79,31 +112,26 @@ document.addEventListener('DOMContentLoaded', () => {
         let cleaned = value.trim();
         switch (type) {
             case 'number':
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
-                cleaned = cleaned.replace(/,/g, '');
+                cleaned = cleaned.replace(/[^0-9.-]+/g, '');
                 const num = parseFloat(cleaned);
                 return isNaN(num) ? 0 : num;
             case 'date':
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal;
             default: // 'text'
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
-                cleaned = cleaned.replace(/,/g, '');
                 const lowerVal = cleaned.toLowerCase();
                 
-                // Login Status sorting
-                if (lowerVal.includes('failure')) return 'a_failure';
-                if (lowerVal.includes('success')) return 'b_success';
+                // Custom Sort Priorities
+                if (lowerVal.includes('failure')) return '0_failure'; // Failures first
+                if (lowerVal.includes('success')) return '1_success';
                 
-                // Role sorting
                 if (lowerVal.includes('manager')) return 'a_manager';
                 if (lowerVal.includes('cashier')) return 'b_cashier';
+                if (lowerVal.includes('assistant')) return 'c_assistant';
 
-                // Device sorting
                 if (lowerVal.includes('desktop')) return 'a_desktop';
                 if (lowerVal.includes('mobile')) return 'b_mobile';
                 if (lowerVal.includes('tablet')) return 'c_tablet';
-                if (lowerVal.includes('unknown')) return 'd_unknown';
                 
                 return lowerVal;
         }
@@ -112,47 +140,72 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- JS Sorting Initializer ---
     function sortTableByDropdown(sortLink) {
         const { sortBy, sortDir, sortType } = sortLink.dataset;
-        const table = sortLink.closest('.card').querySelector('table');
+        
+        // Find the table wrapper card
+        const card = sortLink.closest('#login-history-card') || document.getElementById('login-history-card');
+        if (!card) return;
+        
+        const table = card.querySelector('table');
         if (!table) return;
+        
         const tbody = table.querySelector('tbody');
         if (!tbody) return;
+        
+        // Find column index by matching header data-sort-by
         const th = table.querySelector(`thead th[data-sort-by="${sortBy}"]`);
         if (!th) {
             console.error(`Sort Error: No table header found with data-sort-by="${sortBy}"`);
             return;
         }
+        
         const colIndex = Array.from(th.parentNode.children).indexOf(th);
-        const rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])')); // Exclude no-results
+        
+        // Get rows that are actual data (skip empty messages)
+        const rows = Array.from(tbody.querySelectorAll('tr')).filter(row => {
+            return !(row.cells.length === 1 && row.cells[0].hasAttribute('colspan'));
+        });
 
         rows.sort((a, b) => {
-            if (!a.cells[colIndex] || !b.cells[colIndex]) return 0;
-            const valA = getSortableValue(a.cells[colIndex].innerText, sortType);
-            const valB = getSortableValue(b.cells[colIndex].innerText, sortType);
+            // Get cell content, handle missing cells safely
+            const cellA = a.cells[colIndex] ? a.cells[colIndex].innerText : '';
+            const cellB = b.cells[colIndex] ? b.cells[colIndex].innerText : '';
+            
+            const valA = getSortableValue(cellA, sortType);
+            const valB = getSortableValue(cellB, sortType);
+            
             if (valA < valB) return sortDir === 'asc' ? -1 : 1;
             if (valA > valB) return sortDir === 'asc' ? 1 : -1;
             return 0;
         });
 
+        // Re-append rows
         tbody.append(...rows);
         
-        const paginationSelectId = table.closest('.card').querySelector('select[id$="-rows-select"]')?.id;
-        if (paginationSelectId) {
-            const paginationSelect = document.getElementById(paginationSelectId);
-            if (paginationSelect) {
-                paginationSelect.dispatchEvent(new Event('change'));
-            }
+        // Trigger pagination update if pagination exists
+        const paginationSelect = card.querySelector('select[id$="-rows-select"]');
+        if (paginationSelect) {
+            paginationSelect.dispatchEvent(new Event('change'));
         }
 
-        const buttonTextSpan = sortLink.closest('.dropdown').querySelector('.current-sort-text');
+        // Update Dropdown UI
+        const buttonTextSpan = card.querySelector('.current-sort-text');
         if (buttonTextSpan) buttonTextSpan.innerText = sortLink.innerText;
         
-        const dropdownItems = sortLink.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
-        dropdownItems.forEach(item => item.classList.remove('active'));
-        sortLink.classList.add('active');
+        // Update active state in dropdown
+        const dropdownItems = card.querySelectorAll('.sort-trigger');
+        dropdownItems.forEach(item => {
+            item.classList.remove('active', 'bg-orange-50', 'text-orange-700');
+            item.classList.add('text-gray-700');
+        });
+        
+        sortLink.classList.add('active', 'bg-orange-50', 'text-orange-700');
+        sortLink.classList.remove('text-gray-700');
     }
 
     // Attach listeners to sort triggers
-    document.querySelectorAll('#login-history-card .sort-trigger').forEach(link => {
+    // Updated selector to match new Tailwind 'sort-trigger' class instead of 'dropdown-item'
+    const sortTriggers = document.querySelectorAll('#login-history-card .sort-trigger');
+    sortTriggers.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             sortTableByDropdown(e.target);
@@ -160,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initial sort
-    const defaultSortLink = document.querySelector('#login-history-card .dropdown-item.active');
+    const defaultSortLink = document.querySelector('#login-history-card .sort-trigger.active');
     if (defaultSortLink) {
         sortTableByDropdown(defaultSortLink);
     }
