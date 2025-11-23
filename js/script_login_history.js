@@ -203,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Attach listeners to sort triggers
-    // Updated selector to match new Tailwind 'sort-trigger' class instead of 'dropdown-item'
     const sortTriggers = document.querySelectorAll('#login-history-card .sort-trigger');
     sortTriggers.forEach(link => {
         link.addEventListener('click', (e) => {

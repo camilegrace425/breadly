@@ -1,28 +1,27 @@
 <?php
+// File Location: breadly/nav/generate_pdf_report.php
+
 session_start();
-// 1. Load all necessary files
 require_once '../lib/fpdf.php';
 require_once '../src/DashboardManager.php';
 require_once '../src/InventoryManager.php'; 
-require_once '../src/SalesManager.php'; // Added SalesManager
+require_once '../src/SalesManager.php';
 require_once '../config.php';
 require_once '../phpmailer/vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// 2. Security Check
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
     die('Access denied.');
 }
 
-// 3. Get dates and action from the form
 $date_start = $_POST['date_start'] ?? date('Y-m-d');
 $date_end = $_POST['date_end'] ?? date('Y-m-d');
 $action_type = $_POST['report_action'] ?? 'download'; 
 $recipient_email = $_POST['recipient_email'] ?? ''; 
 
-// Friendly date range text
+// Date Range Formatting
 $date_range_text = date('M d, Y', strtotime($date_start));
 if ($date_start != $date_end) {
     $date_range_text .= ' to ' . date('M d, Y', strtotime($date_end));
@@ -36,14 +35,12 @@ if ($date_start == date('Y-m-d') && $date_end == date('Y-m-d')) {
     $date_range_text = 'Today';
 }
 
-// 4. Fetch the data
 $dashboardManager = new DashboardManager();
 $inventoryManager = new InventoryManager();
-$salesManager = new SalesManager(); // Instantiate SalesManager
+$salesManager = new SalesManager(); 
 
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
 $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
-// FIX: Use correct key 'totalReturnsValue' from DashboardManager
 $totalReturns = $dateRangeSummary['totalReturnsValue'] ?? 0.00; 
 $netRevenue = $grossRevenue - $totalReturns;
 
@@ -51,14 +48,13 @@ $recalledStockValue = $dashboardManager->getRecalledStockValue($date_start, $dat
 $salesData = $dashboardManager->getSalesSummaryByDate($date_start, $date_end); 
 $recallData = $inventoryManager->getRecallHistoryByDate($date_start, $date_end);
 
-// --- Fetch and Filter Returns Data ---
+// Returns Data Filtering
 $allReturns = $salesManager->getReturnHistory();
 $returnsData = [];
 $startDateObj = new DateTime($date_start . ' 00:00:00');
 $endDateObj = new DateTime($date_end . ' 23:59:59');
 
 foreach ($allReturns as $ret) {
-    // Ensure timestamp exists and is valid
     if (!empty($ret['timestamp'])) {
         $retDate = new DateTime($ret['timestamp']);
         if ($retDate >= $startDateObj && $retDate <= $endDateObj) {
@@ -67,8 +63,6 @@ foreach ($allReturns as $ret) {
     }
 }
 
-
-// 5. PDF Class Definition
 class PDF extends FPDF
 {
     private $colorHeaderBg;
@@ -99,7 +93,7 @@ class PDF extends FPDF
         $this->SetFont('Arial', '', 12);
         $this->Cell(25); 
         $this->SetTextColor(50, 50, 50);
-        $this->Cell(0, 8, 'Sales, Returns & Recall Report', 0, 1, 'L'); // Updated Title
+        $this->Cell(0, 8, 'Sales, Returns & Recall Report', 0, 1, 'L');
         
         $this->SetFont('Arial', 'I', 10);
         $this->Cell(25); 
@@ -165,7 +159,6 @@ class PDF extends FPDF
             
             $i = 0;
             foreach ($row as $col) {
-                // Ensure text fits or is truncated if absolutely necessary, but Cell handles basic overflow by hiding
                 $this->Cell($columnWidths[$i], 7, $col, 'LR', 0, $aligns[$i], true);
                 $i++;
             }
@@ -190,13 +183,11 @@ class PDF extends FPDF
     }
 }
 
-
-// 6. Generate the PDF
 $pdf = new PDF();
 $pdf->AliasNbPages();
 $pdf->AddPage();
 
-// --- Executive Summary ---
+// Executive Summary
 $pdf->SectionTitle('Executive Summary');
 $pdf->SetFont('Arial', '', 10);
 $pdf->SetFillColor(250, 250, 250);
@@ -207,19 +198,19 @@ $boxHeight = 36;
 $pdf->Rect(10, $startY, 95, $boxHeight, 'F');
 $pdf->Rect(105, $startY, 95, $boxHeight, 'F');
 
-// Column 1: Sales
+// Column 1
 $pdf->SetY($startY + 2); 
 $pdf->SetX(12);
 $pdf->SummaryBox('Gross Revenue:', 'P ' . number_format($grossRevenue, 2), [60, 118, 61]);
 $pdf->SetX(12);
-$pdf->SummaryBox('Less Returns:', '(P ' . number_format($totalReturns, 2) . ')', [217, 83, 79]); // Red for deductions
+$pdf->SummaryBox('Less Returns:', '(P ' . number_format($totalReturns, 2) . ')', [217, 83, 79]);
 $pdf->SetX(12);
 $pdf->Cell(91, 0, '', 'T'); 
 $pdf->Ln(1);
 $pdf->SetX(12);
 $pdf->SummaryBox('Net Revenue:', 'P ' . number_format($netRevenue, 2), [60, 118, 61]);
 
-// Column 2: Recalls & Returns Info
+// Column 2
 $pdf->SetY($startY + 2); 
 $pdf->SetX(107);
 $pdf->SummaryBox('Total Recalled Value:', '(P ' . number_format($recalledStockValue, 2) . ')', [217, 83, 79]);
@@ -228,8 +219,7 @@ $pdf->SummaryBox('Return Transactions:', count($returnsData), [50, 50, 50]);
 
 $pdf->SetY($startY + $boxHeight + 6); 
 
-
-// --- Sales Section ---
+// Sales Report
 $pdf->SectionTitle('Detailed Sales Report');
 $salesHeader = ['Product', 'Qty Sold', 'Total Revenue'];
 $salesColumnWidths = [100, 40, 50];
@@ -255,7 +245,7 @@ $totalsAligns = ['R', 'C', 'R'];
 $pdf->TableTotals($totalsCells, $salesColumnWidths, $totalsAligns);
 $pdf->Ln(10);
 
-// --- Returns Section (NEW) ---
+// Returns Report
 $pdf->SectionTitle('Detailed Returns Report');
 $returnsHeader = ['Date', 'Product', 'Qty', 'Value', 'Reason', 'Cashier'];
 $returnsColumnWidths = [35, 50, 15, 25, 40, 25];
@@ -276,7 +266,7 @@ foreach ($returnsData as $row) {
 }
 
 $pdf->FancyTable($returnsHeader, $returnsTableData, $returnsColumnWidths, $returnsAligns);
-// Optional Total Row for Returns
+
 if (!empty($returnsData)) {
     $pdf->SetFont('Arial', 'B', 10);
     $pdf->Cell(100, 8, 'Total Returns Value', 1, 0, 'R', true);
@@ -284,7 +274,7 @@ if (!empty($returnsData)) {
 }
 $pdf->Ln(10);
 
-// --- Recall Section ---
+// Recall Log
 $pdf->SectionTitle('Detailed Recall Log');
 $recallHeader = ['Timestamp', 'Product', 'Qty', 'Cashier', 'Reason'];
 $recallColumnWidths = [40, 50, 15, 30, 55];
@@ -302,12 +292,10 @@ foreach ($recallData as $row) {
 }
 $pdf->FancyTable($recallHeader, $recallTableData, $recallColumnWidths, $recallAligns);
 
-
-// 7. Output based on Action
+// Output Handling
 $filename = 'Breadly_Report_' . $date_start . '_to_' . $date_end . '.pdf';
 
 if ($action_type === 'email' && !empty($recipient_email)) {
-    // --- EMAIL LOGIC ---
     $pdfString = $pdf->Output('S');
     
     $mail = new PHPMailer(true);
@@ -331,7 +319,6 @@ if ($action_type === 'email' && !empty($recipient_email)) {
 
         $mail->send();
         
-        // --- SweetAlert Success Response ---
         echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Email Sent</title>';
         echo '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>';
         echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">'; 
@@ -354,7 +341,6 @@ if ($action_type === 'email' && !empty($recipient_email)) {
         echo '</body></html>';
 
     } catch (Exception $e) {
-        // SweetAlert Error Response
         echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Error</title><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script></head><body>';
         echo "<script>
             Swal.fire({
@@ -368,7 +354,6 @@ if ($action_type === 'email' && !empty($recipient_email)) {
     }
 
 } else {
-    // --- DOWNLOAD LOGIC ---
     $pdf->Output('D', $filename);
 }
 exit;

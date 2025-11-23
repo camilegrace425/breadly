@@ -2,7 +2,6 @@
 session_start();
 require_once '../src/UserManager.php';
 
-// Check authentication
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'manager') {
     header('Location: ../index.php');
     exit();
@@ -12,13 +11,12 @@ $userManager = new UserManager();
 $current_user_id = $_SESSION['user_id'];
 $current_role = $_SESSION["role"];
 
-// --- Flash Message Logic ---
+// Handle Flash Messages
 $flash_message = $_SESSION['flash_message'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? 'info';
 unset($_SESSION['flash_message']);
 unset($_SESSION['flash_type']);
 
-// --- Local Alert Logic ---
 $alert_message = '';
 $alert_type = ''; 
 
@@ -27,7 +25,7 @@ if ($flash_message && empty($alert_message)) {
     $alert_type = $flash_type;
 }
 
-// --- User Management Logic ---
+// User Management State
 $is_edit = false;
 $edit_user_id = 0;
 $edit_data = [];
@@ -60,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // Handle User Management Actions
+    // Handle User Creation/Update
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $role = $_POST['role'] ?? '';
@@ -85,41 +83,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['action']) && $_POST['action'] === 'update_user') {
         $id_to_update = intval($_POST['user_id']);
-        
-        // --- ::: VALIDATION START: Prevent removing the last manager ::: ---
         $proceed_update = true;
         
-        // If I am updating myself AND I am changing my role away from 'manager'
+        // Prevent removing the last manager
         if ($id_to_update == $current_user_id && $role !== 'manager') {
-            // Count existing managers
             $all_users_check = $userManager->getAllUsers();
             $manager_count = 0;
             foreach ($all_users_check as $u) {
-                // STRICT CHECK: 'manager' is strictly different from 'assistant_manager'
-                // Only count full Managers
                 if ($u['role'] === 'manager') {
                     $manager_count++;
                 }
             }
             
-            // If I am the only one (manager_count is 1 or less), block the role change.
             if ($manager_count <= 1) {
-                $alert_message = "Action Denied: You cannot remove the last Manager account. Please create or promote another user to 'Manager' first. (Assistant Managers do not count).";
+                $alert_message = "Action Denied: You cannot remove the last Manager account.";
                 $alert_type = 'danger';
                 $proceed_update = false;
                 
-                // Keep edit form open and revert role visual to manager
                 $is_edit = true;
                 $edit_data = [
                     'user_id' => $id_to_update, 
                     'username' => $username, 
-                    'role' => 'manager', // Force reset role in form object
+                    'role' => 'manager', 
                     'email' => $email, 
                     'phone_number' => $phone
                 ];
             }
         }
-        // --- ::: VALIDATION END ::: ---
 
         if ($proceed_update) {
             if (empty($username) || empty($phone)) {
@@ -166,12 +156,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'updated' && empty($alert_message)) 
     $alert_type = 'success';
 }
 
-// Fetch Data
 $users = $userManager->getAllUsers();
 $userSettings = $userManager->getUserSettings($current_user_id);
-
-// Set Active Nav Link
-$active_nav_link = 'account_management';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -182,9 +168,7 @@ $active_nav_link = 'account_management';
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
@@ -248,7 +232,6 @@ $active_nav_link = 'account_management';
     </aside>
 
     <div id="mobileSidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
-    
     <div id="mobileSidebar" class="fixed inset-y-0 left-0 w-64 bg-breadly-sidebar z-50 transform -translate-x-full transition-transform duration-300 lg:hidden flex flex-col h-full shadow-2xl">
         <div class="p-6 text-center border-b border-orange-100/50">
             <div class="flex justify-end mb-2">

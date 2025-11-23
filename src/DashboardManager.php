@@ -6,7 +6,6 @@ if (!defined('SMS_API_TOKEN')) {
     require_once __DIR__ . '/../config.php'; 
 }
 
-// Manages all data fetching for the manager dashboard.
 class DashboardManager {
     private $conn;
     private $api_token = SMS_API_TOKEN; 
@@ -86,7 +85,6 @@ class DashboardManager {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $stmt->closeCursor(); 
             return $row['alertCount'] ?? 0;
-            
         } catch (PDOException $e) {
             return 0;
         }
@@ -105,13 +103,9 @@ class DashboardManager {
         }
     }
 
-    // --- Daily Sales Trend for Line Chart ---
     public function getDailySalesTrend($date_start, $date_end) {
         try {
-            // Query to sum total revenue per day
-            $sql = "SELECT 
-                        DATE(timestamp) as sale_date, 
-                        SUM(total_price) as daily_revenue 
+            $sql = "SELECT DATE(timestamp) as sale_date, SUM(total_price) as daily_revenue 
                     FROM sales 
                     WHERE DATE(timestamp) BETWEEN ? AND ? 
                     GROUP BY DATE(timestamp) 
@@ -126,13 +120,9 @@ class DashboardManager {
         }
     }
 
-    // --- Daily Returns Trend for Line Chart ---
     public function getDailyReturnsTrend($date_start, $date_end) {
         try {
-            // Query to sum return value per day
-            $sql = "SELECT 
-                        DATE(timestamp) as return_date, 
-                        SUM(return_value) as daily_return_value 
+            $sql = "SELECT DATE(timestamp) as return_date, SUM(return_value) as daily_return_value 
                     FROM `returns` 
                     WHERE DATE(timestamp) BETWEEN ? AND ? 
                     GROUP BY DATE(timestamp) 
@@ -168,12 +158,8 @@ class DashboardManager {
         }
     }
 
-    // --- UPDATED: Calculate Recalled Stock Value (Net) ---
-    // Sums negatives (recalls) and positives (undos) to get the true net value
     public function getRecalledStockValue($date_start, $date_end) {
         try {
-            // Raw SQL to include positive (undo) adjustments and calculate net loss
-            // Using raw SQL instead of stored procedure to ensure Undo records are included
             $sql = "SELECT SUM(sa.adjustment_qty * p.price) as net_value
                     FROM stock_adjustments sa
                     JOIN products p ON sa.item_id = p.product_id
@@ -185,18 +171,13 @@ class DashboardManager {
             $stmt->execute([$date_start, $date_end]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            // The net_value will be negative if there are more recalls than undos.
-            // We return the absolute value to display the "Cost" or "Loss".
             return abs($row['net_value'] ?? 0.00);
-            
         } catch (PDOException $e) {
             error_log("Error getting recalled stock value: " . $e->getMessage());
             return 0.00;
         }
     }
     
-    // --- UPDATED: Calculate Recall Count For Today (Net) ---
-    // Sums quantities to account for undo actions
     public function getRecallCountForToday() {
         $today = date('Y-m-d');
         try {
@@ -210,22 +191,15 @@ class DashboardManager {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             
             return abs($row['net_qty'] ?? 0);
-            
         } catch (PDOException $e) {
             error_log("Error fetching recall count for today: " . $e->getMessage());
             return 0;
         }
     }
 
-    // --- Expiration Tracker Method ---
     public function getExpiringBatches($days_threshold = 7) {
         try {
-            $sql = "SELECT 
-                        b.batch_id, 
-                        i.name AS ingredient_name, 
-                        b.quantity, 
-                        i.unit, 
-                        b.expiration_date,
+            $sql = "SELECT b.batch_id, i.name AS ingredient_name, b.quantity, i.unit, b.expiration_date,
                         DATEDIFF(b.expiration_date, CURDATE()) AS days_remaining
                     FROM ingredient_batches b
                     JOIN ingredients i ON b.ingredient_id = i.ingredient_id
@@ -244,7 +218,6 @@ class DashboardManager {
     }
 
     public function sendDailySummaryReport($phone_number, $date_start, $date_end) {
-        
         $date_str = ($date_start == $date_end) ? $date_start : "$date_start to $date_end";
         $message = "Sales Report ($date_str):\n";
 
@@ -315,13 +288,12 @@ class DashboardManager {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded'
-        ]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
         
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        
+        // curl_close removed per PHP 8+ recommendation
         
         $result = json_decode($response, true);
 
@@ -337,6 +309,7 @@ class DashboardManager {
             return [];
         }
     }
+
     public function getSalesSummaryByDate($date_start, $date_end) {
         try {
             $stmt = $this->conn->prepare("CALL ReportGetSalesSummaryByDate(?, ?)");

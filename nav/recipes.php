@@ -1,9 +1,7 @@
 <?php
 session_start();
 require_once '../src/BakeryManager.php';
-require_once '../src/InventoryManager.php'; 
 
-// --- Security Checks ---
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
@@ -13,11 +11,10 @@ if ($_SESSION['role'] !== 'manager' && $_SESSION['role'] !== 'assistant_manager'
     exit();
 }
 
-// --- Initialization ---
 $bakeryManager = new BakeryManager();
 $current_role = $_SESSION["role"];
 
-// --- Message Handling ---
+// Handle Session Messages
 $message = '';
 $message_type = '';
 if (isset($_SESSION['message'])) {
@@ -27,7 +24,7 @@ if (isset($_SESSION['message'])) {
     unset($_SESSION['message_type']);
 }
 
-// --- POST Request Handling ---
+// Handle Form Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $product_id_redirect = $_POST['product_id'] ?? $_GET['product_id'] ?? null;
@@ -68,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['message_type'] = 'danger';
     }
     
+    // Handle AJAX requests
     if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
         header('Content-Type: application/json');
         echo json_encode(['status' => 'success', 'message' => $_SESSION['message']]);
@@ -84,8 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-
-// --- Data Fetching ---
+// Data Fetching
 $selected_product_id = $_GET['product_id'] ?? null;
 $current_recipe_items = [];
 $current_batch_size = 0;
@@ -106,9 +103,7 @@ if ($selected_product_id) {
 }
 
 $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
-$active_nav_link = 'recipes';
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -143,6 +138,15 @@ $active_nav_link = 'recipes';
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #af6223;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-breadly-bg text-breadly-dark font-sans h-screen flex overflow-hidden selection:bg-orange-200">
@@ -252,7 +256,7 @@ $active_nav_link = 'recipes';
                                     <?php $is_active = ($selected_product_id == $product['product_id']); ?>
                                     <div class="col-product" data-product-name="<?= htmlspecialchars(strtolower($product['name'])) ?>">
                                         <a href="recipes.php?product_id=<?php echo $product['product_id']; ?>" 
-                                           class="block p-3 rounded-lg border transition-all duration-200 hover:shadow-md flex flex-col h-full <?php echo $is_active ? 'border-breadly-btn bg-orange-50 ring-1 ring-breadly-btn' : 'border-gray-100 bg-white hover:border-orange-200'; ?>"
+                                           class="product-card block p-3 rounded-lg border transition-all duration-200 hover:shadow-md flex flex-col h-full <?php echo $is_active ? 'border-breadly-btn bg-orange-50 ring-1 ring-breadly-btn' : 'border-gray-100 bg-white hover:border-orange-200'; ?>"
                                            data-product-name="<?php echo htmlspecialchars($product['name']); ?>">
                                              <div class="font-semibold text-sm text-gray-800 mb-1 line-clamp-2"><?= htmlspecialchars($product['name']) ?></div>
                                              <div class="mt-auto text-xs text-gray-500 bg-white/50 rounded px-1 py-0.5 w-fit border border-gray-100">Batch: <?= htmlspecialchars($product['batch_size'] ?? '0') ?> pcs</div>
@@ -391,8 +395,8 @@ $active_nav_link = 'recipes';
 
     <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
 
-    <div id="deleteRecipeItemModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50 transform transition-all scale-100">
+    <div id="deleteRecipeItemModal" class="fixed inset-0 z-50 hidden flex items-center justify-center pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50 transform transition-all scale-100 pointer-events-auto">
             <div class="p-4 border-b border-gray-100 bg-red-50">
                 <h5 class="font-bold text-red-800">Remove Ingredient?</h5>
             </div>
@@ -411,15 +415,15 @@ $active_nav_link = 'recipes';
         </div>
     </div>
 
-    <div id="recipeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] m-4 overflow-hidden flex flex-col relative z-50">
+    <div id="recipeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] m-4 overflow-hidden flex flex-col relative z-50 pointer-events-auto">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800" id="recipeModalLabel">Loading...</h5>
                 <button onclick="closeModal('recipeModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
             </div>
-            <div class="flex-1 overflow-y-auto p-4" id="recipeModalBody">
+            <div class="flex-1 overflow-y-auto p-4 custom-scrollbar" id="recipeModalBody">
                 <div class="flex justify-center p-10">
-                    <div class="animate-spin w-8 h-8 border-4 border-breadly-btn border-t-transparent rounded-full"></div>
+                    <div class="spinner"></div>
                 </div>
             </div>
             <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
@@ -429,14 +433,10 @@ $active_nav_link = 'recipes';
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <?php 
-        $js_file = "../js/script_recipes.js";
-        $js_version = file_exists($js_file) ? filemtime($js_file) : "1";
-    ?>
+    <?php $js_version = file_exists("../js/script_recipes.js") ? filemtime("../js/script_recipes.js") : "1"; ?>
     <script src="../js/script_recipes.js?v=<?php echo $js_version; ?>"></script>
 
     <script>
-        // Global Modal Logic
         function toggleSidebar() {
             const sidebar = document.getElementById('mobileSidebar');
             const overlay = document.getElementById('mobileSidebarOverlay');
@@ -471,9 +471,7 @@ $active_nav_link = 'recipes';
             if(backdrop) backdrop.classList.add('hidden');
         }
 
-        // Special helper for delete button
         function openDeleteModal(recipeId, ingredientName) {
-            const modal = document.getElementById('deleteRecipeItemModal');
             const nameSpan = document.getElementById('delete_ingredient_name');
             const idInput = document.getElementById('delete_recipe_id');
             
@@ -482,6 +480,10 @@ $active_nav_link = 'recipes';
             
             openModal('deleteRecipeItemModal');
         }
+        
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.openDeleteModal = openDeleteModal;
     </script>
 </body>
 </html>

@@ -2,26 +2,18 @@
 session_start();
 require_once "../src/UserManager.php"; 
 
-// --- Security Check: MANAGERS ONLY ---
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit();
 }
 if ($_SESSION["role"] !== "manager") {
-    header("Location: ../index.php"); // Not authorized
+    header("Location: ../index.php"); 
     exit();
 }
 
-// --- Managers ---
 $userManager = new UserManager();
-
-// --- Data Fetching ---
 $login_history = $userManager->getLoginHistory();
-
-// --- Active Tab for Sidebar ---
-$active_nav_link = 'login_history'; 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,11 +21,8 @@ $active_nav_link = 'login_history';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login History</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
-    
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
@@ -237,10 +226,7 @@ $active_nav_link = 'login_history';
         </div>
     </main>
 
-    <?php
-    $js_file = "../js/script_login_history.js";
-    $js_version = file_exists($js_file) ? filemtime($js_file) : "1";
-    ?>
+    <?php $js_version = file_exists("../js/script_login_history.js") ? filemtime("../js/script_login_history.js") : "1"; ?>
     <script src="../js/script_login_history.js?v=<?php echo $js_version; ?>"></script>
 
     <script>
@@ -256,13 +242,11 @@ $active_nav_link = 'login_history';
             }
         }
 
-        // --- NEW: Toggle Dropdown Logic ---
         function toggleSortDropdown() {
             const menu = document.getElementById('sortDropdownMenu');
             menu.classList.toggle('hidden');
         }
 
-        // Close dropdown when clicking outside
         window.addEventListener('click', function(e) {
             const btn = document.getElementById('sortDropdownBtn');
             const menu = document.getElementById('sortDropdownMenu');
@@ -271,7 +255,6 @@ $active_nav_link = 'login_history';
             }
         });
         
-        // Close dropdown when an item is selected (Listener for dynamically loaded items)
         document.addEventListener('click', function(e) {
             if(e.target.matches('.sort-trigger')) {
                  const menu = document.getElementById('sortDropdownMenu');

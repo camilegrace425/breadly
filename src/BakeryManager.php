@@ -1,7 +1,6 @@
 <?php
 require_once '../db_connection.php';
 
-// Manages all core bakery operations (CRUD, production, sales) by calling stored procedures.
 class BakeryManager {
     private $conn;
 
@@ -10,10 +9,9 @@ class BakeryManager {
         $this->conn = $db->getConnection();
     }
 
-    // --- INGREDIENTS ---
+    // --- INGREDIENT METHODS ---
 
     public function addIngredient($name, $unit, $stock_qty, $reorder_level) {
-        // Check for duplicate ingredient name first
         $check = $this->conn->prepare("SELECT COUNT(*) FROM ingredients WHERE LOWER(name) = LOWER(?)");
         $check->execute([$name]);
         if ($check->fetchColumn() > 0) {
@@ -22,7 +20,6 @@ class BakeryManager {
 
         $stmt = $this->conn->prepare("CALL IngredientAdd(?, ?, ?, ?)");
         $stmt->execute([$name, $unit, $stock_qty, $reorder_level]);
-        $stmt->closeCursor();
         return "success";
     }
 
@@ -61,10 +58,9 @@ class BakeryManager {
         return $stmt->execute();
     }
 
-    // --- PRODUCTS ---
+    // --- PRODUCT METHODS ---
 
     public function addProduct($name, $price, $image_url) {
-        // 1. Check for duplicate Product Name
         $check = $this->conn->prepare("SELECT COUNT(*) FROM products WHERE LOWER(name) = LOWER(?) AND status != 'discontinued'");
         $check->execute([$name]);
         
@@ -72,10 +68,8 @@ class BakeryManager {
             return "duplicate";
         }
 
-        // 2. Proceed with addition if not duplicate
         $stmt = $this->conn->prepare("CALL ProductAdd(?, ?, ?)");
         $stmt->execute([$name, $price, $image_url]);
-        $stmt->closeCursor();
         return "success";
     }
 
@@ -150,7 +144,7 @@ class BakeryManager {
         return $stmt->execute([$recall_id, $user_id, $qty_removed, $notes]);
     }
 
-    // --- RECIPES ---
+    // --- RECIPE METHODS ---
 
     public function getAllProductsSimple() {
         $stmt = $this->conn->prepare("CALL ProductGetAllSimple()");
@@ -170,12 +164,10 @@ class BakeryManager {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // MODIFIED: Returns specific status string
     public function addIngredientToRecipe($product_id, $ingredient_id, $qty_needed, $unit) {
         $stmt = $this->conn->prepare("CALL RecipeAddIngredient(?, ?, ?, ?)");
         $stmt->execute([$product_id, $ingredient_id, $qty_needed, $unit]);
         
-        // rowCount() > 0 means the INSERT ran. If 0, the 'IF NOT EXISTS' in SQL blocked it.
         if ($stmt->rowCount() > 0) {
             return "success";
         } else {

@@ -1,5 +1,6 @@
 <?php
-// Resolve paths relative to 'src' directory
+// File Location: breadly/src/UserManager.php
+
 if (!defined('SMS_API_TOKEN')) {
     require_once __DIR__ . '/../config.php';
 }
@@ -19,7 +20,7 @@ class UserManager {
         $this->conn = $db->getConnection();
     }
 
-    // --- Authentication Methods ---
+    // --- Authentication ---
 
     public function login($username, $password) {
         try {
@@ -40,7 +41,6 @@ class UserManager {
 
     public function logLoginAttempt($username_attempt, $status, $device_type) {
         try {
-            // First, try to get the user ID if they exist
             $stmt = $this->conn->prepare("CALL UserLogin(?)");
             $stmt->execute([$username_attempt]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -56,7 +56,7 @@ class UserManager {
         }
     }
 
-    // --- User Management Methods ---
+    // --- User Management ---
 
     public function getAllUsers() {
         try {
@@ -142,7 +142,7 @@ class UserManager {
         }
     }
 
-    // --- Password Reset & OTP Methods ---
+    // --- Password Reset ---
 
     public function requestEmailReset($email) {
         try {
@@ -154,7 +154,6 @@ class UserManager {
             if ($user) {
                 $user_id = $user['user_id'];
                 $otp = (string)rand(100000, 999999);
-
                 $expiration = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
                 $stmt = $this->conn->prepare("INSERT INTO password_resets (user_id, reset_method, otp_code, expiration, used) VALUES (?, 'email_token', ?, ?, 0)");
@@ -209,7 +208,7 @@ class UserManager {
 
             $otp = (string)rand(100000, 999999);
             $user_id = $user['user_id'];
-            $expiration_time = date('Y-m-d H:i:s', time() + 300); // 5 minutes
+            $expiration_time = date('Y-m-d H:i:s', time() + 300);
 
             $stmt = $this->conn->prepare("CALL UserStorePhoneOTP(?, ?, ?)");
             $stmt->execute([$user_id, $otp, $expiration_time]);
@@ -217,7 +216,6 @@ class UserManager {
 
             $formatted_phone = $this->formatPhoneNumberForAPI($phone_number);
 
-            // Send SMS via API
             $data = [
                 'api_token' => $this->api_token,
                 'message' => "Your BREADLY password reset code is: $otp. It will expire in 5 minutes.",
@@ -232,7 +230,7 @@ class UserManager {
             
             $response = curl_exec($ch);
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            // curl_close removed per PHP 8+
 
             if ($http_code >= 200 && $http_code < 300) {
                 return $otp;

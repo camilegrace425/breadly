@@ -1,10 +1,12 @@
 <?php
+// File Location: breadly/nav/logout.php
+
 session_start();
 
-// Clear all session variables
+// Unset all session values
 $_SESSION = array();
 
-// Destroy the session cookie if it exists
+// Delete the session cookie
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     setcookie(session_name(), '', time() - 42000,
@@ -13,7 +15,6 @@ if (ini_get("session.use_cookies")) {
     );
 }
 
-// Destroy the session
 session_destroy();
 ?>
 <!DOCTYPE html>
@@ -47,10 +48,7 @@ session_destroy();
         <p class="text-sm text-gray-500 mt-2">Redirecting you to the login page.</p>
     </div>
     <script>
-        // Fallback redirect
-        setTimeout(() => {
-            window.location.href = 'login.php';
-        }, 1000);
+        setTimeout(() => { window.location.href = 'login.php'; }, 1000);
     </script>
 </body>
 </html>

@@ -1,27 +1,24 @@
 <?php
 session_start();
 require_once "../src/SalesManager.php";
-require_once "../src/InventoryManager.php";
 require_once "../src/BakeryManager.php";
 
-// --- Security Check: MANAGERS AND CASHIERS ---
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit();
 }
-if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "assistant_manager" && $_SESSION["role"] !== "cashier") {
-    header("Location: ../index.php"); // Not authorized
+
+$valid_roles = ["manager", "assistant_manager", "cashier"];
+if (!in_array($_SESSION["role"], $valid_roles)) {
+    header("Location: ../index.php"); 
     exit();
 }
 
 $current_role = $_SESSION["role"];
-
-// --- Managers ---
 $salesManager = new SalesManager();
-$inventoryManager = new InventoryManager();
 $bakeryManager = new BakeryManager();
 
-// --- Message Handling ---
+// Session Messages
 $message = "";
 $message_type = "";
 if (isset($_SESSION["message"])) {
@@ -31,7 +28,7 @@ if (isset($_SESSION["message"])) {
     unset($_SESSION["message_type"]);
 }
 
-// --- POST HANDLING FOR RETURNS ---
+// Handle Return Processing
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "process_return") {
     $sale_id = $_POST["sale_id"];
     $return_qty = $_POST["return_qty"];
@@ -47,7 +44,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
         $_SESSION["message_type"] = "error";
     } else {
         $status = $bakeryManager->returnSale($sale_id, $user_id, $return_qty, $reason);
-
         if (strpos($status, "Success") !== false) {
             $_SESSION["message"] = $status;
             $_SESSION["message_type"] = "success";
@@ -66,29 +62,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     exit();
 }
 
-// Handle date filtering
+// Filter & Sort Parameters
 $date_start = $_GET["date_start"] ?? date("Y-m-d");
 $date_end = $_GET["date_end"] ?? date("Y-m-d");
-
-// --- Active Tab Handling ---
 $active_tab = $_GET["active_tab"] ?? "sales";
-
-// --- Handle Sorting ---
 $sort_column = $_GET["sort"] ?? "date";
 $sort_direction = $_GET["order"] ?? "DESC";
 
+// Helper: Sort Link Generation
 function getSortLink($column, $currentSort, $currentOrder, $dateStart, $dateEnd, $activeTab) {
-    $newOrder = $currentSort == $column && $currentOrder == "ASC" ? "DESC" : "ASC";
-    $params = http_build_query([
+    $newOrder = ($currentSort == $column && $currentOrder == "ASC") ? "DESC" : "ASC";
+    return "sales_history.php?" . http_build_query([
         "date_start" => $dateStart,
         "date_end" => $dateEnd,
         "sort" => $column,
         "order" => $newOrder,
         "active_tab" => $activeTab,
     ]);
-    return "sales_history.php?" . $params;
 }
 
+// Helper: Sort Display Text
 function getCurrentSortText($sort_column, $sort_direction) {
     $column_map = [
         "sale_id" => "Sale ID",
@@ -100,18 +93,16 @@ function getCurrentSortText($sort_column, $sort_direction) {
         "price" => "Net Total",
         "cashier" => "Cashier",
     ];
-    $direction_text = $sort_direction == "ASC" ? "Ascending" : "Descending";
-    $column_text = $column_map[$sort_column] ?? "Timestamp";
-    return "{$column_text} ({$direction_text})";
+    $dir_text = ($sort_direction == "ASC") ? "Ascending" : "Descending";
+    return ($column_map[$sort_column] ?? "Timestamp") . " ({$dir_text})";
 }
 
+// Fetch Data
 $sales = $salesManager->getSalesHistory($date_start, $date_end, $sort_column, $sort_direction);
 $return_history = $salesManager->getReturnHistory();
 
-$total_sales_revenue = 0;
-foreach ($sales as $sale) {
-    $total_sales_revenue += $sale["total_price"];
-}
+// Calculate Totals
+$total_sales_revenue = array_sum(array_column($sales, "total_price"));
 
 $total_return_value = 0;
 $start_date_obj = new DateTime($date_start . ' 00:00:00');
@@ -127,7 +118,6 @@ foreach ($return_history as $log) {
 $net_revenue = $total_sales_revenue - $total_return_value;
 $active_nav_link = 'sales'; 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -542,7 +532,6 @@ $active_nav_link = 'sales';
         function openReturnModal(button) {
             const modal = document.getElementById('returnSaleModal');
             
-            // Populate Data
             document.getElementById('return_sale_id').value = button.dataset.saleId;
             document.getElementById('return_product_name').textContent = button.dataset.productName;
             document.getElementById('return_sale_date').textContent = button.dataset.saleDate;
@@ -566,7 +555,6 @@ $active_nav_link = 'sales';
             const salesBtn = document.getElementById('tab-sales');
             const returnsBtn = document.getElementById('tab-returns');
             
-            // Reset
             salesBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700';
             returnsBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700';
             

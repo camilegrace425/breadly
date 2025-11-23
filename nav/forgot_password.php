@@ -7,21 +7,15 @@ if (isset($_SESSION['user_id'])) {
     exit();
 }
 
-// --- ADDED: Handle Cancel Action ---
+// Handle Cancel Action
 if (isset($_GET['action']) && $_GET['action'] === 'cancel') {
-    unset($_SESSION['reset_in_progress']);
-    unset($_SESSION['resend_available_at']);
-    unset($_SESSION['reset_identifier']);
-    unset($_SESSION['reset_method']);
-    unset($_SESSION['reset_started_at']);
-    unset($_SESSION['email_sent_success']);
-    unset($_SESSION['error_message']);
+    $vars_to_unset = ['reset_in_progress', 'resend_available_at', 'reset_identifier', 'reset_method', 'reset_started_at', 'email_sent_success', 'error_message'];
+    foreach ($vars_to_unset as $var) unset($_SESSION[$var]);
     header('Location: login.php');
     exit();
 }
-// -----------------------------------
 
-// Check if reset is already in progress (Auto-redirect if so)
+// Check if reset is already in progress (Auto-redirect)
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_SESSION['reset_in_progress']) && $_SESSION['reset_in_progress'] === true) {
         $reset_started_at = $_SESSION['reset_started_at'] ?? 0;
@@ -64,12 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } elseif ($result === 'EMAIL_FAILED') {
                     $error_message = "Failed to send email. Please try again later.";
                 } else {
-                    $method = 'email';
                     $_SESSION['reset_in_progress'] = true;
                     $_SESSION['resend_available_at'] = time() + 180; 
                     $_SESSION['reset_started_at'] = time(); 
                     $_SESSION['reset_identifier'] = $identifier;
-                    $_SESSION['reset_method'] = $method;
+                    $_SESSION['reset_method'] = 'email';
                     $_SESSION['email_sent_success'] = true; 
                     header('Location: reset_password.php?method=email');
                     exit();
@@ -81,12 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } elseif ($result === 'SMS_FAILED') {
                     $error_message = "System Error: SMS sending failed. Please contact support.";
                 } else {
-                    $method = 'phone';
                     $_SESSION['reset_in_progress'] = true;
                     $_SESSION['resend_available_at'] = time() + 180; 
                     $_SESSION['reset_started_at'] = time(); 
                     $_SESSION['reset_identifier'] = $identifier;
-                    $_SESSION['reset_method'] = $method;
+                    $_SESSION['reset_method'] = 'phone';
                     header('Location: reset_password.php?method=phone'); 
                     exit();
                 }
@@ -104,9 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>

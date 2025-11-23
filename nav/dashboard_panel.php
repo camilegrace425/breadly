@@ -19,49 +19,47 @@ $inventoryManager = new InventoryManager();
 $current_user_id = $_SESSION['user_id'];
 $current_role = $_SESSION["role"];
 
-// --- Handle POST requests ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_summary_report') {
-    $phone_number = $_POST['phone_number'] ?? '';
-    $p_start = $_POST['date_start'];
-    $p_end = $_POST['date_end'];
-    
-    $success = $dashboardManager->sendDailySummaryReport($phone_number, $p_start, $p_end);
-    
-    if ($success) {
-        $_SESSION['flash_message'] = "SMS Report sent successfully.";
-        $_SESSION['flash_type'] = "success";
-    } else {
-        $_SESSION['flash_message'] = "Failed to send SMS Report.";
-        $_SESSION['flash_type'] = "error";
+// Handle POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action']) && $_POST['action'] === 'send_summary_report') {
+        $phone_number = $_POST['phone_number'] ?? '';
+        $p_start = $_POST['date_start'];
+        $p_end = $_POST['date_end'];
+        
+        $success = $dashboardManager->sendDailySummaryReport($phone_number, $p_start, $p_end);
+        
+        $_SESSION['flash_message'] = $success ? "SMS Report sent successfully." : "Failed to send SMS Report.";
+        $_SESSION['flash_type'] = $success ? "success" : "error";
+        
+        header("Location: dashboard_panel.php?date_start=$p_start&date_end=$p_end");
+        exit();
     }
-    header("Location: dashboard_panel.php?date_start=$p_start&date_end=$p_end");
-    exit();
-}
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_settings') {
-    $phone = $_POST['my_phone_number'] ?? '';
-    $daily = isset($_POST['enable_daily_report']) ? 1 : 0;
-    
-    $userManager->updateMySettings($current_user_id, $phone, $daily);
-    $_SESSION['flash_message'] = "Settings updated.";
-    $_SESSION['flash_type'] = "success";
-    header("Location: dashboard_panel.php");
-    exit();
+
+    if (isset($_POST['action']) && $_POST['action'] === 'update_settings') {
+        $phone = $_POST['my_phone_number'] ?? '';
+        $daily = isset($_POST['enable_daily_report']) ? 1 : 0;
+        
+        $userManager->updateMySettings($current_user_id, $phone, $daily);
+        $_SESSION['flash_message'] = "Settings updated.";
+        $_SESSION['flash_type'] = "success";
+        header("Location: dashboard_panel.php");
+        exit();
+    }
 }
 
-// --- Read flash message ---
+// Flash Message Logic
 $flash_message = $_SESSION['flash_message'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? 'info';
 unset($_SESSION['flash_message']);
 unset($_SESSION['flash_type']);
 
-// --- Get main page date range ---
+// Date Range & Tab
 $date_start = $_GET['date_start'] ?? date('Y-m-d');
 $date_end = $_GET['date_end'] ?? date('Y-m-d');
 $active_tab = $_GET['active_tab'] ?? 'sales';
 
-// --- Fetch data ---
+// Fetch Sales Summary
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
-
 $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
 $totalReturnsValue = $dateRangeSummary['totalReturnsValue'] ?? 0.00;
 $totalReturnsCount = $dateRangeSummary['totalReturnsCount'] ?? 0;
@@ -69,7 +67,7 @@ $netRevenue = $grossRevenue - $totalReturnsValue;
 
 $topProducts = $dashboardManager->getTopSellingProducts($date_start, $date_end, 5);
 
-// --- NEW: Fetch Daily Trend Data (Sales & Returns) ---
+// Fetch Daily Trend Data (Sales & Returns)
 $dailySalesRaw = $dashboardManager->getDailySalesTrend($date_start, $date_end);
 $dailyReturnsRaw = $dashboardManager->getDailyReturnsTrend($date_start, $date_end);
 
@@ -83,72 +81,45 @@ $period = new DatePeriod(
 
 foreach ($period as $date) {
     $d = $date->format('Y-m-d');
-    $trendData[$d] = [
-        'date' => $d,
-        'sales' => 0.00,
-        'returns' => 0.00
-    ];
+    $trendData[$d] = ['date' => $d, 'sales' => 0.00, 'returns' => 0.00];
 }
 
-// Map Sales
 foreach ($dailySalesRaw as $s) {
-    if (isset($trendData[$s['sale_date']])) {
-        $trendData[$s['sale_date']]['sales'] = (float)$s['daily_revenue'];
-    }
+    if (isset($trendData[$s['sale_date']])) $trendData[$s['sale_date']]['sales'] = (float)$s['daily_revenue'];
 }
-
-// Map Returns
 foreach ($dailyReturnsRaw as $r) {
-    if (isset($trendData[$r['return_date']])) {
-        $trendData[$r['return_date']]['returns'] = (float)$r['daily_return_value'];
-    }
+    if (isset($trendData[$r['return_date']])) $trendData[$r['return_date']]['returns'] = (float)$r['daily_return_value'];
 }
-
 $dailyTrendData = array_values($trendData);
 
-$recalledStockValue = $dashboardManager->getRecalledStockValue($date_start, $date_end);
-$priorityAlert = $dashboardManager->getActiveLowStockAlerts(1); 
+// Fetch Additional Data
 $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
 $recalledStockCountToday = $dashboardManager->getRecallCountForToday();
 
-// --- Fetch Expiration Data ---
 $expiringBatches = $dashboardManager->getExpiringBatches(7); 
 $expiringCount = count($expiringBatches);
 
-// --- DATA FOR "IN STOCK" CARD ---
+// Inventory Calculations
 $allProducts = $inventoryManager->getProductsInventory();
-$productsWithStock = [];
-foreach ($allProducts as $product) {
-    if ($product['stock_qty'] > 0) {
-        $productsWithStock[] = $product;
-    }
-}
+$productsWithStock = array_filter($allProducts, fn($p) => $p['stock_qty'] > 0);
 $productsWithStockCount = count($productsWithStock);
 
-// --- Calculate Low Stock Based on Reorder Level ---
 $allIngredients = $inventoryManager->getIngredientsInventory();
 $lowStockCount = 0;
 foreach ($allIngredients as $ing) {
-    if ($ing['stock_qty'] <= $ing['reorder_level']) {
-        $lowStockCount++;
-    }
+    if ($ing['stock_qty'] <= $ing['reorder_level']) $lowStockCount++;
 }
 
-// --- Friendly date range text ---
+// Friendly Date Text
 if ($date_start == $date_end) {
-    if (empty($_GET['date_start']) && empty($_GET['date_end'])) {
-        $date_range_text = 'Today';
-    } else {
-        $date_range_text = date('M d, Y', strtotime($date_start));
-    }
+    $date_range_text = (empty($_GET['date_start'])) ? 'Today' : date('M d, Y', strtotime($date_start));
 } else {
     $date_range_text = date('M d, Y', strtotime($date_start)) . ' to ' . date('M d, Y', strtotime($date_end));
 }
 
 $active_nav_link = 'dashboard'; 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -158,26 +129,22 @@ $active_nav_link = 'dashboard';
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Poppins', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
                     colors: {
                         breadly: {
                             bg: '#FFFBF5',
                             sidebar: '#FDEEDC',
-                            'card-1': '#FEE8D0', // Sales card
-                            'card-2': '#FBF3D5', // Orders card
-                            'card-3': '#FBF3D5', // Best Selling / Stock card
-                            'card-4': '#F8DFAA', // Returns / Recall card
+                            'card-1': '#FEE8D0', 
+                            'card-2': '#FBF3D5', 
+                            'card-3': '#FBF3D5', 
+                            'card-4': '#F8DFAA', 
                             dark: '#6a381f',
                             secondary: '#7a7a7a',
                             btn: '#af6223',
@@ -189,13 +156,10 @@ $active_nav_link = 'dashboard';
         }
     </script>
     <style>
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Chart container height */
         .chart-container { position: relative; height: 400px; width: 100%; }
     </style>
 </head>
@@ -210,25 +174,20 @@ $active_nav_link = 'dashboard';
         
         <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
             <a href="dashboard_panel.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors <?php echo ($active_nav_link == 'dashboard') ? 'bg-breadly-dark text-white shadow-md' : 'text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark'; ?>">
-                <i class='bx bxs-dashboard text-xl'></i>
-                <span class="font-medium">Dashboard</span>
+                <i class='bx bxs-dashboard text-xl'></i><span class="font-medium">Dashboard</span>
             </a>
             <a href="inventory_management.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors <?php echo ($active_nav_link == 'inventory') ? 'bg-breadly-dark text-white shadow-md' : 'text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark'; ?>">
-                <i class='bx bxs-box text-xl'></i>
-                <span class="font-medium">Inventory</span>
+                <i class='bx bxs-box text-xl'></i><span class="font-medium">Inventory</span>
             </a>
             <a href="recipes.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors <?php echo ($active_nav_link == 'recipes') ? 'bg-breadly-dark text-white shadow-md' : 'text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark'; ?>">
-                <i class='bx bxs-book-bookmark text-xl'></i>
-                <span class="font-medium">Recipes</span>
+                <i class='bx bxs-book-bookmark text-xl'></i><span class="font-medium">Recipes</span>
             </a>
             <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors <?php echo ($active_nav_link == 'sales') ? 'bg-breadly-dark text-white shadow-md' : 'text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark'; ?>">
-                <i class='bx bx-history text-xl'></i>
-                <span class="font-medium">Sales History</span>
+                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales History</span>
             </a>
             <div class="my-4 border-t border-orange-200"></div>
             <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark transition-colors">
-                <i class='bx bx-arrow-back text-xl'></i>
-                <span class="font-medium">Main Menu</span>
+                <i class='bx bx-arrow-back text-xl'></i><span class="font-medium">Main Menu</span>
             </a>
         </nav>
 
@@ -243,7 +202,6 @@ $active_nav_link = 'dashboard';
             <a href="logout.php" class="flex items-center justify-center gap-1 py-2 text-xs font-medium text-red-500 bg-white border border-red-100 rounded-lg hover:bg-red-50 transition-colors">
                 <i class='bx bx-log-out'></i> Logout
             </a>
-        </div>
         </div>
     </aside>
 
@@ -848,7 +806,6 @@ $active_nav_link = 'dashboard';
     <script src="../js/script_dashboard.js?v=<?php echo $js_version; ?>"></script>
 
     <script>
-    // Sidebar Toggle
     function toggleSidebar() {
         const sidebar = document.getElementById('mobileSidebar');
         const overlay = document.getElementById('mobileSidebarOverlay');
@@ -862,7 +819,6 @@ $active_nav_link = 'dashboard';
         }
     }
 
-    // Modal Logic
     function openModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) modal.classList.remove('hidden');
@@ -873,16 +829,11 @@ $active_nav_link = 'dashboard';
         if (modal) modal.classList.add('hidden');
     }
 
-    // Tab Logic
     function switchTab(tabName) {
-        // Hide all panes
         document.getElementById('pane-sales').classList.add('hidden');
         document.getElementById('pane-inventory').classList.add('hidden');
-        
-        // Show active pane
         document.getElementById('pane-' + tabName).classList.remove('hidden');
         
-        // Reset Button Styles
         const salesBtn = document.getElementById('tab-sales');
         const invBtn = document.getElementById('tab-inventory');
         
@@ -902,7 +853,6 @@ $active_nav_link = 'dashboard';
         }
     }
 
-    // Action Radio Logic
     function toggleEmailField(show, type) {
         let containerId, formId;
         if (type === 'pdf') {
@@ -927,7 +877,6 @@ $active_nav_link = 'dashboard';
         }
     }
 
-    // Low Stock Filter Logic
     document.addEventListener('DOMContentLoaded', function() {
         const filterCheckbox = document.getElementById('filterLowStock');
         if (filterCheckbox) {

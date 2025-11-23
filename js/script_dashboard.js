@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // 1. Existing Top Products Bar Chart
+    // 1. Top Products Bar Chart
     const topProductsCtx = document.getElementById('topProductsChart');
     if (topProductsCtx) {
         const topProductsData = JSON.parse(topProductsCtx.dataset.products);
@@ -25,14 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false
-                        }
+                        legend: { display: false }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: true
-                        }
+                        y: { beginAtZero: true }
                     }
                 }
             });
@@ -48,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Daily Revenue & Returns Trend Line Chart
     const trendCtx = document.getElementById('dailyTrendChart');
     if (trendCtx) {
-        // Parse the JSON data from the PHP attribute
         let trendData = [];
         try {
              trendData = JSON.parse(trendCtx.dataset.trend);
@@ -56,21 +51,20 @@ document.addEventListener('DOMContentLoaded', () => {
              console.error("Error parsing trend data", e);
         }
         
-        // Extract Labels (Dates) and Data
         const trendLabels = Array.isArray(trendData) ? trendData.map(item => item.date) : [];
         const trendSales = Array.isArray(trendData) ? trendData.map(item => item.sales) : [];
         const trendReturns = Array.isArray(trendData) ? trendData.map(item => item.returns) : [];
 
         if (trendLabels.length > 0) {
             new Chart(trendCtx, {
-                type: 'line', // Set type to Line
+                type: 'line', 
                 data: {
                     labels: trendLabels,
                     datasets: [
                         {
                             label: 'Total Revenue (₱)',
                             data: trendSales,
-                            borderColor: '#0d6efd', // Blue for Sales
+                            borderColor: '#0d6efd', 
                             backgroundColor: 'rgba(13, 110, 253, 0.1)',
                             borderWidth: 2,
                             tension: 0.3,
@@ -82,11 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         {
                             label: 'Total Returns (₱)',
                             data: trendReturns,
-                            borderColor: '#dc3545', // Red for Returns
+                            borderColor: '#dc3545',
                             backgroundColor: 'rgba(220, 53, 69, 0.1)',
                             borderWidth: 2,
                             tension: 0.3,
-                            fill: true, // Fill enabled to see the "volume" of returns
+                            fill: true,
                             pointRadius: 4,
                             pointBackgroundColor: '#fff',
                             pointBorderColor: '#dc3545'
@@ -97,10 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
+                        legend: { display: true, position: 'top' },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -120,16 +111,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: function(value) {
-                                    return '₱' + value; 
-                                }
+                                callback: function(value) { return '₱' + value; }
                             }
                         }
                     }
                 }
             });
         } else {
-            // Handle empty data case
             const ctx = trendCtx.getContext('2d');
             ctx.font = '16px Segoe UI';
             ctx.fillStyle = '#6c757d';
@@ -138,26 +126,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 3. Modal Sorting Logic
     function enableModalSorting(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
             const sortTriggers = modal.querySelectorAll('.sort-trigger');
             const sortText = modal.querySelector('.current-sort-text');
-            const tableBody = modal.querySelector('tbody.sortable-tbody'); // Ensure tbody has this class
+            const tableBody = modal.querySelector('tbody.sortable-tbody'); 
 
             if (tableBody) {
                 sortTriggers.forEach(trigger => {
                     trigger.addEventListener('click', (e) => {
                         e.preventDefault();
                         
-                        const sortBy = trigger.dataset.sortBy; // 'name' or 'stock'
-                        const sortDir = trigger.dataset.sortDir; // 'asc' or 'desc'
-                        const sortType = trigger.dataset.sortType; // 'text' or 'number'
+                        const sortBy = trigger.dataset.sortBy; 
+                        const sortDir = trigger.dataset.sortDir; 
+                        const sortType = trigger.dataset.sortType; 
 
-                        // Get all table rows (tr)
                         const rows = Array.from(tableBody.querySelectorAll('tr'));
                         
-                        // Sort them
                         rows.sort((a, b) => {
                             let valA = a.dataset[sortBy];
                             let valB = b.dataset[sortBy];
@@ -172,17 +159,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             return 0;
                         });
                         
-                        // Re-append sorted rows
                         rows.forEach(row => tableBody.appendChild(row));
 
-                        // Update button text
                         if (sortText) sortText.textContent = trigger.textContent;
                         sortTriggers.forEach(t => t.classList.remove('active'));
                         trigger.classList.add('active');
                     });
                 });
 
-                // Trigger initial sort if there's an active default
                 const activeSort = modal.querySelector('.sort-trigger.active');
                 if (activeSort) {
                     activeSort.click();
@@ -191,62 +175,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Enable sorting for both modals
     enableModalSorting('stockListModal');
     enableModalSorting('ingredientStockModal');
     
+    // 4. Tab State Handling
     const allTabButtons = document.querySelectorAll('#dashboardTabs .nav-link');
-    const dateFilterForm = document.getElementById('date-filter-form');
     const activeTabInput = document.getElementById('active_tab_input');
-    
     const smsReportForm = document.getElementById('sms-report-form');
     const settingsForm = document.getElementById('settings-form');
 
     allTabButtons.forEach(tabButton => {
         tabButton.addEventListener('click', function(event) {
             const paneId = event.target.dataset.bsTarget;
-            let activeTabValue = 'sales'; // Default
-            if (paneId === '#inventory-pane') {
-                activeTabValue = 'inventory';
-            }
+            let activeTabValue = (paneId === '#inventory-pane') ? 'inventory' : 'sales';
             
-            // 1. Update the URL in the browser bar
             const url = new URL(window.location);
             url.searchParams.set('active_tab', activeTabValue);
             window.history.replaceState({}, '', url);
 
-            // 2. Update the hidden input in the main date filter form
-            if (activeTabInput) {
-                activeTabInput.value = activeTabValue;
-            }
+            if (activeTabInput) activeTabInput.value = activeTabValue;
 
-            // 3. Update the 'action' attribute on the modal forms
             const currentParams = new URLSearchParams(window.location.search);
-            currentParams.set('active_tab', activeTabValue); // Set the new tab
+            currentParams.set('active_tab', activeTabValue);
             const newQueryString = currentParams.toString();
 
-            if (smsReportForm) {
-                smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
-            }
-            if (settingsForm) {
-                settingsForm.action = `dashboard_panel.php?${newQueryString}`;
-            }
+            if (smsReportForm) smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
+            if (settingsForm) settingsForm.action = `dashboard_panel.php?${newQueryString}`;
         });
     });
 
-    // On page load, ensure the modal forms have the correct active_tab
     if (activeTabInput && activeTabInput.value) {
         const activeTabValue = activeTabInput.value;
         const currentParams = new URLSearchParams(window.location.search);
         currentParams.set('active_tab', activeTabValue);
         const newQueryString = currentParams.toString();
         
-        if (smsReportForm) {
-            smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
-        }
-        if (settingsForm) {
-            settingsForm.action = `dashboard_panel.php?${newQueryString}`;
-        }
+        if (smsReportForm) smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
+        if (settingsForm) settingsForm.action = `dashboard_panel.php?${newQueryString}`;
     }
-
 });

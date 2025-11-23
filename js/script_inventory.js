@@ -1,17 +1,82 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Helper to listen to custom 'open-modal' event (replaces show.bs.modal)
+    // --- SEARCH LOGIC ---
+
+    // 1. Product Search
+    const productSearch = document.getElementById('product-search-input');
+    const productList = document.getElementById('product-card-list');
+    const productNoResults = document.getElementById('product-no-results');
+    
+    if (productSearch && productList) {
+        productSearch.addEventListener('keyup', (e) => {
+            const term = e.target.value.toLowerCase();
+            const items = productList.querySelectorAll('.product-item');
+            let found = 0;
+            
+            items.forEach(item => {
+                const name = item.dataset.productName ? item.dataset.productName.toLowerCase() : '';
+                if (name.includes(term)) {
+                    item.style.display = '';
+                    found++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            if(productNoResults) {
+                if(found === 0 && items.length > 0) {
+                     productNoResults.classList.remove('hidden');
+                } else {
+                     productNoResults.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // 2. Ingredient Search
+    const ingredientSearch = document.getElementById('ingredient-search-input');
+    const ingredientTable = document.getElementById('ingredient-table-body');
+    const ingredientNoResults = document.getElementById('ingredient-no-results');
+    
+    if (ingredientSearch && ingredientTable) {
+        ingredientSearch.addEventListener('keyup', (e) => {
+            const term = e.target.value.toLowerCase();
+            const rows = ingredientTable.querySelectorAll('tr:not(#ingredient-no-results)');
+            let found = 0;
+
+            rows.forEach(row => {
+                if (row.cells.length < 2 && !row.dataset.name) return; 
+
+                const name = row.dataset.name || (row.cells[0] ? row.cells[0].textContent.toLowerCase() : '');
+                
+                if (name.includes(term)) {
+                    row.style.display = '';
+                    found++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            if(ingredientNoResults) {
+                 if(found === 0 && rows.length > 0) {
+                     ingredientNoResults.classList.remove('hidden');
+                } else {
+                     ingredientNoResults.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // --- MODAL DATA POPULATION LOGIC ---
+
     function onModalOpen(modalId, callback) {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener('open-modal', function (event) {
-                // event.detail.relatedTarget contains the button that was clicked
                 callback(event.detail.relatedTarget);
             });
         }
     }
-
-    // 1. MODAL DATA POPULATION LOGIC
 
     // Add Ingredient (Reset form)
     onModalOpen('addIngredientModal', (button) => {
@@ -31,17 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const expiryInput = restockIngredientModal.querySelector('#restock_ing_expiration');
         const noExpiryCheck = restockIngredientModal.querySelector('#restock_no_expiry');
 
-        // Handle N/A Expiration Checkbox logic
         if (noExpiryCheck && expiryInput) {
             noExpiryCheck.addEventListener('change', function() {
-                if (this.checked) {
-                    expiryInput.value = '';
-                    expiryInput.disabled = true;
-                    expiryInput.required = false;
-                } else {
-                    expiryInput.disabled = false;
-                    expiryInput.required = true;
-                }
+                expiryInput.value = '';
+                expiryInput.disabled = this.checked;
+                expiryInput.required = !this.checked;
             });
         }
 
@@ -50,19 +109,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const ingredientId = button.dataset.ingredientId;
             const ingredientName = button.dataset.ingredientName;
-            const ingredientUnit = button.dataset.ingredientUnit;
 
             restockIngredientModal.querySelector('#restock_ingredient_id').value = ingredientId;
             restockIngredientModal.querySelector('#restock_ingredient_name').textContent = ingredientName;
-            restockIngredientModal.querySelector('#restock_ingredient_unit').textContent = ingredientUnit;
             
-            // Reset inputs
             const qtyInput = restockIngredientModal.querySelector('#restock_ing_qty');
             const noteInput = restockIngredientModal.querySelector('#restock_ing_reason_note');
             if(qtyInput) qtyInput.value = '';
             if(noteInput) noteInput.value = '';
             
-            // Reset Expiration logic
             if (noExpiryCheck) noExpiryCheck.checked = false;
             if (expiryInput) {
                 expiryInput.value = '';
@@ -173,17 +228,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const activeTabInput = deleteProductModal.querySelector('#delete_product_active_tab');
             if(activeTabInput) {
-                // Find which tab we are currently in
-                const pane = button.closest('.tab-pane'); // Note: .tab-pane might not exist in Tailwind version if structure changed, check logic
-                // Fallback logic: check status
-                // Simple fallback: default to products
                 activeTabInput.value = 'products';
             }
         });
     }
 
     
-    // 2. BATCH DETAILS MODAL LOGIC
+    // --- BATCH DETAILS MODAL LOGIC ---
     
     const batchesModalEl = document.getElementById('batchesModal');
     if (batchesModalEl) {
@@ -198,7 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const titleEl = document.getElementById('batch_modal_title');
             if(titleEl) titleEl.textContent = name;
             
-            // We store context on the modal element itself for reloads
             batchesModalEl.dataset.currentIngredientId = id;
             batchesModalEl.dataset.currentUnit = unit;
 
@@ -215,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = target.closest('tr');
                 const batchId = row.dataset.batchId;
 
-                // 1. Expiration Actions
                 if (target.classList.contains('edit-expiry-btn')) {
                     toggleEditMode(row, 'expiry', true);
                 } 
@@ -226,12 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     toggleEditMode(row, 'expiry', false);
                 }
                 else if (target.classList.contains('clear-expiry-btn')) {
-                    // Clear the date input for N/A
                     const dateInput = row.querySelector('.expiry-input');
                     if(dateInput) dateInput.value = '';
                 }
 
-                // 2. Correction Actions
                 else if (target.classList.contains('correction-batch-btn')) {
                      toggleEditMode(row, 'qty', true);
                 }
@@ -242,13 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
                      toggleEditMode(row, 'qty', false);
                 }
 
-                // 3. Delete Action
                 else if (target.classList.contains('delete-batch-btn')) {
                     deleteBatch(row, batchId);
                 }
             });
 
-            // C. HANDLE INPUT CHANGES FOR CORRECTION CALCULATION
+            // C. HANDLE INPUT CHANGES
             tbody.addEventListener('input', function(e) {
                 if (e.target.classList.contains('qty-adjustment-input')) {
                     const row = e.target.closest('tr');
@@ -382,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const input = edit.querySelector('.qty-adjustment-input');
                 if(input) {
                     input.value = ''; 
-                    row.querySelector('.new-total-display').textContent = row.dataset.originalQty;
+                    row.querySelector('.new-total-display').textContent = parseFloat(row.dataset.originalQty).toFixed(2);
                     input.focus();
                 }
             } else {
@@ -396,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
             edit.classList.remove('flex');
             edit.classList.add('hidden');
             
-            // Reset value to original for Expiry
             if (type === 'expiry') {
                 cell.querySelector('input').value = row.dataset.originalDate;
             }
@@ -437,17 +482,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!modal) return;
         
         const ingredientId = modal.dataset.currentIngredientId;
-        
-        // Find the restock button that corresponds to this ingredient to locate the row
         const restockBtn = document.querySelector(`button[onclick*="openModal('restockIngredientModal'"][data-ingredient-id="${ingredientId}"]`);
         
         if (restockBtn) {
             const row = restockBtn.closest('tr');
             if (!row) return;
 
-            // Column indices based on new table structure
-            // Name | Unit | Stock (Right) | Reorder (Right) | Status (Center) | Actions
-            // Stock is 3rd column (index 2)
             const cells = row.querySelectorAll('td');
             const stockCell = cells[2]; 
             const reorderCell = cells[3];
@@ -481,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = row.querySelector('.expiry-input');
         const newDate = input.value;
         
-        if (!newDate) {
+        if (!newDate && input.value !== '') {
              Swal.fire({
                 icon: 'warning',
                 title: 'Invalid Date',

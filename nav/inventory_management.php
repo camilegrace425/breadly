@@ -3,9 +3,7 @@ session_start();
 require_once "../src/InventoryManager.php";
 require_once "../src/BakeryManager.php";
 
-// =================================================================
-// 1. SECURITY & AUTHENTICATION
-// =================================================================
+// 1. Security & Authentication
 if (!isset($_SESSION["user_id"])) {
     if (isset($_SERVER['HTTP_CONTENT_TYPE']) && strpos($_SERVER['HTTP_CONTENT_TYPE'], 'application/json') !== false) {
         http_response_code(403);
@@ -21,16 +19,12 @@ if (!in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
     exit();
 }
 
-// =================================================================
-// 2. INITIALIZATION
-// =================================================================
+// 2. Initialization
 $inventoryManager = new InventoryManager();
 $bakeryManager = new BakeryManager();
 $current_role = $_SESSION["role"];
 
-// =================================================================
-// 3. HANDLE JSON API REQUESTS
-// =================================================================
+// 3. Handle JSON API Requests (for AJAX calls like 'get_batches')
 $input_data = json_decode(file_get_contents('php://input'), true);
 if ($input_data && isset($input_data['action'])) {
     header('Content-Type: application/json');
@@ -69,9 +63,7 @@ if ($input_data && isset($input_data['action'])) {
     exit();
 }
 
-// =================================================================
-// 4. HANDLE FORM SUBMISSIONS
-// =================================================================
+// 4. Handle Form Submissions
 $message = "";
 $message_type = "";
 if (isset($_SESSION["message"])) {
@@ -81,17 +73,17 @@ if (isset($_SESSION["message"])) {
     unset($_SESSION["message_type"]);
 }
 
-$active_tab = "products"; 
-if (isset($_POST["active_tab"])) {
-    $active_tab = $_POST["active_tab"];
-} elseif (isset($_GET["active_tab"])) {
-    $active_tab = $_GET["active_tab"];
-} elseif (isset($_SESSION["active_tab"])) {
-    $active_tab = $_SESSION["active_tab"];
-    unset($_SESSION["active_tab"]);
-}
+$active_tab = $_POST["active_tab"] ?? $_GET["active_tab"] ?? $_SESSION["active_tab"] ?? "products";
+unset($_SESSION["active_tab"]);
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $action = $_POST["action"] ?? "";
+    $form_active_tab = $_POST["active_tab"] ?? "products"; 
+    $current_user_id = $_SESSION["user_id"]; 
+    $success_message = "";
+    $error_message = "";
+
+    // Helper for image upload
     function handleProductImageUpload($file_input_name) {
         $target_dir = "../uploads/products/"; 
         if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
@@ -115,14 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         return [null, null]; 
     }
 
-    $action = $_POST["action"] ?? "";
-    $form_active_tab = $_POST["active_tab"] ?? "products"; 
-    $current_user_id = $_SESSION["user_id"]; 
-
     try {
-        $success_message = "";
-        $error_message = "";
-
         switch ($action) {
             case "add_ingredient":
                 $result = $bakeryManager->addIngredient($_POST["name"], $_POST["unit"], $_POST["stock_qty"], $_POST["reorder_level"]);
@@ -131,12 +116,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 else $error_message = "Error adding ingredient.";
                 break;
 
+            // --- CONSOLIDATED RESTOCK LOGIC START ---
             case "restock_ingredient":
-                $expiry = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
-                $result = $inventoryManager->createBatch($_POST['ingredient_id'], $current_user_id, $_POST['adjustment_qty'], $expiry, $_POST['reason_note']);
-                if ($result['success']) $success_message = $result['message'];
-                else $error_message = $result['message'];
+                $qty = floatval($_POST['adjustment_qty']);
+                if ($qty <= 0) {
+                    $error_message = "Quantity must be greater than zero.";
+                } else {
+                    $expiry = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
+                    // Assuming 'createBatch' is the correct method for restocking in your system
+                    $result = $inventoryManager->createBatch($_POST['ingredient_id'], $current_user_id, $qty, $expiry, $_POST['reason_note']);
+                    
+                    if ($result['success']) $success_message = $result['message'];
+                    else $error_message = $result['message'];
+                }
                 break;
+            // --- CONSOLIDATED RESTOCK LOGIC END ---
 
             case "edit_ingredient":
                 $bakeryManager->ingredientUpdate($_POST["ingredient_id"], $_POST["name"], $_POST["unit"], $_POST["reorder_level"]);
@@ -153,13 +147,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 list($image_path, $upload_error) = handleProductImageUpload('product_image');
                 if ($upload_error) { $error_message = $upload_error; break; }
                 $result = $bakeryManager->addProduct($_POST["name"], $_POST["price"], $image_path);
-                if ($result === 'duplicate') { $error_message = "Product name exists."; if($image_path) @unlink($image_path); }
-                elseif ($result === 'success') $success_message = "Product added!";
-                else $error_message = "Error adding product.";
+                if ($result === 'duplicate') { 
+                    $error_message = "Product name exists."; 
+                    if($image_path) @unlink($image_path); 
+                } elseif ($result === 'success') {
+                    $success_message = "Product added!";
+                } else {
+                    $error_message = "Error adding product.";
+                }
                 break;
 
             case "adjust_product":
-                $user_id_to_pass = isset($current_user_id) ? $current_user_id : null;
+                $user_id_to_pass = $current_user_id ?? null;
                 $status = $bakeryManager->adjustProductStock($_POST["product_id"], $user_id_to_pass, $_POST["adjustment_qty"], "[{$_POST["adjustment_type"]}] {$_POST["reason_note"]}");
                 if (strpos($status, "Success") !== false) $success_message = $status;
                 else $error_message = $status; 
@@ -169,9 +168,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $old_image = $_POST['current_image_path'] ?? null;
                 list($new_image, $upload_error) = handleProductImageUpload('edit_product_image');
                 if ($upload_error) { $error_message = $upload_error; break; }
+                
                 $success = $bakeryManager->productUpdate($_POST["product_id"], $_POST["name"], $_POST["price"], $_POST["status"], $new_image);
-                if ($success) { $success_message = "Product updated!"; if($new_image && $old_image && file_exists($old_image)) @unlink($old_image); }
-                else { $error_message = "Update failed."; if($new_image) @unlink($new_image); }
+                if ($success) { 
+                    $success_message = "Product updated!"; 
+                    if($new_image && $old_image && file_exists($old_image)) @unlink($old_image); 
+                } else { 
+                    $error_message = "Update failed."; 
+                    if($new_image) @unlink($new_image); 
+                }
                 break;
 
             case "delete_product":
@@ -188,11 +193,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 break;
         }
 
-        if ($error_message) { $_SESSION["message"] = $error_message; $_SESSION["message_type"] = "danger"; }
-        else { $_SESSION["message"] = $success_message; $_SESSION["message_type"] = "success"; }
+        if ($error_message) { 
+            $_SESSION["message"] = $error_message; 
+            $_SESSION["message_type"] = "danger"; 
+        } else { 
+            $_SESSION["message"] = $success_message; 
+            $_SESSION["message_type"] = "success"; 
+        }
         $_SESSION["active_tab"] = $form_active_tab; 
         header("Location: inventory_management.php"); 
         exit();
+
     } catch (PDOException $e) {
         $_SESSION["message"] = "Database Error: " . $e->getMessage();
         $_SESSION["message_type"] = "danger";
@@ -202,17 +213,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 } 
 
+// 5. Data Fetching
 $products = $inventoryManager->getProductsInventory();
 $ingredients = $inventoryManager->getIngredientsInventory();
 $discontinued_products = $inventoryManager->getDiscontinuedProducts();
 $adjustment_history = $inventoryManager->getAdjustmentHistory();
 $recall_history = $inventoryManager->getRecallHistoryByDate("1970-01-01", "2099-12-31");
-$total_recall_value = array_reduce($recall_history, function($sum, $log) { return $sum + $log["removed_value"]; }, 0);
 
 $unit_options = ["kg", "g", "L", "ml", "pcs", "pack", "tray", "can", "bottle"];
 $active_nav_link = 'inventory';
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -421,6 +431,11 @@ $active_nav_link = 'inventory';
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
+                        
+                        <div id="product-no-results" class="hidden col-span-full text-center py-10 text-gray-400">
+                             <i class='bx bx-search text-4xl mb-2'></i>
+                             <p>No products match your search.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -454,7 +469,7 @@ $active_nav_link = 'inventory';
                                     <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No ingredients found.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($ingredients as $ing): ?>
-                                    <tr class="hover:bg-gray-50 transition-colors <?php echo $ing["stock_surplus"] <= 0 ? "bg-red-50/50" : ""; ?>">
+                                    <tr class="hover:bg-gray-50 transition-colors <?php echo $ing["stock_surplus"] <= 0 ? "bg-red-50/50" : ""; ?>" data-name="<?php echo htmlspecialchars(strtolower($ing["name"])); ?>">
                                         <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($ing["name"]); ?></td>
                                         <td class="px-6 py-3 text-gray-600"><?php echo htmlspecialchars($ing["unit"]); ?></td>
                                         <td class="px-6 py-3 text-right font-bold"><?php echo number_format($ing["stock_qty"], 2); ?></td>
@@ -497,6 +512,11 @@ $active_nav_link = 'inventory';
                                     </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
+                                <tr id="ingredient-no-results" class="hidden">
+                                    <td colspan="6" class="text-center py-4 text-gray-400">
+                                         <i class='bx bx-search text-xl align-middle mr-1'></i> No ingredients match your search.
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -642,7 +662,7 @@ $active_nav_link = 'inventory';
     </main>
 
     <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
-
+    
     <div id="addIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden transform transition-all scale-100 relative z-50">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -903,10 +923,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <?php 
-        $js_file = "../js/script_inventory.js";
-        $js_version = file_exists($js_file) ? filemtime($js_file) : "1";
-    ?>
+    <?php $js_version = file_exists("../js/script_inventory.js") ? filemtime("../js/script_inventory.js") : "1"; ?>
     <script src="../js/script_inventory.js?v=<?php echo $js_version; ?>"></script>
 
     <script>

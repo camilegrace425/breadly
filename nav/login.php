@@ -1,17 +1,16 @@
 <?php
+
 session_start();
 require_once '../src/UserManager.php';
 
-// --- Helper Function ---
 function getDeviceType() {
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-    if (preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i', $user_agent)) return 'Tablet';
-    if (preg_match('/(mobi|ipod|phone|blackberry|opera mini|fennec|minimo|symbian|psp|nintendo ds)/i', $user_agent)) return 'Mobile';
-    if (preg_match('/(windows nt|macintosh|linux)/i', $user_agent)) return 'Desktop';
+    $agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    if (preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i', $agent)) return 'Tablet';
+    if (preg_match('/(mobi|ipod|phone|blackberry|opera mini|fennec|minimo|symbian|psp|nintendo ds)/i', $agent)) return 'Mobile';
+    if (preg_match('/(windows nt|macintosh|linux)/i', $agent)) return 'Desktop';
     return 'Unknown';
 }
 
-// --- Redirect if already logged in ---
 if (isset($_SESSION['user_id'])) {
     header('Location: ../index.php');
     exit();
@@ -20,51 +19,41 @@ if (isset($_SESSION['user_id'])) {
 $success_message = $_SESSION['success_message'] ?? '';
 unset($_SESSION['success_message']);
 $error_message = '';
-$login_type = $_POST['login_type'] ?? 'manager'; // Default to manager view
+$login_type = $_POST['login_type'] ?? 'manager'; 
 
-// --- Form Handling ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
-    $login_type = $_POST['login_type'] ?? 'manager';
-
+    
     $userManager = new UserManager();
-    $device_type = getDeviceType();
-
-    // Attempt Login
+    $device = getDeviceType();
     $user = $userManager->login($username, $password);
 
     if ($user) {
-        $actual_role = $user['role'];
-        $role_matches_form = false;
+        $role = $user['role'];
+        // Check if the user's role matches the form they are trying to use
+        $valid_manager = ($login_type === 'manager' && in_array($role, ['manager', 'assistant_manager']));
+        $valid_cashier = ($login_type === 'cashier' && $role === 'cashier');
 
-        // Check if role matches the specific form used
-        if ($login_type === 'manager' && ($actual_role === 'manager' || $actual_role === 'assistant_manager')) {
-            $role_matches_form = true;
-        } elseif ($login_type === 'cashier' && $actual_role === 'cashier') {
-            $role_matches_form = true;
-        }
-
-        if ($role_matches_form) {
-            // Login Success
-            $userManager->logLoginAttempt($username, 'success', $device_type);
+        if ($valid_manager || $valid_cashier) {
+            $userManager->logLoginAttempt($username, 'success', $device);
+            
             $_SESSION['logged_in'] = true;
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
+            $_SESSION['role'] = $role;
+            
             session_regenerate_id(true);
             header('Location: ../index.php');
             exit();
         } else {
-            // Role Mismatch
-            $userManager->logLoginAttempt($username, 'failure', $device_type);
+            $userManager->logLoginAttempt($username, 'failure', $device);
             $error_message = ($login_type === 'manager') 
                 ? "Access Denied. Please use the Cashier Login form."
                 : "Access Denied. Please use the Manager Login form.";
         }
     } else {
-        // Invalid Credentials
-        $userManager->logLoginAttempt($username, 'failure', $device_type);
+        $userManager->logLoginAttempt($username, 'failure', $device);
         $error_message = "Invalid username or password. Please try again.";
     }
 }
@@ -78,9 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon">
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
     <script>
@@ -108,7 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     </script>
     <style>
-        /* Custom Scrollbar for consistency if needed, though Tailwind handles most */
         body { -webkit-font-smoothing: antialiased; }
     </style>
 </head>
@@ -187,10 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         </div>
 
-        <div id="brandSide" class="w-full lg:w-1/2 bg-breadly-panel flex flex-col justify-center items-center p-8 lg:p-10 
-            rounded-t-[30px] lg:rounded-t-none lg:rounded-r-[30px] 
-            transition-all duration-600 ease-in-out
-            [.cashier-mode_&]:lg:rounded-r-none [.cashier-mode_&]:lg:rounded-l-[30px]">
+        <div id="brandSide" class="w-full lg:w-1/2 bg-breadly-panel flex flex-col justify-center items-center p-8 lg:p-10 rounded-t-[30px] lg:rounded-t-none lg:rounded-r-[30px] transition-all duration-600 ease-in-out [.cashier-mode_&]:lg:rounded-r-none [.cashier-mode_&]:lg:rounded-l-[30px]">
             
             <div class="text-center w-full text-white">
                 <h1 class="font-display text-4xl lg:text-5xl font-bold leading-tight mb-6 text-black">WELCOME TO <br>BREADLY</h1>
@@ -217,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const body = document.body;
             const switchBtn = document.getElementById('switch-btn');
             
-            // Force UI update if PHP rendered cashier mode due to error
+            // Update UI state if error occurred in a specific mode
             <?php if (!empty($error_message) && $login_type === 'cashier'): ?>
                 const adminBtn = document.getElementById('admin-toggle-btn');
                 const cashierBtn = document.getElementById('cashier-toggle-btn');
@@ -228,11 +211,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (switchBtn) {
                 switchBtn.addEventListener('click', function() {
                     setTimeout(() => {
-                        if (body.classList.contains('cashier-mode')) {
-                            switchBtn.textContent = 'Manager Login?';
-                        } else {
-                            switchBtn.textContent = 'Cashier Login?';
-                        }
+                        switchBtn.textContent = body.classList.contains('cashier-mode') 
+                            ? 'Manager Login?' 
+                            : 'Cashier Login?';
                     }, 10);
                 });
             }

@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Mobile POS UI Sync Script ---
 
-    // Get references to all duplicated elements
     const desktopCart = document.getElementById('order-items-container');
     const mobileCart = document.getElementById('order-items-container-mobile');
     
@@ -15,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const desktopDiscountAmount = document.getElementById('discount-amount');
     const mobileDiscountAmount = document.getElementById('discount-amount-mobile');
     
-    // FIX: Target the first span inside the discount line for the text label
     const desktopDiscountText = desktopDiscountLine ? desktopDiscountLine.querySelector('span') : null;
     const mobileDiscountText = mobileDiscountLine ? mobileDiscountLine.querySelector('span') : null;
 
@@ -28,15 +25,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const desktopClearBtn = document.getElementById('clear-button');
     const mobileClearBtn = document.getElementById('clear-button-mobile');
 
-    // Mobile-only summary bar
     const mobileSummaryCount = document.getElementById('mobile-cart-count');
     const mobileSummaryTotal = document.getElementById('mobile-cart-total');
 
-    const observer = new MutationObserver((mutations) => {
-        // Sync cart items
-        if (mobileCart && desktopCart) mobileCart.innerHTML = desktopCart.innerHTML;
+    // Logic to re-attach listeners after content sync
+    function attachMobileListeners() {
+        if (!mobileCart) return;
+
+        const syncListener = (selector, action) => {
+            mobileCart.querySelectorAll(selector).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = parseInt(btn.dataset.id);
+                    if (action === 'inc') window.updateQuantity(id, 1);
+                    else if (action === 'dec') window.updateQuantity(id, -1);
+                    else if (action === 'remove') window.setQuantity(id, 0);
+                });
+            });
+        };
+
+        syncListener('.btn-dec', 'dec');
+        syncListener('.btn-inc', 'inc');
+        syncListener('.btn-remove', 'remove');
         
-        // Sync summary lines
+        mobileCart.querySelectorAll('.cart-quantity-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                if(window.setQuantity) window.setQuantity(parseInt(e.target.dataset.id, 10), parseInt(e.target.value, 10));
+            });
+        });
+    }
+
+    const observer = new MutationObserver(() => {
+        // Sync Cart Items and re-attach listeners
+        if (mobileCart && desktopCart) {
+            mobileCart.innerHTML = desktopCart.innerHTML;
+            attachMobileListeners();
+        }
+        
+        // Sync Summary Lines
         if (mobileSubtotalLine && desktopSubtotalLine) mobileSubtotalLine.style.display = desktopSubtotalLine.style.display;
         if (mobileSubtotalPrice && desktopSubtotalPrice) mobileSubtotalPrice.textContent = desktopSubtotalPrice.textContent;
         
@@ -44,55 +69,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mobileDiscountAmount && desktopDiscountAmount) mobileDiscountAmount.textContent = desktopDiscountAmount.textContent;
         if (mobileDiscountText && desktopDiscountText) mobileDiscountText.innerHTML = desktopDiscountText.innerHTML;
 
-        // Sync main total
+        // Sync Totals & Buttons
         if (mobileTotal && desktopTotal) mobileTotal.textContent = desktopTotal.textContent;
-        
-        // Sync button states
         if (mobilePayBtn && desktopPayBtn) mobilePayBtn.disabled = desktopPayBtn.disabled;
         
-        // Sync mobile summary bar
+        // Sync Mobile Summary Bar
         if (mobileSummaryTotal && desktopTotal) mobileSummaryTotal.textContent = desktopTotal.textContent;
         if (mobileSummaryCount && desktopCart) {
             const itemCount = desktopCart.querySelectorAll('.flex.justify-between').length;
             mobileSummaryCount.textContent = `${itemCount} Item${itemCount !== 1 ? 's' : ''}`;
         }
-
-        // --- Re-attach event listeners for mobile cart ---
-        if (mobileCart) {
-            mobileCart.querySelectorAll('.btn-dec').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if(window.updateQuantity) window.updateQuantity(parseInt(btn.dataset.id), -1);
-                });
-            });
-            mobileCart.querySelectorAll('.btn-inc').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if(window.updateQuantity) window.updateQuantity(parseInt(btn.dataset.id), 1);
-                });
-            });
-            mobileCart.querySelectorAll('.btn-remove').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if(window.setQuantity) window.setQuantity(parseInt(btn.dataset.id), 0);
-                });
-            });
-            mobileCart.querySelectorAll('.cart-quantity-input').forEach(input => {
-                input.addEventListener('change', (e) => {
-                    if(window.setQuantity) window.setQuantity(parseInt(e.target.dataset.id, 10), parseInt(e.target.value, 10));
-                });
-            });
-        }
     });
 
-    // FIX: Add safety checks before observing to prevent "parameter 1 is not of type 'Node'" error
+    // Start Observing changes in the desktop cart and totals
     if (desktopCart) observer.observe(desktopCart, { childList: true, subtree: true });
-    
-    // Use optional chaining or if-checks for specific elements
     if (desktopTotal) observer.observe(desktopTotal, { characterData: true, childList: true, subtree: true });
     if (desktopSubtotalPrice) observer.observe(desktopSubtotalPrice, { characterData: true, childList: true, subtree: true });
     if (desktopDiscountAmount) observer.observe(desktopDiscountAmount, { characterData: true, childList: true, subtree: true });
     if (desktopDiscountText) observer.observe(desktopDiscountText, { characterData: true, childList: true, subtree: true });
     if (desktopPayBtn) observer.observe(desktopPayBtn, { attributes: true, attributeFilter: ['disabled'] });
 
-    // --- Sync button clicks from mobile to desktop ---
+    // Sync button clicks from mobile to desktop
     if (mobilePayBtn && desktopPayBtn) {
         mobilePayBtn.addEventListener('click', () => {
             desktopPayBtn.click(); 
@@ -109,9 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileDiscountBtn) {
         mobileDiscountBtn.addEventListener('click', () => {
             if (window.toggleModal) {
-                // Close mobile cart modal first
                 window.toggleModal('mobileCartModal');
-                // Open discount modal
                 window.toggleModal('discountModal');
             }
         });

@@ -7,19 +7,13 @@ if (isset($_SESSION['user_id'])) {
     exit();
 }
 
-// --- ADDED: Handle Cancel/Exit Action ---
+// Handle Cancel/Exit Action
 if (isset($_GET['action']) && $_GET['action'] === 'cancel') {
-    unset($_SESSION['reset_in_progress']);
-    unset($_SESSION['resend_available_at']);
-    unset($_SESSION['reset_identifier']);
-    unset($_SESSION['reset_method']);
-    unset($_SESSION['reset_started_at']);
-    unset($_SESSION['email_sent_success']);
-    unset($_SESSION['error_message']);
+    $vars_to_unset = ['reset_in_progress', 'resend_available_at', 'reset_identifier', 'reset_method', 'reset_started_at', 'email_sent_success', 'error_message'];
+    foreach ($vars_to_unset as $var) unset($_SESSION[$var]);
     header('Location: login.php');
     exit();
 }
-// ----------------------------------------
 
 if (!isset($_SESSION['reset_in_progress']) || $_SESSION['reset_in_progress'] !== true) {
     header('Location: login.php');
@@ -29,7 +23,6 @@ if (!isset($_SESSION['reset_in_progress']) || $_SESSION['reset_in_progress'] !==
 $error_message = $_SESSION['error_message'] ?? '';
 unset($_SESSION['error_message']); 
 
-// Check for Success Flag
 $show_email_success = false;
 if (isset($_SESSION['email_sent_success'])) {
     $show_email_success = true;
@@ -37,13 +30,10 @@ if (isset($_SESSION['email_sent_success'])) {
 }
 
 $method = $_GET['method'] ?? 'phone';
-$code_label = '6-Digit OTP Code';
-$placeholder_text = 'Enter 6-digit code';
 $instruction_text = "Enter the 6-digit code sent to your " . ($method === 'email' ? 'email' : 'phone') . ".";
 
 $resend_available_at = $_SESSION['resend_available_at'] ?? 0;
-$time_now = time();
-$resend_cooldown = $resend_available_at - $time_now;
+$resend_cooldown = $resend_available_at - time();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset') {
     $otp_code = $_POST['otp_code'];
@@ -57,15 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     } 
         
     $userManager = new UserManager();
-    $success = $userManager->resetPassword($otp_code, $new_password);
-
-    if ($success) {
+    if ($userManager->resetPassword($otp_code, $new_password)) {
         $_SESSION['success_message'] = "Password reset successfully! You can now log in.";
-        unset($_SESSION['reset_in_progress']); 
-        unset($_SESSION['resend_available_at']); 
-        unset($_SESSION['reset_identifier']); 
-        unset($_SESSION['reset_method']); 
-        unset($_SESSION['reset_started_at']); 
+        $vars_to_unset = ['reset_in_progress', 'resend_available_at', 'reset_identifier', 'reset_method', 'reset_started_at'];
+        foreach ($vars_to_unset as $var) unset($_SESSION[$var]);
+        
         header('Location: login.php'); 
         exit();
     } else {
@@ -84,9 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
@@ -129,12 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 <input type="hidden" name="action" value="reset">
                 
                 <div>
-                    <label for="otp_code" class="block text-sm font-medium text-gray-700 mb-1"><?php echo htmlspecialchars($code_label); ?></label>
+                    <label for="otp_code" class="block text-sm font-medium text-gray-700 mb-1">6-Digit OTP Code</label>
                     <input type="text" 
                            name="otp_code" 
                            id="otp_code" 
                            class="w-full pl-4 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn focus:border-breadly-btn outline-none transition-all text-center font-mono text-lg tracking-widest" 
-                           placeholder="<?php echo htmlspecialchars($placeholder_text); ?>" 
+                           placeholder="Enter 6-digit code" 
                            maxlength="6"
                            pattern="\d{6}"
                            title="Please enter a 6-digit code"

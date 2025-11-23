@@ -1,12 +1,16 @@
 <?php
+
 session_start();
 
 if (!isset($_SESSION["user_id"])) {
     header("Location: nav/login.php");
     exit();
 }
-if ($_SESSION["role"] !== "manager" && $_SESSION["role"] !== "assistant_manager" && $_SESSION["role"] !== "cashier") {
-    header("Location: index.php"); // Not authorized (or redirect to error page)
+
+// Validate Role Access
+$valid_roles = ["manager", "assistant_manager", "cashier"];
+if (!in_array($_SESSION["role"], $valid_roles)) {
+    header("Location: nav/login.php"); 
     exit();
 }
 
@@ -75,7 +79,7 @@ $role = $_SESSION['role'];
                 </div>
 
                 <div class="space-y-4">
-                    <?php if ($role == 'cashier' || $role == 'manager' || $role == 'assistant_manager'): ?>
+                    <?php if (in_array($role, ['cashier', 'manager', 'assistant_manager'])): ?>
                     <form action="nav/pos.php" method="get">
                         <button type="submit" class="w-full py-4 px-6 bg-breadly-btn text-white font-bold rounded-xl shadow-lg hover:bg-breadly-btn-hover hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-2">
                             <i class='bx bxs-calculator text-xl'></i> Go to Point of Sale (POS)

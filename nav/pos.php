@@ -5,7 +5,9 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit();
 }
-if ($_SESSION['role'] !== 'manager' && $_SESSION['role'] !== 'cashier' && $_SESSION['role'] !== 'assistant_manager') {
+
+$allowed_roles = ['manager', 'cashier', 'assistant_manager'];
+if (!in_array($_SESSION['role'], $allowed_roles)) {
     header('Location: ../index.php');
     exit();
 }
@@ -16,11 +18,10 @@ require_once '../src/BakeryManager.php';
 $posFunctions = new PosFunctions();
 $products = $posFunctions->getAvailableProducts();
 
+// Handle Sale Submission (JSON)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
-
-    $json_data = file_get_contents('php://input');
-    $data = json_decode($json_data, true);
+    $data = json_decode(file_get_contents('php://input'), true);
 
     if (json_last_error() !== JSON_ERROR_NONE || !isset($data['cart']) || !isset($data['discount'])) {
         echo json_encode(['status' => 'error', 'message' => 'Invalid cart data received.']);
@@ -41,10 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $error_message = 'An unknown error occurred.';
 
     foreach ($cart_items as $item) {
-        $product_id = $item['id'];
-        $quantity = $item['quantity'];
-
-        $status_message = $bakeryManager->recordSale($user_id, $product_id, $quantity, $discount_percent);
+        $status_message = $bakeryManager->recordSale($user_id, $item['id'], $item['quantity'], $discount_percent);
         
         if ($status_message !== 'Success: Sale recorded.') {
             $all_successful = false;
@@ -53,11 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($all_successful) {
-        echo json_encode(['status' => 'success', 'message' => 'Sale recorded successfully!']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => $error_message]);
-    }
+    echo json_encode([
+        'status' => $all_successful ? 'success' : 'error',
+        'message' => $all_successful ? 'Sale recorded successfully!' : $error_message
+    ]);
     exit();
 }
 ?>
@@ -68,20 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Point of Sale</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
-    
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Poppins', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
                     colors: {
                         breadly: {
                             bg: '#F8F1E7',
@@ -375,8 +367,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
-    
-    // Global helper for external scripts if they try to call window.toggleModal
     window.toggleModal = toggleModal;
 </script>
 
