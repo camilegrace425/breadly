@@ -1,12 +1,10 @@
 <?php
-require_once '../db_connection.php';
+require_once 'AbstractManager.php';
+require_once 'ListableData.php';
 
-class BakeryManager {
-    private $conn;
-
-    public function __construct() {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+class BakeryManager extends AbstractManager implements ListableData {
+    public function fetchAllData(): array {
+        return $this->getAllProductsSimple();
     }
 
     // --- INGREDIENT METHODS ---

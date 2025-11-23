@@ -1,12 +1,10 @@
 <?php
-require_once '../db_connection.php';
+require_once 'AbstractManager.php';
+require_once 'ListableData.php'; // Required for the interface
 
-class PosFunctions {
-    private $conn;
-
-    public function __construct() {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+class PosFunctions extends AbstractManager implements ListableData { // Implements ListableData
+    public function fetchAllData(): array {
+        return $this->getAvailableProducts();
     }
 
     public function getAvailableProducts() {

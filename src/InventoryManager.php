@@ -1,12 +1,10 @@
 <?php
-require_once '../db_connection.php';
+require_once 'AbstractManager.php';
+require_once 'ListableData.php';
 
-class InventoryManager {
-    private $conn;
-
-    public function __construct() {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+class InventoryManager extends AbstractManager implements ListableData {
+    public function fetchAllData(): array {
+        return $this->getIngredientsInventory();
     }
 
     public function getProductsInventory() {

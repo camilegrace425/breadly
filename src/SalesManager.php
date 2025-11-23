@@ -1,12 +1,13 @@
 <?php
-require_once '../db_connection.php';
+require_once 'AbstractManager.php';
+require_once 'ListableData.php';
 
-class SalesManager {
-    private $conn;
-
-    public function __construct() {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+class SalesManager extends AbstractManager implements ListableData {
+    public function fetchAllData(): array {
+        $year = date('Y');
+        $start = "$year-01-01";
+        $end = date('Y-m-d');
+        return $this->getSalesHistory($start, $end, 'timestamp', 'DESC');
     }
 
     public function getSalesHistory($date_start, $date_end, $sort_column, $sort_direction) {

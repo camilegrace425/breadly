@@ -1,23 +1,21 @@
 <?php
-// File Location: breadly/src/UserManager.php
 
 if (!defined('SMS_API_TOKEN')) {
     require_once __DIR__ . '/../config.php';
 }
-require_once __DIR__ . '/../db_connection.php';
+require_once 'AbstractManager.php';
+require_once 'ListableData.php';
 require_once __DIR__ . '/../phpmailer/vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-class UserManager {
-    private $conn;
+class UserManager extends AbstractManager implements ListableData {
     private $api_token = SMS_API_TOKEN;
     private $api_send_otp_url = SMS_OTP_URL;
 
-    public function __construct() {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+    public function fetchAllData(): array {
+        return $this->getAllUsers();
     }
 
     // --- Authentication ---
@@ -298,7 +296,7 @@ class UserManager {
         if (strlen($cleaned) == 10 && substr($cleaned, 0, 1) == '9') {
             return '63' . $cleaned;
         }
-        if (strlen($cleaned) == 12 && substr($cleaned, 0, 3) == '639') {
+        if (strlen(empty($phone_number)) == 12 && substr($cleaned, 0, 3) == '639') {
             return $cleaned;
         }
         return $phone_number;

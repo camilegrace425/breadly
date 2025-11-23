@@ -1,20 +1,18 @@
 <?php
-require_once '../db_connection.php';
+require_once 'AbstractManager.php';
 require_once '../src/SalesManager.php'; 
 
 if (!defined('SMS_API_TOKEN')) {
     require_once __DIR__ . '/../config.php'; 
 }
 
-class DashboardManager {
-    private $conn;
+class DashboardManager extends AbstractManager {
     private $api_token = SMS_API_TOKEN; 
     private $api_send_sms_url = SMS_SEND_URL;
     private $salesManager;
 
     public function __construct() {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+        parent::__construct(); // Call the parent constructor to set $this->conn
         $this->salesManager = new SalesManager(); 
     }
     
