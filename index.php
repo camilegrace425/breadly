@@ -20,13 +20,13 @@ $role = $_SESSION['role'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Main Menu - Breadly</title>
-    <link rel="icon" href="../images/kzklogo.png" type="image/x-icon">
+    <link rel="icon" href="images/kzklogo.png" type="image/x-icon">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     
-    <link rel="stylesheet" href="../styles/global.css">
-    <link rel="stylesheet" href="../styles/index.css">
+    <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/index.css">
 </head>
 
 <body class="page-landing">
@@ -78,7 +78,7 @@ $role = $_SESSION['role'];
             </div>
 
             <div class="col-12 col-lg-6 bakery-column">
-                <img src="../images/landingbakery.jpg" alt="KZ and Khyle's Front" class="bakery-img">
+                <img src="images/landingbakery.jpg" alt="KZ and Khyle's Front" class="bakery-img">
             </div>
 
         </div>
