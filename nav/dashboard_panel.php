@@ -95,7 +95,12 @@ $dailyTrendData = array_values($trendData);
 // Fetch Additional Data
 $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
-$recalledStockCountToday = $dashboardManager->getRecallCountForToday();
+
+// --- MODIFIED: Fetch Recall Summary for the date range ---
+$recallSummary = $dashboardManager->getRecallSummaryByDateRange($date_start, $date_end);
+$totalRecalledCount = $recallSummary['count'];
+$totalRecalledValue = $recallSummary['value'];
+// --------------------------------------------------------
 
 $expiringBatches = $dashboardManager->getExpiringBatches(7); 
 $expiringCount = count($expiringBatches);
@@ -418,13 +423,16 @@ $active_nav_link = 'dashboard';
                             <i class='bx bxs-x-circle text-6xl text-breadly-dark'></i>
                         </div>
                         <div>
-                            <h2 class="text-4xl font-bold <?php echo ($recalledStockCountToday > 0) ? 'text-red-600' : 'text-green-700'; ?>">
-                                <?php echo $recalledStockCountToday; ?>
+                            <h2 class="text-4xl font-bold <?php echo ($totalRecalledCount > 0) ? 'text-red-600' : 'text-green-700'; ?>">
+                                <?php echo $totalRecalledCount; ?>
                             </h2>
-                            <p class="text-breadly-dark font-semibold mt-1">Products Recalled Today</p>
+                            <p class="text-breadly-dark font-semibold mt-1">Products Recalled (Qty)</p>
                         </div>
-                        <div class="text-xs text-gray-600 flex items-center gap-1">
-                            View recall log <i class='bx bx-right-arrow-alt'></i>
+                        <div class="text-xs text-gray-600">
+                            Value: 
+                            <strong class="font-medium <?php echo ($totalRecalledValue > 0) ? 'text-red-700' : 'text-green-700'; ?>">
+                                ₱<?php echo number_format($totalRecalledValue, 2); ?>
+                            </strong>
                         </div>
                     </a>
 

@@ -156,42 +156,29 @@ class DashboardManager extends AbstractManager {
         }
     }
 
-    public function getRecalledStockValue($date_start, $date_end) {
+    // NEW FUNCTION: Combines count and value of recalled items in a date range
+    public function getRecallSummaryByDateRange($date_start, $date_end) {
         try {
-            $sql = "SELECT SUM(sa.adjustment_qty * p.price) as net_value
+            // Calculates the sum of negative product adjustments marked as 'recall'
+            $sql = "SELECT 
+                        ABS(SUM(CASE WHEN sa.item_type = 'product' AND sa.adjustment_qty < 0 AND sa.reason LIKE '%recall%' THEN sa.adjustment_qty ELSE 0 END)) AS total_recalled_count,
+                        ABS(SUM(CASE WHEN sa.item_type = 'product' AND sa.adjustment_qty < 0 AND sa.reason LIKE '%recall%' THEN sa.adjustment_qty * p.price ELSE 0 END)) AS total_recalled_value
                     FROM stock_adjustments sa
-                    JOIN products p ON sa.item_id = p.product_id
-                    WHERE sa.item_type = 'product'
-                      AND sa.reason LIKE '%recall%'
-                      AND DATE(sa.timestamp) BETWEEN ? AND ?";
-                      
+                    LEFT JOIN products p ON sa.item_id = p.product_id AND sa.item_type = 'product'
+                    WHERE DATE(sa.timestamp) BETWEEN ? AND ?";
+            
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$date_start, $date_end]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            return abs($row['net_value'] ?? 0.00);
+            $stmt->closeCursor();
+
+            return [
+                'count' => (int)($row['total_recalled_count'] ?? 0),
+                'value' => (float)($row['total_recalled_value'] ?? 0.00)
+            ];
         } catch (PDOException $e) {
-            error_log("Error getting recalled stock value: " . $e->getMessage());
-            return 0.00;
-        }
-    }
-    
-    public function getRecallCountForToday() {
-        $today = date('Y-m-d');
-        try {
-            $sql = "SELECT SUM(adjustment_qty) as net_qty 
-                    FROM stock_adjustments 
-                    WHERE reason LIKE '%recall%' 
-                    AND DATE(timestamp) = ?";
-            
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$today]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            return abs($row['net_qty'] ?? 0);
-        } catch (PDOException $e) {
-            error_log("Error fetching recall count for today: " . $e->getMessage());
-            return 0;
+            error_log("Error getting recall summary: " . $e->getMessage());
+            return ['count' => 0, 'value' => 0.00];
         }
     }
 
@@ -290,8 +277,6 @@ class DashboardManager extends AbstractManager {
         
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        
-        // curl_close removed per PHP 8+ recommendation
         
         $result = json_decode($response, true);
 
