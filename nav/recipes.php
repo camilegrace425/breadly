@@ -168,7 +168,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                 <i class='bx bxs-book-bookmark text-xl'></i><span class="font-medium">Recipes</span>
             </a>
             <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
-                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales History</span>
+                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales & Transactions</span>
             </a>
             <div class="my-4 border-t border-orange-200"></div>
             <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark transition-colors">
@@ -210,7 +210,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                 <i class='bx bxs-book-bookmark text-xl'></i> Recipes
             </a>
             <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
-                <i class='bx bx-history text-xl'></i> Sales History
+                <i class='bx bx-history text-xl'></i> Sales & Transactions
             </a>
             <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary mt-4 border-t border-orange-200 pt-4">
                 <i class='bx bx-arrow-back text-xl'></i> Main Menu

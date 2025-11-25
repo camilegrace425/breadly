@@ -220,6 +220,15 @@ $discontinued_products = $inventoryManager->getDiscontinuedProducts();
 $adjustment_history = $inventoryManager->getAdjustmentHistory();
 $recall_history = $inventoryManager->getRecallHistoryByDate("1970-01-01", "2099-12-31");
 
+// --- ADDED: Calculate Total Recall Value ---
+$total_recall_value = 0;
+foreach ($recall_history as $log) {
+    // removed_value is calculated in InventoryManager.php as a negative number (or 0) representing loss.
+    // Use abs() to get the positive monetary loss and sum it up.
+    $total_recall_value += abs($log['removed_value']);
+}
+// ------------------------------------------
+
 $unit_options = ["kg", "g", "L", "ml", "pcs", "pack", "tray", "can", "bottle"];
 $active_nav_link = 'inventory';
 ?>
@@ -278,7 +287,7 @@ $active_nav_link = 'inventory';
                 <i class='bx bxs-book-bookmark text-xl'></i><span class="font-medium">Recipes</span>
             </a>
             <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark">
-                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales History</span>
+                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales & Transactions</span>
             </a>
             <div class="my-4 border-t border-orange-200"></div>
             <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary hover:bg-orange-100 hover:text-breadly-dark transition-colors">
@@ -320,7 +329,7 @@ $active_nav_link = 'inventory';
                 <i class='bx bxs-book-bookmark text-xl'></i> Recipes
             </a>
             <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary">
-                <i class='bx bx-history text-xl'></i> Sales History
+                <i class='bx bx-history text-xl'></i> Sales & Transactions
             </a>
             <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary mt-4 border-t border-orange-200 pt-4">
                 <i class='bx bx-arrow-back text-xl'></i> Main Menu
@@ -441,7 +450,7 @@ $active_nav_link = 'inventory';
             </div>
 
             <div id="pane-ingredients" class="<?php echo ($active_tab == 'ingredients') ? '' : 'hidden'; ?>">
-                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100">
                     <div class="p-4 border-b border-orange-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div class="relative w-full sm:w-64">
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class='bx bx-search text-gray-400'></i></span>
@@ -452,15 +461,49 @@ $active_nav_link = 'inventory';
                         </button>
                     </div>
                     
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                        <div class="flex items-center gap-1 text-sm">
+                            <span class="text-gray-500">Show:</span>
+                            <select id="ingredient-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="ingredient-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                            <button id="ingredient-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
+                        </div>
+                        
+                        <div class="relative dropdown" id="ingredient-sort-dropdown">
+                            <button id="ingredient-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                Sort By: <span class="current-sort-text">Name (Ascending)</span><i class='bx bx-chevron-down'></i>
+                            </button>
+                            <div id="ingredient-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="name" data-sort-type="text" data-sort-dir="ASC">Name (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="name" data-sort-type="text" data-sort-dir="DESC">Name (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="DESC">Stock (DESC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="ASC">Stock (ASC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="reorder" data-sort-type="number" data-sort-dir="ASC">Reorder Level (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="reorder" data-sort-type="number" data-sort-dir="DESC">Reorder Level (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="ASC">Status (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="DESC">Status (DESC)</a>
+                            </div>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
-                                    <th class="px-6 py-3">Name</th>
+                                    <th class="px-6 py-3" data-sort-by="name" data-sort-type="text">Name</th>
                                     <th class="px-6 py-3">Unit</th>
-                                    <th class="px-6 py-3 text-right">Stock</th>
-                                    <th class="px-6 py-3 text-right">Reorder</th>
-                                    <th class="px-6 py-3 text-center">Status</th>
+                                    <th class="px-6 py-3 text-right" data-sort-by="stock" data-sort-type="number">Stock</th>
+                                    <th class="px-6 py-3 text-right" data-sort-by="reorder" data-sort-type="number">Reorder</th>
+                                    <th class="px-6 py-3 text-center" data-sort-by="status" data-sort-type="text">Status</th>
                                     <th class="px-6 py-3 text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -472,8 +515,8 @@ $active_nav_link = 'inventory';
                                     <tr class="hover:bg-gray-50 transition-colors <?php echo $ing["stock_surplus"] <= 0 ? "bg-red-50/50" : ""; ?>" data-name="<?php echo htmlspecialchars(strtolower($ing["name"])); ?>">
                                         <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($ing["name"]); ?></td>
                                         <td class="px-6 py-3 text-gray-600"><?php echo htmlspecialchars($ing["unit"]); ?></td>
-                                        <td class="px-6 py-3 text-right font-bold"><?php echo number_format($ing["stock_qty"], 2); ?></td>
-                                        <td class="px-6 py-3 text-right text-gray-600"><?php echo number_format($ing["reorder_level"], 2); ?></td>
+                                        <td class="px-6 py-3 text-right font-bold" data-sort-value="<?php echo $ing["stock_qty"]; ?>"><?php echo number_format($ing["stock_qty"], 2); ?></td>
+                                        <td class="px-6 py-3 text-right text-gray-600" data-sort-value="<?php echo $ing["reorder_level"]; ?>"><?php echo number_format($ing["reorder_level"], 2); ?></td>
                                         <td class="px-6 py-3 text-center">
                                             <?php if ($ing["stock_surplus"] <= 0): ?>
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Low Stock</span>
@@ -524,42 +567,77 @@ $active_nav_link = 'inventory';
             </div>
 
             <div id="pane-discontinued" class="<?php echo ($active_tab == 'discontinued') ? '' : 'hidden'; ?>">
-                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100 ">
                     <div class="p-4 border-b border-orange-100">
                         <h5 class="font-bold text-lg text-breadly-dark">Discontinued Products</h5>
+                    </div>
+                    
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                        <div class="flex items-center gap-1 text-sm">
+                            <span class="text-gray-500">Show:</span>
+                            <select id="discontinued-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="discontinued-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                            <button id="discontinued-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
+                        </div>
+                        
+                        <div class="relative dropdown" id="discontinued-sort-dropdown">
+                            <button id="discontinued-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                Sort By: <span class="current-sort-text">Name (Ascending)</span> <i class='bx bx-chevron-down'></i>
+                            </button>
+                            <div id="discontinued-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="name" data-sort-type="text" data-sort-dir="ASC">Name (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="name" data-sort-type="text" data-sort-dir="DESC">Name (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="price" data-sort-type="number" data-sort-dir="ASC">Price (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="price" data-sort-type="number" data-sort-dir="DESC">Price (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="ASC">Last Stock (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="DESC">Last Stock (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="ASC">Status (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="DESC">Status (DESC)</a>
+                            </div>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
-                                    <th class="px-6 py-3">Name</th>
-                                    <th class="px-6 py-3">Price</th>
-                                    <th class="px-6 py-3">Status</th>
-                                    <th class="px-6 py-3">Last Stock</th>
+                                    <th class="px-6 py-3" data-sort-by="name" data-sort-type="text">Name</th>
+                                    <th class="px-6 py-3" data-sort-by="price" data-sort-type="number">Price</th>
+                                    <th class="px-6 py-3" data-sort-by="status" data-sort-type="text">Status</th>
+                                    <th class="px-6 py-3" data-sort-by="stock" data-sort-type="number">Last Stock</th>
                                     <th class="px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100">
+                            <tbody class="divide-y divide-gray-100" id="discontinued-table-body">
                                 <?php foreach ($discontinued_products as $product): ?>
                                 <tr>
                                     <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($product["name"]); ?></td>
-                                    <td class="px-6 py-3">₱<?php echo number_format($product["price"], 2); ?></td>
+                                    <td class="px-6 py-3" data-sort-value="<?php echo $product["price"]; ?>">₱<?php echo number_format($product["price"], 2); ?></td>
                                     <td class="px-6 py-3"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold"><?php echo htmlspecialchars(ucfirst($product["status"])); ?></span></td>
-                                    <td class="px-6 py-3"><?php echo $product["stock_qty"]; ?></td>
+                                    <td class="px-6 py-3" data-sort-value="<?php echo $product["stock_qty"]; ?>"><?php echo $product["stock_qty"]; ?></td>
                                     <td class="px-6 py-3 text-right">
                                         <div class="flex justify-end gap-2">
-                                            <button onclick="openModal('editProductModal', this)" 
-                                                class="flex items-center gap-1 bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors text-xs font-medium"
-                                                data-product-id="<?php echo $product["product_id"]; ?>" 
-                                                data-product-name="<?php echo htmlspecialchars($product["name"]); ?>" 
-                                                data-product-price="<?php echo $product["price"]; ?>" 
-                                                data-product-status="<?php echo $product["status"]; ?>">
+                                            <button onclick="openModal('editProductModal', this)"
+                                                    class="flex items-center gap-1 bg-blue-50 text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition-colors text-sm font-medium"
+                                                    data-product-id="<?php echo $product["product_id"]; ?>"
+                                                    data-product-name="<?php echo htmlspecialchars($product["name"]); ?>"
+                                                    data-product-price="<?php echo $product["price"]; ?>"
+                                                    data-product-status="<?php echo $product["status"]; ?>">
                                                 <i class='bx bx-refresh'></i> Restore
                                             </button>
-                                            <button onclick="openModal('deleteProductModal', this)" 
-                                                class="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 transition-colors text-xs font-medium"
-                                                data-product-id="<?php echo $product["product_id"]; ?>" 
-                                                data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
+                                            <button onclick="openModal('deleteProductModal', this)"
+                                                    class="flex items-center gap-1 bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 transition-colors text-sm font-medium"
+                                                    data-product-id="<?php echo $product["product_id"]; ?>"
+                                                    data-product-name="<?php echo htmlspecialchars($product["name"]); ?>">
                                                 <i class='bx bx-trash'></i> Delete
                                             </button>
                                         </div>
@@ -573,29 +651,64 @@ $active_nav_link = 'inventory';
             </div>
 
             <div id="pane-recall" class="<?php echo ($active_tab == 'recall') ? '' : 'hidden'; ?>">
-                 <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                 <div class="bg-white rounded-xl shadow-sm border border-orange-100">
                     <div class="p-4 border-b border-orange-100 bg-red-50/30">
                         <h5 class="font-bold text-lg text-red-800">Recall Log</h5>
+                    </div>
+                    
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                        <div class="flex items-center gap-1 text-sm">
+                            <span class="text-gray-500">Show:</span>
+                            <select id="recall-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="recall-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                            <button id="recall-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
+                        </div>
+                        
+                        <div class="relative dropdown" id="recall-sort-dropdown">
+                            <button id="recall-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                Sort By: <span class="current-sort-text">Date (Descending)</span> <i class='bx bx-chevron-down'></i>
+                            </button>
+                            <div id="recall-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Date (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Date (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Qty (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Qty (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="value" data-sort-type="number" data-sort-dir="ASC">Value (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="value" data-sort-type="number" data-sort-dir="DESC">Value (DESC)</a>
+                            </div>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
-                                    <th class="px-6 py-3">Date</th>
-                                    <th class="px-6 py-3">Product</th>
-                                    <th class="px-6 py-3">Qty</th>
-                                    <th class="px-6 py-3">Value</th>
+                                    <th class="px-6 py-3" data-sort-by="date" data-sort-type="date">Date</th>
+                                    <th class="px-6 py-3" data-sort-by="product" data-sort-type="text">Product</th>
+                                    <th class="px-6 py-3" data-sort-by="qty" data-sort-type="number">Qty</th>
+                                    <th class="px-6 py-3" data-sort-by="value" data-sort-type="number">Value</th>
                                     <th class="px-6 py-3">Reason</th>
                                     <th class="px-6 py-3 text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100">
+                            <tbody class="divide-y divide-gray-100" id="recall-table-body">
                                 <?php foreach ($recall_history as $log): $isUndone = strpos($log['reason'], '(Undone)') !== false; ?>
                                 <tr>
-                                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
+                                    <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($log["timestamp"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
                                     <td class="px-6 py-3 font-medium"><?php echo htmlspecialchars($log["item_name"] ?? "Deleted"); ?></td>
-                                    <td class="px-6 py-3 text-red-600 font-bold"><?php echo number_format($log["adjustment_qty"], 0); ?></td>
-                                    <td class="px-6 py-3 text-red-600">(₱<?php echo htmlspecialchars(number_format(abs($log["removed_value"]), 2)); ?>)</td>
+                                    <td class="px-6 py-3 text-red-600 font-bold" data-sort-value="<?php echo $log["adjustment_qty"]; ?>"><?php echo number_format($log["adjustment_qty"], 0); ?></td>
+                                    <td class="px-6 py-3 text-red-600" data-sort-value="<?php echo abs($log["removed_value"]); ?>">(₱<?php echo htmlspecialchars(number_format(abs($log["removed_value"]), 2)); ?>)</td>
                                     <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["reason"]); ?></td>
                                     <td class="px-6 py-3 text-right">
                                         <?php if (!$isUndone): ?>
@@ -613,6 +726,13 @@ $active_nav_link = 'inventory';
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
+                            <tfoot class="bg-red-100/50 text-red-800 font-bold border-t-2 border-red-200">
+                                <tr>
+                                    <td class="px-6 py-3 text-base" colspan="3">TOTAL RECALL VALUE:</td>
+                                    <td class="px-6 py-3 text-base">(₱<?php echo number_format($total_recall_value, 2); ?>)</td>
+                                    <td class="px-6 py-3" colspan="2"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                  </div>
@@ -623,22 +743,57 @@ $active_nav_link = 'inventory';
                     <div class="p-4 border-b border-orange-100">
                         <h5 class="font-bold text-lg text-breadly-dark">Adjustment History</h5>
                     </div>
+                    
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                        <div class="flex items-center gap-1 text-sm">
+                            <span class="text-gray-500">Show:</span>
+                            <select id="history-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="history-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                            <button id="history-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
+                        </div>
+                        
+                        <div class="relative dropdown" id="history-sort-dropdown">
+                            <button id="history-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                Sort By: <span class="current-sort-text">Date (Descending)</span> <i class='bx bx-chevron-down'></i>
+                            </button>
+                            <div id="history-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Date (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Date (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="user" data-sort-type="text" data-sort-dir="ASC">User (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="user" data-sort-type="text" data-sort-dir="DESC">User (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="item" data-sort-type="text" data-sort-dir="ASC">Item (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="item" data-sort-type="text" data-sort-dir="DESC">Item (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Quantity (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Quantity (DESC)</a>
+                            </div>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
-                                    <th class="px-6 py-3">Date</th>
-                                    <th class="px-6 py-3">User</th>
-                                    <th class="px-6 py-3">Item</th>
+                                    <th class="px-6 py-3" data-sort-by="date" data-sort-type="date">Date</th>
+                                    <th class="px-6 py-3" data-sort-by="user" data-sort-type="text">User</th>
+                                    <th class="px-6 py-3" data-sort-by="item" data-sort-type="text">Item</th>
                                     <th class="px-6 py-3">Type</th>
-                                    <th class="px-6 py-3">Qty</th>
+                                    <th class="px-6 py-3" data-sort-by="qty" data-sort-type="number">Qty</th>
                                     <th class="px-6 py-3">Reason</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100">
+                            <tbody class="divide-y divide-gray-100" id="history-table-body">
                                 <?php foreach ($adjustment_history as $log): ?>
                                 <tr>
-                                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
+                                    <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($log["timestamp"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
                                     <td class="px-6 py-3"><?php echo htmlspecialchars($log["username"] ?? "N/A"); ?></td>
                                     <td class="px-6 py-3 font-medium"><?php echo htmlspecialchars($log["item_name"] ?? "Deleted"); ?></td>
                                     <td class="px-6 py-3">
@@ -646,7 +801,7 @@ $active_nav_link = 'inventory';
                                             <?php echo ucfirst($log["item_type"]); ?>
                                         </span>
                                     </td>
-                                    <td class="px-6 py-3 font-bold <?php echo $log["adjustment_qty"] > 0 ? 'text-green-600' : 'text-red-600'; ?>">
+                                    <td class="px-6 py-3 font-bold <?php echo $log["adjustment_qty"] > 0 ? 'text-green-600' : 'text-red-600'; ?>" data-sort-value="<?php echo $log["adjustment_qty"]; ?>">
                                         <?php echo ($log["adjustment_qty"] > 0 ? '+' : '') . number_format($log["adjustment_qty"], 2); ?>
                                     </td>
                                     <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["reason"]); ?></td>

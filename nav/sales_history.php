@@ -71,6 +71,7 @@ $sort_direction = $_GET["order"] ?? "DESC";
 
 // Helper: Sort Link Generation
 function getSortLink($column, $currentSort, $currentOrder, $dateStart, $dateEnd, $activeTab) {
+    // This function is kept only to prevent PHP errors if still called somewhere else, but its output is unused for main table sorting.
     $newOrder = ($currentSort == $column && $currentOrder == "ASC") ? "DESC" : "ASC";
     return "sales_history.php?" . http_build_query([
         "date_start" => $dateStart,
@@ -83,40 +84,33 @@ function getSortLink($column, $currentSort, $currentOrder, $dateStart, $dateEnd,
 
 // Helper: Sort Display Text
 function getCurrentSortText($sort_column, $sort_direction) {
-    $column_map = [
-        "sale_id" => "Sale ID",
-        "date" => "Timestamp",
-        "product" => "Product Name",
-        "qty" => "Quantity",
-        "subtotal" => "Subtotal",
-        "discount_amt" => "Discount",
-        "price" => "Net Total",
-        "cashier" => "Cashier",
-    ];
-    $dir_text = ($sort_direction == "ASC") ? "Ascending" : "Descending";
-    return ($column_map[$sort_column] ?? "Timestamp") . " ({$dir_text})";
+    // This function is no longer needed for the main display as JS manages it.
+    return "Timestamp (Descending)";
 }
 
 // Fetch Data
-$sales = $salesManager->getSalesHistory($date_start, $date_end, $sort_column, $sort_direction);
-$return_history = $salesManager->getReturnHistory();
+$sales = $salesManager->getSalesHistory($date_start, $date_end, "date", "DESC"); 
+$all_return_history = $salesManager->getReturnHistory(); 
 
-// Calculate Totals
+// Calculate Totals & Filter Display Data
 $total_sales_revenue = array_sum(array_column($sales, "total_price"));
 
+$filtered_return_history = [];
 $total_return_value = 0;
 $start_date_obj = new DateTime($date_start . ' 00:00:00');
 $end_date_obj = new DateTime($date_end . ' 23:59:59');
 
-foreach ($return_history as $log) {
+foreach ($all_return_history as $log) {
     $return_date_obj = new DateTime($log['timestamp']);
+    // Filter by date range for both display and total calculation
     if ($return_date_obj >= $start_date_obj && $return_date_obj <= $end_date_obj) {
         $total_return_value += $log["return_value"];
+        $filtered_return_history[] = $log;
     }
 }
 
 $net_revenue = $total_sales_revenue - $total_return_value;
-$active_nav_link = 'sales'; 
+$active_nav_link = 'sales';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -266,9 +260,7 @@ $active_nav_link = 'sales';
         <div class="flex-1 overflow-y-auto p-6 pb-20 bg-breadly-bg">
             
             <div id="pane-sales" class="<?php echo ($active_tab == 'sales') ? '' : 'hidden'; ?>">
-                <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
-                    
-                    <div class="p-4 border-b border-orange-100">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100"> <div class="p-4 border-b border-orange-100">
                         <form method="GET" action="sales_history.php" class="flex flex-col md:flex-row gap-4 items-end">
                             <input type="hidden" name="active_tab" value="sales">
                             <div class="w-full md:w-auto flex-1">
@@ -300,15 +292,22 @@ $active_nav_link = 'sales';
                             <button id="sales-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                         </div>
                         
-                        <div class="relative group">
-                            <button class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                                Sort By: <?php echo getCurrentSortText($sort_column, $sort_direction); ?> <i class='bx bx-chevron-down'></i>
+                        <div class="relative dropdown" id="sales-sort-dropdown">
+                            <button id="sales-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                Sort By: <span class="current-sort-text">Timestamp (Descending)</span> <i class='bx bx-chevron-down'></i>
                             </button>
-                            <div class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden group-hover:block z-20">
-                                <a href="<?php echo getSortLink("date", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Timestamp</a>
-                                <a href="<?php echo getSortLink("sale_id", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Sale ID</a>
-                                <a href="<?php echo getSortLink("product", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Product</a>
-                                <a href="<?php echo getSortLink("price", $sort_column, $sort_direction, $date_start, $date_end, "sales"); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50">Net Total</a>
+                            <div id="sales-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Timestamp (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="sale_id" data-sort-type="number" data-sort-dir="ASC">Sale ID (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="sale_id" data-sort-type="number" data-sort-dir="DESC">Sale ID (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (DESC)</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="net_total" data-sort-type="number" data-sort-dir="ASC">Net Total (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="net_total" data-sort-type="number" data-sort-dir="DESC">Net Total (DESC)</a>
                             </div>
                         </div>
                     </div>
@@ -317,13 +316,13 @@ $active_nav_link = 'sales';
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
-                                    <th class="px-6 py-3">Timestamp</th>
-                                    <th class="px-6 py-3">Sale ID</th>
-                                    <th class="px-6 py-3">Product</th>
+                                    <th class="px-6 py-3" data-sort-by="date" data-sort-type="date">Timestamp</th>
+                                    <th class="px-6 py-3" data-sort-by="sale_id" data-sort-type="number">Sale ID</th>
+                                    <th class="px-6 py-3" data-sort-by="product" data-sort-type="text">Product</th>
                                     <th class="px-6 py-3">Qty</th>
                                     <th class="px-6 py-3">Subtotal</th>
                                     <th class="px-6 py-3">Discount</th>
-                                    <th class="px-6 py-3">Net Total</th>
+                                    <th class="px-6 py-3" data-sort-by="net_total" data-sort-type="number">Net Total</th>
                                     <th class="px-6 py-3">Cashier</th>
                                     <th class="px-6 py-3 text-center">Actions</th>
                                 </tr>
@@ -336,8 +335,8 @@ $active_nav_link = 'sales';
                                         $qty_available = $sale["qty_sold"] - $sale["qty_returned"];
                                     ?>
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($sale["date"]))); ?></td>
-                                        <td class="px-6 py-3 text-gray-600"><?php echo $sale["sale_id"]; ?></td>
+                                        <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($sale["date"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($sale["date"]))); ?></td>
+                                        <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $sale["sale_id"]; ?>"><?php echo $sale["sale_id"]; ?></td>
                                         <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($sale["product_name"]); ?></td>
                                         <td class="px-6 py-3">
                                             <?php echo $sale["qty_sold"]; ?>
@@ -354,7 +353,7 @@ $active_nav_link = 'sales';
                                                 <span class="text-gray-400">₱0.00</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="px-6 py-3 font-bold text-green-700">₱<?php echo number_format($sale["total_price"], 2); ?></td>
+                                        <td class="px-6 py-3 font-bold text-green-700" data-sort-value="<?php echo $sale["total_price"]; ?>">₱<?php echo number_format($sale["total_price"], 2); ?></td>
                                         <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($sale["cashier_username"]); ?></td>
                                         <td class="px-6 py-3 text-center">
                                             <button onclick="openReturnModal(this)" 
@@ -394,7 +393,23 @@ $active_nav_link = 'sales';
             </div>
 
             <div id="pane-returns" class="<?php echo ($active_tab == 'returns') ? '' : 'hidden'; ?>">
-                <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-blue-100"> <div class="p-4 border-b border-blue-100">
+                        <form method="GET" action="sales_history.php" class="flex flex-col md:flex-row gap-4 items-end">
+                            <input type="hidden" name="active_tab" value="returns">
+                            <div class="w-full md:w-auto flex-1">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">Start Date</label>
+                                <input type="date" name="date_start" value="<?php echo htmlspecialchars($date_start); ?>" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="w-full md:w-auto flex-1">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">End Date</label>
+                                <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="w-full md:w-auto">
+                                <button type="submit" class="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">Filter Returns</button>
+                            </div>
+                        </form>
+                    </div>
+
                     <div class="p-4 border-b border-blue-100 bg-blue-50/30 flex justify-between items-center">
                         <h5 class="font-bold text-lg text-blue-800">Returns Log</h5>
                         
@@ -412,6 +427,28 @@ $active_nav_link = 'sales';
                                 <button id="returns-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
                                 <button id="returns-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                             </div>
+                            
+                            <div class="relative dropdown" id="returns-sort-dropdown">
+                                <button id="returns-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                                    Sort By: <span class="current-sort-text">Timestamp (Descending)</span> <i class='bx bx-chevron-down'></i>
+                                </button>
+                                <div id="returns-sort-menu" class="absolute right-0 mt-1 w-52 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (ASC)</a>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Timestamp (DESC)</a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (ASC)</a>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (DESC)</a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Quantity (ASC)</a>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Quantity (DESC)</a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="refunded_value" data-sort-type="number" data-sort-dir="ASC">Refunded Value (ASC)</a>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="refunded_value" data-sort-type="number" data-sort-dir="DESC">Refunded Value (DESC)</a>
+                                    <div class="border-t border-gray-100 my-1"></div>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="cashier" data-sort-type="text" data-sort-dir="ASC">Cashier (ASC)</a>
+                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="cashier" data-sort-type="text" data-sort-dir="DESC">Cashier (DESC)</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -419,26 +456,26 @@ $active_nav_link = 'sales';
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
-                                    <th class="px-6 py-3">Timestamp</th>
-                                    <th class="px-6 py-3">Sale ID</th>
-                                    <th class="px-6 py-3">Product</th>
-                                    <th class="px-6 py-3">Quantity</th>
-                                    <th class="px-6 py-3">Refunded</th>
-                                    <th class="px-6 py-3">Cashier</th>
+                                    <th class="px-6 py-3" data-sort-by="date" data-sort-type="date">Timestamp</th>
+                                    <th class="px-6 py-3" data-sort-by="sale_id" data-sort-type="number">Sale ID</th>
+                                    <th class="px-6 py-3" data-sort-by="product" data-sort-type="text">Product</th>
+                                    <th class="px-6 py-3" data-sort-by="qty" data-sort-type="number">Quantity</th>
+                                    <th class="px-6 py-3" data-sort-by="refunded_value" data-sort-type="number">Refunded</th>
+                                    <th class="px-6 py-3" data-sort-by="cashier" data-sort-type="text">Cashier</th>
                                     <th class="px-6 py-3">Reason</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100" id="returns-table-body">
-                                <?php if (empty($return_history)): ?>
-                                    <tr><td colspan="7" class="px-6 py-8 text-center text-gray-400">No returns found.</td></tr>
+                                <?php if (empty($filtered_return_history)): ?>
+                                    <tr><td colspan="7" class="px-6 py-8 text-center text-gray-400">No returns found for the selected date range.</td></tr>
                                 <?php else: ?>
-                                    <?php foreach ($return_history as $log): ?>
+                                    <?php foreach ($filtered_return_history as $log): ?>
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
-                                        <td class="px-6 py-3 text-gray-600"><?php echo $log["sale_id"]; ?></td>
+                                        <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($log["timestamp"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
+                                        <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $log["sale_id"]; ?>"><?php echo $log["sale_id"]; ?></td>
                                         <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($log["product_name"] ?? "Deleted"); ?></td>
-                                        <td class="px-6 py-3 font-bold text-green-600">+<?php echo $log["qty_returned"]; ?></td>
-                                        <td class="px-6 py-3 text-blue-600">(₱<?php echo number_format($log["return_value"], 2); ?>)</td>
+                                        <td class="px-6 py-3 font-bold text-green-600" data-sort-value="<?php echo $log["qty_returned"]; ?>">+<?php echo $log["qty_returned"]; ?></td>
+                                        <td class="px-6 py-3 text-blue-600" data-sort-value="<?php echo $log["return_value"]; ?>">(₱<?php echo number_format($log["return_value"], 2); ?>)</td>
                                         <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["username"] ?? "N/A"); ?></td>
                                         <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["reason"]); ?></td>
                                     </tr>
