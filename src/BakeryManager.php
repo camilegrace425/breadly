@@ -106,14 +106,29 @@ class BakeryManager extends AbstractManager implements ListableData {
 
     // --- SALES & RECALLS ---
 
-    public function recordSale($user_id, $product_id, $qty_sold, $discount_percent = 0) {
+    public function recordSale($user_id, $product_id, $qty_sold, $discount_percent = 0, &$order_id = null) {
         try {
-            $stmt = $this->conn->prepare("CALL SaleRecordTransaction(?, ?, ?, ?, @status, @sale_id)");
+            // 1. Initialize the session variable @p_order_id with the current Order ID (or NULL for new)
+            $sql_order_id = ($order_id === null) ? 'NULL' : (int)$order_id;
+            $this->conn->exec("SET @p_order_id = $sql_order_id");
+
+            // 2. Call the procedure with the correct 7 arguments
+            // We use @p_order_id for the INOUT parameter
+            $stmt = $this->conn->prepare("CALL SaleRecordTransaction(?, ?, ?, ?, @p_order_id, @status, @sale_id)");
             $success = $stmt->execute([$user_id, $product_id, $qty_sold, $discount_percent]);
+            
             if (!$success) return 'Error: Execution failed.';
             $stmt->closeCursor();
-            $status_stmt = $this->conn->query("SELECT @status AS status, @sale_id AS sale_id");
-            $result = $status_stmt->fetch(PDO::FETCH_ASSOC);
+
+            // 3. Retrieve the outputs, including the potentially updated @p_order_id
+            $result_stmt = $this->conn->query("SELECT @status AS status, @sale_id AS sale_id, @p_order_id AS order_id");
+            $result = $result_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // 4. Update the reference variable so the caller knows the Order ID for the next item
+            if ($result && isset($result['order_id'])) {
+                $order_id = $result['order_id'];
+            }
+
             return $result['status'] ?? 'Error: Unknown status.';
         } catch (PDOException $e) {
             error_log("Error in recordSale: " . $e->getMessage());

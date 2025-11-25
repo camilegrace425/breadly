@@ -40,11 +40,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_SESSION['user_id'];
     $all_successful = true;
     $error_message = 'An unknown error occurred.';
+    
+    // Initialize Order ID as null. The first transaction will create the order and update this ID.
+    // Subsequent transactions will reuse this ID.
+    $current_order_id = null;
 
     foreach ($cart_items as $item) {
-        $status_message = $bakeryManager->recordSale($user_id, $item['id'], $item['quantity'], $discount_percent);
+        // Pass $current_order_id by reference. It will be updated by the first call.
+        $status_message = $bakeryManager->recordSale(
+            $user_id, 
+            $item['id'], 
+            $item['quantity'], 
+            $discount_percent,
+            $current_order_id
+        );
         
-        if ($status_message !== 'Success: Sale recorded.') {
+        if (strpos($status_message, 'Success') === false) {
             $all_successful = false;
             $error_message = $status_message;
             break;

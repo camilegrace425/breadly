@@ -4,26 +4,38 @@ document.addEventListener('DOMContentLoaded', () => {
     function addTablePagination(selectId, tableBodyId) {
         const select = document.getElementById(selectId);
         const tableBody = document.getElementById(tableBodyId);
+        if (!select || !tableBody) return;
+
         const baseId = selectId.replace('-rows-select', '');
         const prevBtn = document.getElementById(`${baseId}-prev-btn`);
         const nextBtn = document.getElementById(`${baseId}-next-btn`);
         
-        if (!select || !tableBody || !prevBtn || !nextBtn) {
-            return;
-        }
+        if (!prevBtn || !nextBtn) return;
 
         let currentPage = 0; // 0-indexed page
 
         const updateTableRows = () => {
             const selectedValue = select.value;
             
-            // Get all data rows in their current DOM order (which is sorted)
-            const all_data_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const totalRows = all_data_rows.length;
+            // Determine what constitutes a "row" to paginate.
+            // For 'sales-table-body', we paginate based on class '.order-row'
+            // For 'returns-table-body', we paginate strictly on 'tr'
+            let dataRows;
+            if (tableBodyId === 'sales-table-body') {
+                dataRows = Array.from(tableBody.querySelectorAll('tr.order-row'));
+            } else {
+                dataRows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"])'));
+            }
+
+            const totalRows = dataRows.length;
             
-            // 1. Handle 'All' case first
+            // 1. Handle 'All' case
             if (selectedValue === 'all') {
-                all_data_rows.forEach(row => row.style.display = '');
+                dataRows.forEach(row => {
+                    row.style.display = '';
+                    // If it's an order row, ensure its details row stays hidden by default logic (or kept current state)
+                    // Note: We don't force display on details-row, expanding logic handles that.
+                });
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
                 return;
@@ -32,30 +44,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const limit = parseInt(selectedValue, 10);
             const totalPages = (totalRows === 0) ? 1 : Math.ceil(totalRows / limit);
             
-            // Adjust currentPage if it exceeds the new page count
             if (currentPage >= totalPages) {
                 currentPage = Math.max(0, totalPages - 1);
             }
 
-            // 2. Handle Pagination case
             const start = currentPage * limit;
             const end = start + limit;
             
-            // Iterate over all rows and set visibility based on index
-            all_data_rows.forEach((row, index) => {
+            // Iterate rows and set visibility
+            dataRows.forEach((row, index) => {
                 if (index >= start && index < end) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
+                    // If it's an order row and hidden, also hide its details just in case visual glitches occur? 
+                    // CSS 'hidden' on parent usually suffices, but the details row is a sibling.
+                    if (row.classList.contains('order-row')) {
+                        const nextRow = row.nextElementSibling;
+                        if (nextRow && nextRow.classList.contains('details-row')) {
+                            nextRow.style.display = 'none'; 
+                        }
+                    }
+                }
+                
+                // Re-check visibility for active items (handling the sibling details row)
+                if (row.classList.contains('order-row') && index >= start && index < end) {
+                    const nextRow = row.nextElementSibling;
+                    // Restore detail row visibility logic: 
+                    // The details row usually has 'hidden' class controlled by toggle.
+                    // We just need to remove the 'display:none' inline style potentially added by pagination logic previously.
+                    if (nextRow && nextRow.classList.contains('details-row')) {
+                        nextRow.style.display = ''; 
+                    }
                 }
             });
 
-            // 3. Update buttons
+            // Update buttons
             prevBtn.disabled = currentPage === 0;
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
         };
 
-        // Event listeners for controls
+        // Event listeners
         prevBtn.addEventListener('click', () => {
             if (currentPage > 0) {
                 currentPage--;
@@ -69,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTableRows();
         });
 
-        // Trigger update when select value changes
         select.addEventListener('change', () => {
             currentPage = 0; 
             updateTableRows();
@@ -79,32 +107,26 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTableRows();
     }
     
-    // --- JS Sorting for Sales and Returns Tables ---
+    // --- JS Sorting ---
     
     function getSortableValue(cell, type = 'text') {
         const textValue = cell.innerText;
-        
-        // 1. Use data-sort-value if available for explicit sorting (dates as timestamps, net total as number)
         if ((type === 'number' || type === 'date') && cell.dataset.sortValue !== undefined) {
              const num = parseFloat(cell.dataset.sortValue);
              return isNaN(num) ? 0 : num;
         }
-        
         let cleaned = textValue.trim();
         switch (type) {
             case 'number':
-                // 2. Clean common non-numeric characters for general number columns
                 cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+|\(|\)/gi, '');
                 cleaned = cleaned.replace(/,/g, '');
                 const num = parseFloat(cleaned);
                 return isNaN(num) ? 0 : num;
             case 'date':
-                // 3. Date parsing (fallback if no data-sort-value)
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal;
-            default: // 'text'
-                const lowerVal = cleaned.toLowerCase();
-                return lowerVal;
+            default: 
+                return cleaned.toLowerCase();
         }
     }
 
@@ -120,49 +142,109 @@ document.addEventListener('DOMContentLoaded', () => {
         const headerRow = table.querySelector('thead tr');
         let colIndex = -1;
         
-        // Find the column index by matching the TH data-sort-by attribute
         Array.from(headerRow.querySelectorAll('th')).forEach((th, index) => {
             if (th.dataset.sortBy === sortBy) {
                 colIndex = index;
             }
         });
         
-        if (colIndex === -1) {
-            console.error(`Sort Error: Could not find column index for data-sort-by="${sortBy}"`);
-            return;
+        if (colIndex === -1) return;
+
+        // Check if we are sorting Order Rows or standard rows
+        let isOrderTable = (tableBody.id === 'sales-table-body');
+        let rows = [];
+
+        if (isOrderTable) {
+            // For Orders: We must keep Order Row + Details Row pairs together
+            // Select only the order rows first
+            let orderRows = Array.from(tableBody.querySelectorAll('tr.order-row'));
+            
+            orderRows.sort((a, b) => {
+                if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
+                const valA = getSortableValue(a.cells[colIndex], sortType);
+                const valB = getSortableValue(b.cells[colIndex], sortType);
+                
+                let comparison = 0;
+                if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
+            });
+
+            // Reconstruct the body
+            // Note: We use DocumentFragment for performance, but innerHTML is okay here
+            // We must move the Detail Row immediately after the Order Row
+            tableBody.innerHTML = '';
+            orderRows.forEach(row => {
+                const detailsRow = document.getElementById('details-' + row.querySelector('[data-sort-value]').innerText.replace('#','')); // Fallback ID selector or use nextSibling from original DOM?
+                // Better: Since we just grabbed orderRows, their .nextElementSibling in the *original* DOM was likely the details row. 
+                // But sorting breaks that link if we pull them out.
+                // However, we can find the details row by ID logic we set up: id="details-{order_id}"
+                
+                // Get Order ID from the row content to find the specific details row in the DOM before we wiped it?
+                // Actually, `orderRows` contains references to DOM nodes. The `details` rows are still in memory/DOM but detached if we cleared innerHTML? 
+                // No, `orderRows` only has the order rows. The details rows would be lost if we clear innerHTML without saving them.
+                // Strategy: Don't clear innerHTML. AppendChild moves them.
+            });
+            
+            // Optimized Strategy for Parent-Child sorting:
+            // 1. Create a list of objects { orderRow, detailsRow, sortValue }
+            // 2. Sort that list
+            // 3. Append back
+            
+            // Re-fetch rows from scratch to ensure we get the pairs currently in DOM
+            let currentPairs = [];
+            let currentOrderRows = Array.from(tableBody.querySelectorAll('tr.order-row'));
+            
+            currentOrderRows.forEach(oRow => {
+                let dRow = oRow.nextElementSibling; 
+                // Verify it is indeed the details row
+                if (dRow && dRow.classList.contains('details-row')) {
+                    currentPairs.push({ order: oRow, details: dRow });
+                } else {
+                    currentPairs.push({ order: oRow, details: null });
+                }
+            });
+
+            currentPairs.sort((a, b) => {
+                const valA = getSortableValue(a.order.cells[colIndex], sortType);
+                const valB = getSortableValue(b.order.cells[colIndex], sortType);
+                let comparison = (valA > valB) ? 1 : (valA < valB ? -1 : 0);
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
+            });
+
+            currentPairs.forEach(pair => {
+                tableBody.appendChild(pair.order);
+                if(pair.details) tableBody.appendChild(pair.details);
+            });
+
+        } else {
+            // Standard Sorting (Returns Table)
+            rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"])'));
+            rows.sort((a, b) => {
+                if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
+                const valA = getSortableValue(a.cells[colIndex], sortType);
+                const valB = getSortableValue(b.cells[colIndex], sortType);
+                
+                let comparison = 0;
+                if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
+            });
+            
+            rows.forEach(row => tableBody.appendChild(row));
         }
-
-        // Get all data rows
-        const rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"])'));
-
-        rows.sort((a, b) => {
-            if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
-            const valA = getSortableValue(a.cells[colIndex], sortType);
-            const valB = getSortableValue(b.cells[colIndex], sortType);
-            
-            let comparison = 0;
-            if (valA > valB) comparison = 1;
-            else if (valA < valB) comparison = -1;
-            
-            // Apply direction
-            return sortDir === 'DESC' ? (comparison * -1) : comparison;
-        });
-
-        tableBody.innerHTML = '';
-        rows.forEach(row => tableBody.appendChild(row));
         
+        // UI Updates
         const dropdown = sortLink.closest('.dropdown');
         if (dropdown) {
-            const buttonTextSpan = dropdown.querySelector('.current-sort-text');
-            // Use the text content directly from the link since it includes the direction
-            buttonTextSpan.textContent = sortLink.textContent.trim();
-            
-            const dropdownItems = dropdown.querySelectorAll('.sort-trigger');
-            dropdownItems.forEach(item => item.classList.remove('active'));
+            dropdown.querySelector('.current-sort-text').textContent = sortLink.textContent.trim();
+            dropdown.querySelectorAll('.sort-trigger').forEach(item => item.classList.remove('active'));
             sortLink.classList.add('active');
         }
         
-        // Re-apply pagination after sorting
+        // Re-trigger pagination to ensure correct view
         const paginationSelect = table.closest('.bg-white').querySelector('select[id$="-rows-select"]');
         if (paginationSelect) {
             paginationSelect.dispatchEvent(new Event('change'));
@@ -175,72 +257,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const sortMenu = document.getElementById(dropdownId.replace('-dropdown', '-menu'));
         
         if (dropdownEl && sortButton && sortMenu) {
-            // Toggle menu on button click
             sortButton.addEventListener('click', (e) => {
                 e.stopPropagation(); 
                 sortMenu.classList.toggle('hidden');
             });
 
-            // Close menu when clicking outside
             document.addEventListener('click', (e) => {
                 if (!sortMenu.contains(e.target) && !sortButton.contains(e.target)) {
                     sortMenu.classList.add('hidden');
                 }
             });
             
-            // Set up click listener for sort links
             document.querySelectorAll(`#${dropdownId} .sort-trigger`).forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     sortTableByDropdown(e.target);
-                    sortMenu.classList.add('hidden'); // Close after sorting
+                    sortMenu.classList.add('hidden'); 
                 });
             });
-
-            // Apply default sort (active link) on load
-            const defaultSortLink = dropdownEl.querySelector('.sort-trigger.active');
-            if (defaultSortLink) {
-                 setTimeout(() => sortTableByDropdown(defaultSortLink), 50);
-            }
         }
     }
-
 
     // --- Initialization ---
-
-    // 1. Logic to set active_tab in the main filter form
     const mainFilterForm = document.querySelector('#pane-sales form');
+    const returnsFilterForm = document.querySelector('#pane-returns form');
     const allTabButtons = document.querySelectorAll('#historyTabs button');
     const urlParams = new URLSearchParams(window.location.search);
-    const activeTabFromURL = urlParams.get('active_tab') || 'sales';
-
-    if (mainFilterForm) {
-        const activeTabInput = mainFilterForm.querySelector('input[name="active_tab"]');
-        if (activeTabInput) {
-            allTabButtons.forEach(tabButton => {
-                tabButton.addEventListener('click', () => {
-                    const tabValue = tabButton.id.replace('tab-', '');
-                    activeTabInput.value = tabValue;
-                });
-            });
-            activeTabInput.value = activeTabFromURL;
-        }
-    }
     
-    const returnsFilterForm = document.querySelector('#pane-returns form');
+    // Set initial active tab
+    const activeTabFromURL = urlParams.get('active_tab') || 'sales';
+    if (mainFilterForm) {
+        const inp = mainFilterForm.querySelector('input[name="active_tab"]');
+        if(inp) inp.value = activeTabFromURL;
+    }
     if (returnsFilterForm) {
-        const activeTabInput = returnsFilterForm.querySelector('input[name="active_tab"]');
-        if (activeTabInput) {
-            activeTabInput.value = 'returns';
-        }
+        const inp = returnsFilterForm.querySelector('input[name="active_tab"]');
+        if(inp) inp.value = 'returns';
     }
 
     allTabButtons.forEach(tabButton => {
         tabButton.addEventListener('click', function(event) {
             const activeTabValue = event.currentTarget.id.replace('tab-', '');
-            
             const url = new URL(window.location);
             url.searchParams.set('active_tab', activeTabValue);
+            
             const form = activeTabValue === 'sales' ? mainFilterForm : returnsFilterForm;
             if (form) {
                 const start = form.querySelector('[name="date_start"]').value;
@@ -248,12 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 url.searchParams.set('date_start', start);
                 url.searchParams.set('date_end', end);
             }
-
             window.history.replaceState({}, '', url);
         });
     });
 
-    // 2. Initialize Sorting and Pagination
     setupDropdown('sales-sort-dropdown');
     setupDropdown('returns-sort-dropdown');
     

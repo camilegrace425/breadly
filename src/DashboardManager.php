@@ -103,11 +103,12 @@ class DashboardManager extends AbstractManager {
 
     public function getDailySalesTrend($date_start, $date_end) {
         try {
-            $sql = "SELECT DATE(timestamp) as sale_date, SUM(total_price) as daily_revenue 
-                    FROM sales 
-                    WHERE DATE(timestamp) BETWEEN ? AND ? 
-                    GROUP BY DATE(timestamp) 
-                    ORDER BY DATE(timestamp) ASC";
+            $sql = "SELECT DATE(o.timestamp) as sale_date, SUM(s.total_price) as daily_revenue 
+                    FROM sales s
+                    JOIN orders o ON s.order_id = o.order_id
+                    WHERE DATE(o.timestamp) BETWEEN ? AND ? 
+                    GROUP BY DATE(o.timestamp) 
+                    ORDER BY DATE(o.timestamp) ASC";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$date_start, $date_end]);

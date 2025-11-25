@@ -44,7 +44,8 @@ $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
 $totalReturns = $dateRangeSummary['totalReturnsValue'] ?? 0.00; 
 $netRevenue = $grossRevenue - $totalReturns;
 
-$recalledStockValue = $dashboardManager->getRecalledStockValue($date_start, $date_end);
+$recallSummary = $dashboardManager->getRecallSummaryByDateRange($date_start, $date_end);
+$recalledStockValue = $recallSummary['value'] ?? 0.00;
 $salesData = $dashboardManager->getSalesSummaryByDate($date_start, $date_end); 
 $recallData = $inventoryManager->getRecallHistoryByDate($date_start, $date_end);
 

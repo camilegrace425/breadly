@@ -331,7 +331,7 @@ $active_nav_link = 'dashboard';
                     <div class="bg-breadly-card-2 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100">
                         <div>
                             <h2 class="text-3xl font-bold text-breadly-dark"><?php echo $dateRangeSummary['totalSales']; ?></h2>
-                            <p class="text-sm text-breadly-dark font-medium mt-1">Total Orders</p>
+                            <p class="text-sm text-breadly-dark font-medium mt-1">Total Products Sold</p>
                         </div>
                         <p class="text-xs text-gray-500 mt-2"><?php echo $date_range_text; ?></p>
                     </div>

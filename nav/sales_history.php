@@ -66,35 +66,42 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
 $date_start = $_GET["date_start"] ?? date("Y-m-d");
 $date_end = $_GET["date_end"] ?? date("Y-m-d");
 $active_tab = $_GET["active_tab"] ?? "sales";
-$sort_column = $_GET["sort"] ?? "date";
-$sort_direction = $_GET["order"] ?? "DESC";
-
-// Helper: Sort Link Generation
-function getSortLink($column, $currentSort, $currentOrder, $dateStart, $dateEnd, $activeTab) {
-    // This function is kept only to prevent PHP errors if still called somewhere else, but its output is unused for main table sorting.
-    $newOrder = ($currentSort == $column && $currentOrder == "ASC") ? "DESC" : "ASC";
-    return "sales_history.php?" . http_build_query([
-        "date_start" => $dateStart,
-        "date_end" => $dateEnd,
-        "sort" => $column,
-        "order" => $newOrder,
-        "active_tab" => $activeTab,
-    ]);
-}
-
-// Helper: Sort Display Text
-function getCurrentSortText($sort_column, $sort_direction) {
-    // This function is no longer needed for the main display as JS manages it.
-    return "Timestamp (Descending)";
-}
 
 // Fetch Data
 $sales = $salesManager->getSalesHistory($date_start, $date_end, "date", "DESC"); 
 $all_return_history = $salesManager->getReturnHistory(); 
 
-// Calculate Totals & Filter Display Data
-$total_sales_revenue = array_sum(array_column($sales, "total_price"));
+// --- DATA PROCESSING: GROUP SALES BY ORDER ---
+$grouped_orders = [];
+$total_sales_revenue = 0;
 
+foreach ($sales as $sale) {
+    $order_id = $sale['order_id'];
+    
+    if (!isset($grouped_orders[$order_id])) {
+        $grouped_orders[$order_id] = [
+            'order_id' => $order_id,
+            'timestamp' => $sale['date'],
+            'cashier' => $sale['cashier_username'],
+            'total_order_price' => 0,
+            'items_count' => 0,
+            'items' => []
+        ];
+    }
+    
+    // Add item to the order
+    $grouped_orders[$order_id]['items'][] = $sale;
+    
+    // Aggregate totals
+    $grouped_orders[$order_id]['total_order_price'] += $sale['total_price'];
+    $grouped_orders[$order_id]['items_count'] += $sale['qty_sold'];
+    
+    // Global total
+    $total_sales_revenue += $sale['total_price'];
+}
+// ---------------------------------------------
+
+// Calculate Return Totals & Filter Display Data for Returns Tab
 $filtered_return_history = [];
 $total_return_value = 0;
 $start_date_obj = new DateTime($date_start . ' 00:00:00');
@@ -102,7 +109,6 @@ $end_date_obj = new DateTime($date_end . ' 23:59:59');
 
 foreach ($all_return_history as $log) {
     $return_date_obj = new DateTime($log['timestamp']);
-    // Filter by date range for both display and total calculation
     if ($return_date_obj >= $start_date_obj && $return_date_obj <= $end_date_obj) {
         $total_return_value += $log["return_value"];
         $filtered_return_history[] = $log;
@@ -110,7 +116,6 @@ foreach ($all_return_history as $log) {
 }
 
 $net_revenue = $total_sales_revenue - $total_return_value;
-$active_nav_link = 'sales';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -146,6 +151,8 @@ $active_nav_link = 'sales';
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* Animation for expanding rows */
+        .details-row { transition: all 0.3s ease; }
     </style>
 </head>
 <body class="bg-breadly-bg text-breadly-dark font-sans h-screen flex overflow-hidden selection:bg-orange-200">
@@ -249,7 +256,7 @@ $active_nav_link = 'sales';
         <div class="px-6 border-b border-gray-200 bg-breadly-bg overflow-x-auto">
             <div class="flex gap-6 min-w-max" id="historyTabs">
                 <button onclick="switchTab('sales')" id="tab-sales" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'sales') ? 'border-breadly-btn text-breadly-btn' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
-                    <i class='bx bi-cash-coin text-lg'></i> Sales History
+                    <i class='bx bi-cash-coin text-lg'></i> Orders History
                 </button>
                 <button onclick="switchTab('returns')" id="tab-returns" class="pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 <?php echo ($active_tab == 'returns') ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'; ?>">
                     <i class='bx bi-arrow-return-left text-lg'></i> Returns Log
@@ -260,7 +267,8 @@ $active_nav_link = 'sales';
         <div class="flex-1 overflow-y-auto p-6 pb-20 bg-breadly-bg">
             
             <div id="pane-sales" class="<?php echo ($active_tab == 'sales') ? '' : 'hidden'; ?>">
-                <div class="bg-white rounded-xl shadow-sm border border-orange-100"> <div class="p-4 border-b border-orange-100">
+                <div class="bg-white rounded-xl shadow-sm border border-orange-100"> 
+                    <div class="p-4 border-b border-orange-100">
                         <form method="GET" action="sales_history.php" class="flex flex-col md:flex-row gap-4 items-end">
                             <input type="hidden" name="active_tab" value="sales">
                             <div class="w-full md:w-auto flex-1">
@@ -300,14 +308,11 @@ $active_nav_link = 'sales';
                                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (ASC)</a>
                                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Timestamp (DESC)</a>
                                 <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="sale_id" data-sort-type="number" data-sort-dir="ASC">Sale ID (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="sale_id" data-sort-type="number" data-sort-dir="DESC">Sale ID (DESC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="order_id" data-sort-type="number" data-sort-dir="ASC">Order ID (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="order_id" data-sort-type="number" data-sort-dir="DESC">Order ID (DESC)</a>
                                 <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="net_total" data-sort-type="number" data-sort-dir="ASC">Net Total (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="net_total" data-sort-type="number" data-sort-dir="DESC">Net Total (DESC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="total_price" data-sort-type="number" data-sort-dir="ASC">Total Amount (ASC)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="total_price" data-sort-type="number" data-sort-dir="DESC">Total Amount (DESC)</a>
                             </div>
                         </div>
                     </div>
@@ -316,57 +321,91 @@ $active_nav_link = 'sales';
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
-                                    <th class="px-6 py-3" data-sort-by="date" data-sort-type="date">Timestamp</th>
-                                    <th class="px-6 py-3" data-sort-by="sale_id" data-sort-type="number">Sale ID</th>
-                                    <th class="px-6 py-3" data-sort-by="product" data-sort-type="text">Product</th>
-                                    <th class="px-6 py-3">Qty</th>
-                                    <th class="px-6 py-3">Subtotal</th>
-                                    <th class="px-6 py-3">Discount</th>
-                                    <th class="px-6 py-3" data-sort-by="net_total" data-sort-type="number">Net Total</th>
+                                    <th class="px-6 py-3 w-10"></th> <th class="px-6 py-3" data-sort-by="date" data-sort-type="date">Timestamp</th>
+                                    <th class="px-6 py-3" data-sort-by="order_id" data-sort-type="number">Order ID</th>
                                     <th class="px-6 py-3">Cashier</th>
-                                    <th class="px-6 py-3 text-center">Actions</th>
+                                    <th class="px-6 py-3 text-center">Items Count</th>
+                                    <th class="px-6 py-3 text-right" data-sort-by="total_price" data-sort-type="number">Total</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100" id="sales-table-body">
-                                <?php if (empty($sales)): ?>
-                                    <tr><td colspan="9" class="px-6 py-8 text-center text-gray-400">No sales found.</td></tr>
+                                <?php if (empty($grouped_orders)): ?>
+                                    <tr id="sales-no-results"><td colspan="6" class="px-6 py-8 text-center text-gray-400">No orders found.</td></tr>
                                 <?php else: ?>
-                                    <?php foreach ($sales as $sale): 
-                                        $qty_available = $sale["qty_sold"] - $sale["qty_returned"];
-                                    ?>
-                                    <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($sale["date"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($sale["date"]))); ?></td>
-                                        <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $sale["sale_id"]; ?>"><?php echo $sale["sale_id"]; ?></td>
-                                        <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($sale["product_name"]); ?></td>
-                                        <td class="px-6 py-3">
-                                            <?php echo $sale["qty_sold"]; ?>
-                                            <?php if ($sale["qty_returned"] > 0): ?>
-                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded ml-1">-<?php echo $sale["qty_returned"]; ?> returned</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="px-6 py-3 text-gray-500">₱<?php echo number_format($sale["subtotal"], 2); ?></td>
-                                        <td class="px-6 py-3 text-red-500">
-                                            <?php if (isset($sale["discount_amount"]) && $sale["discount_amount"] > 0.005): ?>
-                                                (₱<?php echo number_format($sale["discount_amount"], 2); ?>)
-                                                <span class="bg-red-100 text-red-800 text-xs px-1 rounded ml-1"><?php echo $sale["discount_percent"]; ?>%</span>
-                                            <?php else: ?>
-                                                <span class="text-gray-400">₱0.00</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="px-6 py-3 font-bold text-green-700" data-sort-value="<?php echo $sale["total_price"]; ?>">₱<?php echo number_format($sale["total_price"], 2); ?></td>
-                                        <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($sale["cashier_username"]); ?></td>
-                                        <td class="px-6 py-3 text-center">
-                                            <button onclick="openReturnModal(this)" 
-                                                class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-medium flex items-center gap-1 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                                                data-sale-id="<?php echo $sale["sale_id"]; ?>"
-                                                data-product-name="<?php echo htmlspecialchars($sale["product_name"]); ?>"
-                                                data-qty-available="<?php echo $qty_available; ?>"
-                                                data-sale-date="<?php echo htmlspecialchars(date("M d, Y", strtotime($sale["date"]))); ?>"
-                                                <?php if ($qty_available <= 0) echo "disabled"; ?>>
-                                                <i class='bx bx-undo'></i> <?php echo $qty_available <= 0 ? "Returned" : "Return"; ?>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <?php foreach ($grouped_orders as $order): ?>
+                                        <tr class="order-row hover:bg-orange-50 transition-colors cursor-pointer border-b border-gray-50" 
+                                            onclick="toggleOrderDetails(<?php echo $order['order_id']; ?>)">
+                                            <td class="px-6 py-4 text-center text-breadly-btn">
+                                                <i class='bx bx-chevron-right text-xl transition-transform duration-200' id="icon-<?php echo $order['order_id']; ?>"></i>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm font-medium text-gray-700" data-sort-value="<?php echo strtotime($order["timestamp"]); ?>">
+                                                <?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($order["timestamp"]))); ?>
+                                            </td>
+                                            <td class="px-6 py-4 text-gray-600 font-bold" data-sort-value="<?php echo $order["order_id"]; ?>">
+                                                #<?php echo $order["order_id"]; ?>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-600">
+                                                <?php echo htmlspecialchars($order["cashier"]); ?>
+                                            </td>
+                                            <td class="px-6 py-4 text-center text-sm">
+                                                <span class="bg-gray-100 px-2 py-1 rounded-md text-gray-600"><?php echo $order["items_count"]; ?> items</span>
+                                            </td>
+                                            <td class="px-6 py-4 text-right font-bold text-breadly-dark text-base" data-sort-value="<?php echo $order["total_order_price"]; ?>">
+                                                ₱<?php echo number_format($order["total_order_price"], 2); ?>
+                                            </td>
+                                        </tr>
+                                        
+                                        <tr id="details-<?php echo $order['order_id']; ?>" class="details-row hidden bg-orange-50/30">
+                                            <td colspan="6" class="px-0 py-0">
+                                                <div class="p-4 pl-16 pr-6 border-b border-orange-100">
+                                                    <div class="bg-white rounded-lg border border-orange-200 overflow-hidden shadow-sm">
+                                                        <table class="w-full text-sm">
+                                                            <thead class="bg-orange-100 text-breadly-dark text-xs uppercase font-semibold">
+                                                                <tr>
+                                                                    <th class="px-4 py-2 text-left">Product</th>
+                                                                    <th class="px-4 py-2 text-center">Qty</th>
+                                                                    <th class="px-4 py-2 text-right">Subtotal</th>
+                                                                    <th class="px-4 py-2 text-right">Discount</th>
+                                                                    <th class="px-4 py-2 text-right">Total</th>
+                                                                    <th class="px-4 py-2 text-center">Action</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody class="divide-y divide-orange-100">
+                                                                <?php foreach ($order['items'] as $item): 
+                                                                    $qty_available = $item["qty_sold"] - $item["qty_returned"];
+                                                                ?>
+                                                                <tr class="hover:bg-orange-50">
+                                                                    <td class="px-4 py-2 font-medium text-gray-800"><?php echo htmlspecialchars($item["product_name"]); ?></td>
+                                                                    <td class="px-4 py-2 text-center">
+                                                                        <?php echo $item["qty_sold"]; ?>
+                                                                        <?php if ($item["qty_returned"] > 0): ?>
+                                                                            <span class="text-red-500 text-xs block">(-<?php echo $item["qty_returned"]; ?> ret)</span>
+                                                                        <?php endif; ?>
+                                                                    </td>
+                                                                    <td class="px-4 py-2 text-right text-gray-500">₱<?php echo number_format($item["subtotal"], 2); ?></td>
+                                                                    <td class="px-4 py-2 text-right text-red-500">
+                                                                        <?php echo ($item["discount_percent"] > 0) ? $item["discount_percent"].'%' : '-'; ?>
+                                                                    </td>
+                                                                    <td class="px-4 py-2 text-right font-semibold text-gray-700">₱<?php echo number_format($item["total_price"], 2); ?></td>
+                                                                    <td class="px-4 py-2 text-center">
+                                                                        <button onclick="openReturnModal(this)" 
+                                                                            class="text-xs px-2 py-1 rounded border border-blue-200 text-blue-600 hover:bg-blue-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                            data-sale-id="<?php echo $item["sale_id"]; ?>"
+                                                                            data-product-name="<?php echo htmlspecialchars($item["product_name"]); ?>"
+                                                                            data-qty-available="<?php echo $qty_available; ?>"
+                                                                            data-sale-date="<?php echo htmlspecialchars(date("M d, Y", strtotime($item["date"]))); ?>"
+                                                                            <?php if ($qty_available <= 0) echo "disabled"; ?>>
+                                                                            Return
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>
@@ -393,7 +432,7 @@ $active_nav_link = 'sales';
             </div>
 
             <div id="pane-returns" class="<?php echo ($active_tab == 'returns') ? '' : 'hidden'; ?>">
-                <div class="bg-white rounded-xl shadow-sm border border-blue-100"> <div class="p-4 border-b border-blue-100">
+               <div class="bg-white rounded-xl shadow-sm border border-blue-100"> <div class="p-4 border-b border-blue-100">
                         <form method="GET" action="sales_history.php" class="flex flex-col md:flex-row gap-4 items-end">
                             <input type="hidden" name="active_tab" value="returns">
                             <div class="w-full md:w-auto flex-1">
@@ -438,15 +477,6 @@ $active_nav_link = 'sales';
                                     <div class="border-t border-gray-100 my-1"></div>
                                     <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (ASC)</a>
                                     <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (DESC)</a>
-                                    <div class="border-t border-gray-100 my-1"></div>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Quantity (ASC)</a>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Quantity (DESC)</a>
-                                    <div class="border-t border-gray-100 my-1"></div>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="refunded_value" data-sort-type="number" data-sort-dir="ASC">Refunded Value (ASC)</a>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="refunded_value" data-sort-type="number" data-sort-dir="DESC">Refunded Value (DESC)</a>
-                                    <div class="border-t border-gray-100 my-1"></div>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="cashier" data-sort-type="text" data-sort-dir="ASC">Cashier (ASC)</a>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="cashier" data-sort-type="text" data-sort-dir="DESC">Cashier (DESC)</a>
                                 </div>
                             </div>
                         </div>
@@ -528,7 +558,7 @@ $active_nav_link = 'sales';
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <?php $js_version = file_exists("../js/script_sales_history.js") ? filemtime("../js/script_sales_history.js") : "1"; ?>
+    <?php $js_version = file_exists("../js/script_sales_history.js") ? filemtime("../js/script_sales_history.js") : "2"; ?>
     <script src="../js/script_sales_history.js?v=<?php echo $js_version; ?>"></script>
 
     <script>
@@ -566,9 +596,12 @@ $active_nav_link = 'sales';
             if(backdrop) backdrop.classList.add('hidden');
         }
 
+        // Only for Return Modal (Specific to Sales History Page logic)
         function openReturnModal(button) {
+            // Stop propagation if clicked from a table row that expands
+            if(window.event) window.event.stopPropagation();
+
             const modal = document.getElementById('returnSaleModal');
-            
             document.getElementById('return_sale_id').value = button.dataset.saleId;
             document.getElementById('return_product_name').textContent = button.dataset.productName;
             document.getElementById('return_sale_date').textContent = button.dataset.saleDate;
@@ -599,6 +632,20 @@ $active_nav_link = 'sales';
                 salesBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-breadly-btn text-breadly-btn';
             } else {
                 returnsBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-blue-500 text-blue-600';
+            }
+        }
+
+        function toggleOrderDetails(orderId) {
+            const detailsRow = document.getElementById('details-' + orderId);
+            const icon = document.getElementById('icon-' + orderId);
+            if (detailsRow) {
+                if (detailsRow.classList.contains('hidden')) {
+                    detailsRow.classList.remove('hidden');
+                    icon.classList.add('rotate-90');
+                } else {
+                    detailsRow.classList.add('hidden');
+                    icon.classList.remove('rotate-90');
+                }
             }
         }
     </script>

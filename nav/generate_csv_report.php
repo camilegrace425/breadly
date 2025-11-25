@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($type === 'sales') {
             $headers = [
                 'Transaction ID', 'Date/Time', 'Items Purchased', 'Quantity', 
-                'Price', 'Total Sale Amount', 'Discount Amount', 'User/Cashier'
+                'Price', 'Discount Amount', 'Total Sale Amount', 'User/Cashier'
             ];
             $stmt = $conn->prepare("CALL ReportGetSalesHistory(?, ?, 'date', 'DESC')");
             $stmt->execute([$date_start, $date_end]);
@@ -55,8 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $row['product_name'],
                     $row['qty_sold'],
                     number_format($row['subtotal'] / ($row['qty_sold'] ?: 1), 2),
-                    number_format($row['total_price'], 2),
                     number_format($row['discount_amount'], 2),
+                    number_format($row['total_price'], 2),
                     $row['cashier_username']
                 ];
             }
