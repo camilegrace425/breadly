@@ -177,7 +177,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
             <?php endif; ?>
             
             <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors bg-breadly-dark text-white shadow-md">
-                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales History</span>
+                <i class='bx bx-history text-xl'></i><span class="font-medium">Sales & Transactions</span>
             </a>
             
             <div class="my-4 border-t border-orange-200"></div>
@@ -224,7 +224,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
             <?php endif; ?>
             
             <a href="sales_history.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-breadly-dark text-white">
-                <i class='bx bx-history text-xl'></i> Sales History
+                <i class='bx bx-history text-xl'></i> Sales & Transactions
             </a>
             
             <a href="../index.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-breadly-secondary mt-4 border-t border-orange-200 pt-4">
