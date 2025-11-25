@@ -7,6 +7,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Access Control
+if (!in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
+    header('Location: ../index.php');
+    exit();
+}
+
 $inventoryManager = new InventoryManager();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -17,7 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $qty = floatval($_POST['quantity']);
         $expiration_date = $_POST['expiration_date'] ?? null;
         
-        // Basic Validation
         if ($qty <= 0) {
             $_SESSION['flash_message'] = "Quantity must be greater than zero.";
             $_SESSION['flash_type'] = "danger";
@@ -25,13 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reason = "[Restock] Manual Restock";
             $result = $inventoryManager->adjustIngredientStock($id, $_SESSION['user_id'], $qty, $reason, $expiration_date);
 
-            if ($result['success']) {
-                $_SESSION['flash_message'] = "Stock added successfully.";
-                $_SESSION['flash_type'] = "success";
-            } else {
-                $_SESSION['flash_message'] = "Error: " . $result['message'];
-                $_SESSION['flash_type'] = "danger";
-            }
+            $_SESSION['flash_message'] = $result['success'] ? "Stock added successfully." : "Error: " . $result['message'];
+            $_SESSION['flash_type'] = $result['success'] ? "success" : "danger";
         }
         header('Location: inventory_management.php');
         exit();

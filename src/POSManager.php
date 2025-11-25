@@ -1,18 +1,14 @@
 <?php
-require_once '../db_connection.php';
+require_once 'AbstractManager.php';
+require_once 'ListableData.php'; // Required for the interface
 
-class PosFunctions {
-    private $conn;
-
-    public function __construct() {
-        $db = new Database();
-        $this->conn = $db->getConnection();
+class PosFunctions extends AbstractManager implements ListableData { // Implements ListableData
+    public function fetchAllData(): array {
+        return $this->getAvailableProducts();
     }
 
-    // Fetches all products that are marked as 'available' for sale.
     public function getAvailableProducts() {
         try {
-            // UPDATED: Changed from SELECT query to stored procedure
             $stmt = $this->conn->query("CALL PosGetAvailableProducts()");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {

@@ -17,47 +17,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateTableRows = () => {
             const selectedValue = select.value;
             
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const visibleRows = [];
-            all_rows.forEach(row => {
-                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
-                if (!isHiddenBySearch) {
-                    visibleRows.push(row);
-                }
-            });
-
-            visibleRows.forEach(row => {
-                row.style.display = '';
-                row.dataset.paginatedHidden = 'false';
-            });
-
+            // Get all data rows in their current DOM order (which is sorted)
+            const all_data_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
+            const totalRows = all_data_rows.length;
+            
+            // 1. Handle 'All' case first
             if (selectedValue === 'all') {
+                all_data_rows.forEach(row => row.style.display = '');
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
                 return;
             }
 
             const limit = parseInt(selectedValue, 10);
-            const totalRows = visibleRows.length;
-            const totalPages = Math.ceil(totalRows / limit);
+            const totalPages = (totalRows === 0) ? 1 : Math.ceil(totalRows / limit);
+            
+            // Adjust currentPage if it exceeds the new page count
+            if (currentPage >= totalPages) {
+                currentPage = Math.max(0, totalPages - 1);
+            }
 
+            // 2. Handle Pagination case
             const start = currentPage * limit;
             const end = start + limit;
-
-            visibleRows.forEach((row, index) => {
+            
+            // Iterate over all rows and set visibility based on index
+            all_data_rows.forEach((row, index) => {
                 if (index >= start && index < end) {
                     row.style.display = '';
-                    row.dataset.paginatedHidden = 'false';
                 } else {
                     row.style.display = 'none';
-                    row.dataset.paginatedHidden = 'true';
                 }
             });
 
+            // 3. Update buttons
             prevBtn.disabled = currentPage === 0;
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
         };
 
+        // Event listeners for controls
         prevBtn.addEventListener('click', () => {
             if (currentPage > 0) {
                 currentPage--;
@@ -66,196 +64,199 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         nextBtn.addEventListener('click', () => {
-            const selectedValue = select.value;
-            if (selectedValue === 'all') return;
-            
-            const limit = parseInt(selectedValue, 10);
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const visibleRows = [];
-            all_rows.forEach(row => {
-                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
-                if (!isHiddenBySearch) {
-                    visibleRows.push(row);
-                }
-            });
-            const totalRows = visibleRows.length;
-            const totalPages = Math.ceil(totalRows / limit);
-
-            if (currentPage < totalPages - 1) {
-                currentPage++;
-                updateTableRows();
-            }
+            if (select.value === 'all') return;
+            currentPage++;
+            updateTableRows();
         });
-        
-        const searchInputId = select.id.replace('-rows-select', '-search-input');
-        const searchInput = document.getElementById(searchInputId);
-        if (searchInput) {
-            searchInput.addEventListener('keyup', () => {
-                currentPage = 0; 
-                updateTableRows();
-            });
-        }
 
+        // Trigger update when select value changes
         select.addEventListener('change', () => {
             currentPage = 0; 
             updateTableRows();
         });
         
+        // Initial run
         updateTableRows();
     }
     
-    // --- JS Sorting for Recall & Return Tabs ---
-    function getSortableValue(value, type = 'text') {
-        if (value === null || value === undefined) return '';
-        let cleaned = value.trim();
+    // --- JS Sorting for Sales and Returns Tables ---
+    
+    function getSortableValue(cell, type = 'text') {
+        const textValue = cell.innerText;
+        
+        // 1. Use data-sort-value if available for explicit sorting (dates as timestamps, net total as number)
+        if ((type === 'number' || type === 'date') && cell.dataset.sortValue !== undefined) {
+             const num = parseFloat(cell.dataset.sortValue);
+             return isNaN(num) ? 0 : num;
+        }
+        
+        let cleaned = textValue.trim();
         switch (type) {
             case 'number':
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
+                // 2. Clean common non-numeric characters for general number columns
+                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+|\(|\)/gi, '');
                 cleaned = cleaned.replace(/,/g, '');
                 const num = parseFloat(cleaned);
                 return isNaN(num) ? 0 : num;
             case 'date':
+                // 3. Date parsing (fallback if no data-sort-value)
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal;
             default: // 'text'
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
-                cleaned = cleaned.replace(/,/g, '');
                 const lowerVal = cleaned.toLowerCase();
-                if (lowerVal.includes('low stock')) return 'a_low_stock';
-                if (lowerVal.includes('in stock')) return 'b_in_stock';
-                if (lowerVal.includes('ingredient')) return 'a_ingredient';
-                if (lowerVal.includes('product')) return 'b_product';
                 return lowerVal;
         }
     }
 
     function sortTableByDropdown(sortLink) {
-        const { sortBy, sortDir, sortType } = sortLink.dataset;
-        const table = sortLink.closest('.card').querySelector('table');
-        if (!table) return;
-        const tbody = table.querySelector('tbody');
-        if (!tbody) return;
-        const th = table.querySelector(`thead th[data-sort-by="${sortBy}"]`);
-        if (!th) {
-            console.error(`Sort Error: No table header found with data-sort-by="${sortBy}"`);
+        const sortBy = sortLink.dataset.sortBy;
+        const sortType = sortLink.dataset.sortType;
+        const sortDir = sortLink.dataset.sortDir;
+        
+        const tableBody = sortLink.closest('.dropdown').closest('.bg-white').querySelector('tbody');
+        if (!tableBody) return;
+        
+        const table = tableBody.closest('table');
+        const headerRow = table.querySelector('thead tr');
+        let colIndex = -1;
+        
+        // Find the column index by matching the TH data-sort-by attribute
+        Array.from(headerRow.querySelectorAll('th')).forEach((th, index) => {
+            if (th.dataset.sortBy === sortBy) {
+                colIndex = index;
+            }
+        });
+        
+        if (colIndex === -1) {
+            console.error(`Sort Error: Could not find column index for data-sort-by="${sortBy}"`);
             return;
         }
-        const colIndex = Array.from(th.parentNode.children).indexOf(th);
-        const rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])')); // Exclude no-results
+
+        // Get all data rows
+        const rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"])'));
 
         rows.sort((a, b) => {
-            if (!a.cells[colIndex] || !b.cells[colIndex]) return 0;
-            const valA = getSortableValue(a.cells[colIndex].innerText, sortType);
-            const valB = getSortableValue(b.cells[colIndex].innerText, sortType);
-            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
-            return 0;
+            if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
+            const valA = getSortableValue(a.cells[colIndex], sortType);
+            const valB = getSortableValue(b.cells[colIndex], sortType);
+            
+            let comparison = 0;
+            if (valA > valB) comparison = 1;
+            else if (valA < valB) comparison = -1;
+            
+            // Apply direction
+            return sortDir === 'DESC' ? (comparison * -1) : comparison;
         });
 
-        tbody.append(...rows);
+        tableBody.innerHTML = '';
+        rows.forEach(row => tableBody.appendChild(row));
         
-        const paginationSelectId = table.closest('.card').querySelector('select[id$="-rows-select"]')?.id;
-        if (paginationSelectId) {
-            const paginationSelect = document.getElementById(paginationSelectId);
-            if (paginationSelect) {
-                paginationSelect.dispatchEvent(new Event('change'));
-            }
+        const dropdown = sortLink.closest('.dropdown');
+        if (dropdown) {
+            const buttonTextSpan = dropdown.querySelector('.current-sort-text');
+            // Use the text content directly from the link since it includes the direction
+            buttonTextSpan.textContent = sortLink.textContent.trim();
+            
+            const dropdownItems = dropdown.querySelectorAll('.sort-trigger');
+            dropdownItems.forEach(item => item.classList.remove('active'));
+            sortLink.classList.add('active');
         }
-
-        const buttonTextSpan = sortLink.closest('.dropdown').querySelector('.current-sort-text');
-        if (buttonTextSpan) buttonTextSpan.innerText = sortLink.innerText;
         
-        const dropdownItems = sortLink.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
-        dropdownItems.forEach(item => item.classList.remove('active'));
-        sortLink.classList.add('active');
+        // Re-apply pagination after sorting
+        const paginationSelect = table.closest('.bg-white').querySelector('select[id$="-rows-select"]');
+        if (paginationSelect) {
+            paginationSelect.dispatchEvent(new Event('change'));
+        }
     }
 
-    // Attach listeners to returns pane
-    document.querySelectorAll('#returns-pane .sort-trigger').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            sortTableByDropdown(e.target);
-        });
-    });
+    function setupDropdown(dropdownId) {
+        const dropdownEl = document.getElementById(dropdownId);
+        const sortButton = document.getElementById(dropdownId.replace('-dropdown', '-btn'));
+        const sortMenu = document.getElementById(dropdownId.replace('-dropdown', '-menu'));
+        
+        if (dropdownEl && sortButton && sortMenu) {
+            // Toggle menu on button click
+            sortButton.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                sortMenu.classList.toggle('hidden');
+            });
 
-    // Initial sort for returns pane
-    document.querySelectorAll('#returns-pane .dropdown').forEach(dropdown => {
-        const defaultSortLink = dropdown.querySelector('.dropdown-item.active') || dropdown.querySelector('.dropdown-item');
-        if (defaultSortLink) {
-            sortTableByDropdown(defaultSortLink);
+            // Close menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!sortMenu.contains(e.target) && !sortButton.contains(e.target)) {
+                    sortMenu.classList.add('hidden');
+                }
+            });
+            
+            // Set up click listener for sort links
+            document.querySelectorAll(`#${dropdownId} .sort-trigger`).forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    sortTableByDropdown(e.target);
+                    sortMenu.classList.add('hidden'); // Close after sorting
+                });
+            });
+
+            // Apply default sort (active link) on load
+            const defaultSortLink = dropdownEl.querySelector('.sort-trigger.active');
+            if (defaultSortLink) {
+                 setTimeout(() => sortTableByDropdown(defaultSortLink), 50);
+            }
         }
-    });
+    }
 
-    // --- Logic to set active_tab in the main filter form ---
-    const mainFilterForm = document.querySelector('#sales-pane form');
-    const allTabButtons = document.querySelectorAll('#historyTabs .nav-link');
+
+    // --- Initialization ---
+
+    // 1. Logic to set active_tab in the main filter form
+    const mainFilterForm = document.querySelector('#pane-sales form');
+    const allTabButtons = document.querySelectorAll('#historyTabs button');
     const urlParams = new URLSearchParams(window.location.search);
     const activeTabFromURL = urlParams.get('active_tab') || 'sales';
 
     if (mainFilterForm) {
         const activeTabInput = mainFilterForm.querySelector('input[name="active_tab"]');
         if (activeTabInput) {
-            // Set the form's hidden input value based on which tab is clicked
             allTabButtons.forEach(tabButton => {
                 tabButton.addEventListener('click', () => {
-                    const paneId = tabButton.dataset.bsTarget;
-                    let tabValue = 'sales';
-                    if (paneId === '#returns-pane') {
-                        tabValue = 'returns';
-                    }
+                    const tabValue = tabButton.id.replace('tab-', '');
                     activeTabInput.value = tabValue;
                 });
             });
             activeTabInput.value = activeTabFromURL;
         }
     }
+    
+    const returnsFilterForm = document.querySelector('#pane-returns form');
+    if (returnsFilterForm) {
+        const activeTabInput = returnsFilterForm.querySelector('input[name="active_tab"]');
+        if (activeTabInput) {
+            activeTabInput.value = 'returns';
+        }
+    }
 
-    // --- Logic to update URL with active tab for state persistence ---
     allTabButtons.forEach(tabButton => {
         tabButton.addEventListener('click', function(event) {
-            const paneId = event.target.dataset.bsTarget;
-            let activeTabValue = 'sales'; // Default
-            if (paneId === '#returns-pane') {
-                activeTabValue = 'returns';
-            }
+            const activeTabValue = event.currentTarget.id.replace('tab-', '');
             
             const url = new URL(window.location);
             url.searchParams.set('active_tab', activeTabValue);
+            const form = activeTabValue === 'sales' ? mainFilterForm : returnsFilterForm;
+            if (form) {
+                const start = form.querySelector('[name="date_start"]').value;
+                const end = form.querySelector('[name="date_end"]').value;
+                url.searchParams.set('date_start', start);
+                url.searchParams.set('date_end', end);
+            }
+
             window.history.replaceState({}, '', url);
         });
     });
 
-    // --- Event Listener for Return Sale Modal ---
-    const returnSaleModal = document.getElementById('returnSaleModal');
-    if (returnSaleModal) {
-        returnSaleModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            if (!button) return; // Fix for modal being opened without a button
-            
-            // Get data from the button
-            const saleId = button.dataset.saleId;
-            const productName = button.dataset.productName;
-            const qtyAvailable = button.dataset.qtyAvailable;
-            const saleDate = button.dataset.saleDate;
-
-            // Populate the modal fields
-            document.getElementById('return_sale_id').value = saleId;
-            document.getElementById('return_product_name').textContent = productName;
-            document.getElementById('return_sale_date').textContent = saleDate;
-            
-            const qtyInput = document.getElementById('return_qty');
-            qtyInput.value = qtyAvailable; 
-            qtyInput.max = qtyAvailable; 
-            document.getElementById('return_max_qty').value = qtyAvailable;
-            document.getElementById('return_qty_sold_text').textContent = qtyAvailable;
-
-            document.getElementById('return_reason').value = '';
-        });
-    }
-
-    // --- Initialize table pagination ---
+    // 2. Initialize Sorting and Pagination
+    setupDropdown('sales-sort-dropdown');
+    setupDropdown('returns-sort-dropdown');
+    
     addTablePagination('sales-rows-select', 'sales-table-body');
     addTablePagination('returns-rows-select', 'returns-table-body');
-    // login-rows-select removed
-
 });

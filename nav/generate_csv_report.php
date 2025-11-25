@@ -7,18 +7,15 @@ require_once '../phpmailer/vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// 1. Security Check
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['manager', 'assistant_manager'])) {
     die('Access denied.');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Clear output buffer
     if (ob_get_level()) ob_end_clean();
 
     $date_start = $_POST['date_start'] ?? date('Y-m-d');
     $date_end = $_POST['date_end'] ?? date('Y-m-d');
-    // Now expecting an array of types
     $report_types = $_POST['report_types'] ?? []; 
     $action = $_POST['csv_action'] ?? 'download';
     $recipient_email = $_POST['recipient_email'] ?? '';
@@ -27,19 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Error: No report types selected.");
     }
 
-    // If it's a single string (legacy support or single checkbox), array-ify it
     if (!is_array($report_types)) {
         $report_types = [$report_types];
     }
 
     $db = new Database();
     $conn = $db->getConnection();
-
-    // Store generated files: ['filename.csv' => 'contentString']
     $generatedFiles = [];
 
-    // --- 2. GENERATE CONTENT FOR EACH SELECTED REPORT ---
-
+    // Generate content for each selected report
     foreach ($report_types as $type) {
         $data = [];
         $headers = [];
@@ -102,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach($stmtP->fetchAll(PDO::FETCH_ASSOC) as $p) $priceMap[$p['name']] = $p['price'];
             $stmtP->closeCursor();
 
-            // Returns
+            // Fetch Returns
             $stmtRet = $conn->prepare("CALL ReportGetReturnHistory()");
             $stmtRet->execute();
             $allReturns = $stmtRet->fetchAll(PDO::FETCH_ASSOC);
@@ -117,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Wastage/Recalls
+            // Fetch Wastage/Recalls
             $stmtAdj = $conn->prepare("CALL ReportGetStockAdjustmentHistoryByDate(?, ?)");
             $stmtAdj->execute([$date_start, $date_end]);
             $adjustments = $stmtAdj->fetchAll(PDO::FETCH_ASSOC);
@@ -137,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             usort($data, fn($a, $b) => strtotime($b[0]) - strtotime($a[0]));
         }
 
-        // Generate CSV String
+        // Create CSV content
         $fp = fopen('php://temp', 'r+');
         fputcsv($fp, $headers);
         foreach ($data as $line) fputcsv($fp, $line);
@@ -146,22 +139,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         fclose($fp);
     }
 
-    // --- 3. HANDLE BUNDLING (SINGLE CSV vs ZIP) ---
-
+    // Bundle Logic (Single vs Zip)
     $finalContent = '';
     $finalFilename = '';
     $isZip = false;
 
     if (count($generatedFiles) === 1) {
-        // Single File
         $finalFilename = array_key_first($generatedFiles);
         $finalContent = current($generatedFiles);
     } else {
-        // Multiple Files -> ZIP
         $isZip = true;
         $finalFilename = "Breadly_Reports_Bundle_{$date_start}_{$date_end}.zip";
-        
         $zipTempFile = tempnam(sys_get_temp_dir(), 'breadly_zip');
+        
         $zip = new ZipArchive();
         if ($zip->open($zipTempFile, ZipArchive::CREATE) !== TRUE) {
             die("Could not create ZIP archive.");
@@ -174,8 +164,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $finalContent = file_get_contents($zipTempFile);
         unlink($zipTempFile);
     }
-
-    // --- 4. HANDLE ACTION (DOWNLOAD OR EMAIL) ---
 
     if ($action === 'download') {
         if ($isZip) {
@@ -192,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } elseif ($action === 'email') {
         if (empty($recipient_email) || !filter_var($recipient_email, FILTER_VALIDATE_EMAIL)) {
-            die("Invalid email address."); // Simple error handling
+            die("Invalid email address.");
         }
 
         $mail = new PHPMailer(true);
@@ -207,8 +195,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
             $mail->addAddress($recipient_email);
-            
-            // Attach the content (CSV or ZIP)
             $mail->addStringAttachment($finalContent, $finalFilename);
 
             $mail->isHTML(true);
@@ -217,7 +203,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $mail->send();
 
-            // Success UI
             echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Email Sent</title>';
             echo '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>';
             echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">';

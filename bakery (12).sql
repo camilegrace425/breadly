@@ -25,17 +25,17 @@ DELIMITER $$
 --
 -- Procedures
 --
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminDeleteUser` (IN `p_user_id` INT)   BEGIN
+CREATE  PROCEDURE `AdminDeleteUser` (IN `p_user_id` INT)   BEGIN
     DELETE FROM users WHERE user_id = p_user_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetAllUsers` ()   BEGIN
+CREATE  PROCEDURE `AdminGetAllUsers` ()   BEGIN
     SELECT user_id, username, role, email, phone_number, created_at 
     FROM users 
     ORDER BY role, username;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetManagers` ()   BEGIN
+CREATE  PROCEDURE `AdminGetManagers` ()   BEGIN
     SELECT user_id, username, phone_number
     FROM users
     WHERE role IN ('manager', 'assistant_manager') 
@@ -43,13 +43,13 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetManagers` ()   BEGIN
       AND phone_number != '';
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetMySettings` (IN `p_user_id` INT)   BEGIN
+CREATE  PROCEDURE `AdminGetMySettings` (IN `p_user_id` INT)   BEGIN
     SELECT phone_number, enable_daily_report 
     FROM users 
     WHERE user_id = p_user_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetUsersForDailyReport` ()   BEGIN
+CREATE  PROCEDURE `AdminGetUsersForDailyReport` ()   BEGIN
     SELECT phone_number 
     FROM users 
     WHERE 
@@ -59,7 +59,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminGetUsersForDailyReport` ()   B
         AND phone_number != '';
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminUpdateMySettings` (IN `p_user_id` INT, IN `p_phone_number` VARCHAR(12), IN `p_enable_report` TINYINT)   BEGIN
+CREATE  PROCEDURE `AdminUpdateMySettings` (IN `p_user_id` INT, IN `p_phone_number` VARCHAR(12), IN `p_enable_report` TINYINT)   BEGIN
     UPDATE users
     SET 
         phone_number = p_phone_number,
@@ -67,7 +67,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminUpdateMySettings` (IN `p_user_
     WHERE user_id = p_user_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminUpdateUser` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier','assistant_manager'), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+CREATE  PROCEDURE `AdminUpdateUser` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier','assistant_manager'), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
     UPDATE users
     SET 
         username = p_username,
@@ -78,17 +78,17 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `AdminUpdateUser` (IN `p_user_id` IN
     WHERE user_id = p_user_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetActiveLowStockAlerts` (IN `p_limit` INT)   BEGIN
+CREATE  PROCEDURE `DashboardGetActiveLowStockAlerts` (IN `p_limit` INT)   BEGIN
     SELECT * FROM view_ActiveLowStockAlerts
     ORDER BY current_stock ASC
     LIMIT p_limit;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetLowStockAlertsCount` ()   BEGIN
+CREATE  PROCEDURE `DashboardGetLowStockAlertsCount` ()   BEGIN
     SELECT COUNT(*) AS alertCount FROM view_ActiveLowStockAlerts;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
+CREATE  PROCEDURE `DashboardGetRecalledStockValue` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT
         -- Use COALESCE to ensure it returns 0.00 instead of NULL if no recalls exist
         -- The value is negative (qty) * price, so we use SUM to add all negative values.
@@ -111,7 +111,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetRecalledStockValue` (IN
         AND DATE(sa.timestamp) BETWEEN p_date_start AND p_date_end;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetSalesSummaryByDateRange` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
+CREATE  PROCEDURE `DashboardGetSalesSummaryByDateRange` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT
         COUNT(sale_id) AS totalSales,
         SUM(total_price) AS totalRevenue
@@ -122,14 +122,14 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `DashboardGetSalesSummaryByDateRange
         DATE(`timestamp`) BETWEEN p_date_start AND p_date_end;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientAdd` (IN `name` VARCHAR(100), IN `unit` VARCHAR(50), IN `stock_qty` FLOAT, IN `reorder_level` FLOAT)   BEGIN
+CREATE  PROCEDURE `IngredientAdd` (IN `name` VARCHAR(100), IN `unit` VARCHAR(50), IN `stock_qty` FLOAT, IN `reorder_level` FLOAT)   BEGIN
     INSERT INTO ingredients(name, unit, stock_qty, reorder_level)
     VALUES (name, unit, stock_qty, reorder_level);
 
     SELECT LAST_INSERT_ID() AS new_ingredient_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientAdjustStock` (IN `p_ingredient_id` INT, IN `p_user_id` INT, IN `p_adjustment_qty` FLOAT, IN `p_reason` VARCHAR(255), IN `p_expiration_date` DATE)   BEGIN
+CREATE  PROCEDURE `IngredientAdjustStock` (IN `p_ingredient_id` INT, IN `p_user_id` INT, IN `p_adjustment_qty` FLOAT, IN `p_reason` VARCHAR(255), IN `p_expiration_date` DATE)   BEGIN
     -- Validation
     IF (p_reason LIKE '[Restock]%' AND p_adjustment_qty <= 0) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Error: Restock quantity must be a positive number.';
@@ -166,7 +166,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientAdjustStock` (IN `p_ingre
     CALL IngredientCheckLowStock();
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientCheckLowStock` ()   BEGIN
+CREATE  PROCEDURE `IngredientCheckLowStock` ()   BEGIN
     INSERT INTO alerts (ingredient_id, message, date_triggered)
     SELECT
         ingredient_id,
@@ -179,7 +179,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientCheckLowStock` ()   BEGIN
     );
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientDelete` (IN `p_ingredient_id` INT, OUT `p_status` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `IngredientDelete` (IN `p_ingredient_id` INT, OUT `p_status` VARCHAR(255))   BEGIN
     DECLARE recipe_count INT;
 
     -- Check if the ingredient is used in any recipes
@@ -200,13 +200,13 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientDelete` (IN `p_ingredient
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientGetAllSimple` ()   BEGIN
+CREATE  PROCEDURE `IngredientGetAllSimple` ()   BEGIN
     SELECT ingredient_id, name, unit 
     FROM ingredients 
     ORDER BY name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientReduceStockBatchFEFO` (IN `p_ingredient_id` INT, IN `p_qty_to_remove` FLOAT)   BEGIN
+CREATE  PROCEDURE `IngredientReduceStockBatchFEFO` (IN `p_ingredient_id` INT, IN `p_qty_to_remove` FLOAT)   BEGIN
     DECLARE v_remaining_qty FLOAT DEFAULT p_qty_to_remove;
     DECLARE v_batch_id INT;
     DECLARE v_batch_qty FLOAT;
@@ -252,7 +252,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientReduceStockBatchFEFO` (IN
     DELETE FROM ingredient_batches WHERE quantity = 0;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientUpdate` (IN `p_ingredient_id` INT, IN `p_name` VARCHAR(100), IN `p_unit` VARCHAR(50), IN `p_reorder_level` FLOAT)   BEGIN
+CREATE  PROCEDURE `IngredientUpdate` (IN `p_ingredient_id` INT, IN `p_name` VARCHAR(100), IN `p_unit` VARCHAR(50), IN `p_reorder_level` FLOAT)   BEGIN
     UPDATE ingredients
     SET
         name = p_name,
@@ -261,11 +261,11 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `IngredientUpdate` (IN `p_ingredient
     WHERE ingredient_id = p_ingredient_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `InventoryGetDiscontinued` ()   BEGIN
+CREATE  PROCEDURE `InventoryGetDiscontinued` ()   BEGIN
     SELECT * FROM view_DiscontinuedProducts ORDER BY name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `InventoryGetIngredients` ()   BEGIN
+CREATE  PROCEDURE `InventoryGetIngredients` ()   BEGIN
     SELECT
         ingredient_id,
         name,
@@ -279,11 +279,11 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `InventoryGetIngredients` ()   BEGIN
         name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `InventoryGetProducts` ()   BEGIN
+CREATE  PROCEDURE `InventoryGetProducts` ()   BEGIN
     SELECT * FROM view_ProductInventory ORDER BY name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `InventoryGetRecallHistory` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
+CREATE  PROCEDURE `InventoryGetRecallHistory` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT
         sa.timestamp,
         u.username,
@@ -314,26 +314,26 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `InventoryGetRecallHistory` (IN `p_d
         sa.timestamp DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `LogLoginAttempt` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_status` ENUM('success','failure'), IN `p_device_type` VARCHAR(50))   BEGIN
+CREATE  PROCEDURE `LogLoginAttempt` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_status` ENUM('success','failure'), IN `p_device_type` VARCHAR(50))   BEGIN
     INSERT INTO login_history (user_id, username_attempt, status, device_type)
     VALUES (p_user_id, p_username, p_status, p_device_type);
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `PosGetAvailableProducts` ()   BEGIN
+CREATE  PROCEDURE `PosGetAvailableProducts` ()   BEGIN
     SELECT product_id, name, price, stock_qty, image_url -- <-- ADDED image_url
     FROM view_ProductInventory
     WHERE status = 'available' AND stock_qty > 0
     ORDER BY name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdd` (IN `p_name` VARCHAR(100), IN `p_price` DECIMAL(10,2), IN `p_image_url` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `ProductAdd` (IN `p_name` VARCHAR(100), IN `p_price` DECIMAL(10,2), IN `p_image_url` VARCHAR(255))   BEGIN
     INSERT INTO products(name, price, image_url, stock_qty, status) -- <-- ADDED image_url
     VALUES (p_name, p_price, p_image_url, 0, 'available'); -- <-- ADDED p_image_url
 
     SELECT LAST_INSERT_ID() AS new_product_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdjustStock` (IN `p_product_id` INT, IN `p_user_id` INT, IN `p_adjustment_qty` INT, IN `p_reason` VARCHAR(255), OUT `p_status` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `ProductAdjustStock` (IN `p_product_id` INT, IN `p_user_id` INT, IN `p_adjustment_qty` INT, IN `p_reason` VARCHAR(255), OUT `p_status` VARCHAR(255))   BEGIN
     DECLARE v_batch_size INT;
     DECLARE v_num_batches FLOAT;
     DECLARE v_qty_adjusted INT;
@@ -411,7 +411,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductAdjustStock` (IN `p_product_
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductDelete` (IN `p_product_id` INT, OUT `p_status` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `ProductDelete` (IN `p_product_id` INT, OUT `p_status` VARCHAR(255))   BEGIN
     DECLARE sales_count INT;
     DECLARE production_count INT;
     DECLARE recipe_count INT; -- Also check if it's used in recipes (though less likely for finished product)
@@ -446,18 +446,18 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductDelete` (IN `p_product_id` I
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductGetAllSimple` ()   BEGIN
+CREATE  PROCEDURE `ProductGetAllSimple` ()   BEGIN
     SELECT product_id, name, batch_size
     FROM products 
     WHERE status = 'available' 
     ORDER BY name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductGetById` (IN `p_product_id` INT)   BEGIN
+CREATE  PROCEDURE `ProductGetById` (IN `p_product_id` INT)   BEGIN
     SELECT * FROM products WHERE product_id = p_product_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductUpdate` (IN `p_product_id` INT, IN `p_name` VARCHAR(100), IN `p_price` DECIMAL(10,2), IN `p_status` ENUM('available','recalled','discontinued'), IN `p_image_url` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `ProductUpdate` (IN `p_product_id` INT, IN `p_name` VARCHAR(100), IN `p_price` DECIMAL(10,2), IN `p_status` ENUM('available','recalled','discontinued'), IN `p_image_url` VARCHAR(255))   BEGIN
     UPDATE products
     SET
         name = p_name,
@@ -468,13 +468,13 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductUpdate` (IN `p_product_id` I
     WHERE product_id = p_product_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ProductUpdateBatchSize` (IN `p_product_id` INT, IN `p_batch_size` INT)   BEGIN
+CREATE  PROCEDURE `ProductUpdateBatchSize` (IN `p_product_id` INT, IN `p_batch_size` INT)   BEGIN
     UPDATE products
     SET batch_size = p_batch_size
     WHERE product_id = p_product_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecallInitiate` (IN `product_id` INT, IN `reason` TEXT, IN `batch_start_date` DATE, IN `batch_end_date` DATE)   BEGIN
+CREATE  PROCEDURE `RecallInitiate` (IN `product_id` INT, IN `reason` TEXT, IN `batch_start_date` DATE, IN `batch_end_date` DATE)   BEGIN
     START TRANSACTION;
 
     -- 1. Set the product status to 'recalled'
@@ -490,7 +490,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `RecallInitiate` (IN `product_id` IN
     SELECT LAST_INSERT_ID() AS new_recall_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecallLogRemoval` (IN `recall_id` INT, IN `user_id` INT, IN `qty_removed_from_stock` INT, IN `notes` TEXT)   BEGIN
+CREATE  PROCEDURE `RecallLogRemoval` (IN `recall_id` INT, IN `user_id` INT, IN `qty_removed_from_stock` INT, IN `notes` TEXT)   BEGIN
     DECLARE product_id INT;
 
     -- Get the product_id from the recall
@@ -512,7 +512,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `RecallLogRemoval` (IN `recall_id` I
     COMMIT;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeAddIngredient` (IN `p_product_id` INT, IN `p_ingredient_id` INT, IN `p_qty_needed` FLOAT, IN `p_unit` VARCHAR(50))   BEGIN
+CREATE  PROCEDURE `RecipeAddIngredient` (IN `p_product_id` INT, IN `p_ingredient_id` INT, IN `p_qty_needed` FLOAT, IN `p_unit` VARCHAR(50))   BEGIN
     -- Check for duplicates first
     IF NOT EXISTS (SELECT 1 FROM recipes WHERE product_id = p_product_id AND ingredient_id = p_ingredient_id) THEN
         INSERT INTO recipes (product_id, ingredient_id, qty_needed, unit)
@@ -520,7 +520,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeAddIngredient` (IN `p_product
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeGetByProductId` (IN `p_product_id` INT)   BEGIN
+CREATE  PROCEDURE `RecipeGetByProductId` (IN `p_product_id` INT)   BEGIN
     SELECT 
         r.recipe_id,
         i.name,
@@ -536,11 +536,11 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeGetByProductId` (IN `p_produc
         i.name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `RecipeRemoveIngredient` (IN `p_recipe_id` INT)   BEGIN
+CREATE  PROCEDURE `RecipeRemoveIngredient` (IN `p_recipe_id` INT)   BEGIN
     DELETE FROM recipes WHERE recipe_id = p_recipe_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetBestSellers` (IN `date_start` DATE, IN `date_end` DATE)   BEGIN
+CREATE  PROCEDURE `ReportGetBestSellers` (IN `date_start` DATE, IN `date_end` DATE)   BEGIN
     SELECT
         p.name,
         SUM(s.qty_sold) AS total_units_sold,
@@ -552,7 +552,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetBestSellers` (IN `date_sta
     ORDER BY total_units_sold DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetLoginHistory` ()   BEGIN
+CREATE  PROCEDURE `ReportGetLoginHistory` ()   BEGIN
     SELECT
         lh.timestamp,
         lh.username_attempt,
@@ -568,7 +568,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetLoginHistory` ()   BEGIN
     LIMIT 200;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetReturnHistory` ()   BEGIN
+CREATE  PROCEDURE `ReportGetReturnHistory` ()   BEGIN
     SELECT
         r.sale_id, -- <-- ADDED THIS
         r.timestamp,
@@ -587,7 +587,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetReturnHistory` ()   BEGIN
         r.timestamp DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesHistory` (IN `p_date_start` DATE, IN `p_date_end` DATE, IN `p_sort_column` VARCHAR(50), IN `p_sort_direction` VARCHAR(4))   BEGIN
+CREATE  PROCEDURE `ReportGetSalesHistory` (IN `p_date_start` DATE, IN `p_date_end` DATE, IN `p_sort_column` VARCHAR(50), IN `p_sort_direction` VARCHAR(4))   BEGIN
     SET @order_dir_asc = (UPPER(p_sort_direction) = 'ASC');
 
     SELECT
@@ -643,7 +643,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesHistory` (IN `p_date_
         s.timestamp DESC, s.sale_id DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesSummaryByDate` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
+CREATE  PROCEDURE `ReportGetSalesSummaryByDate` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT 
         p.name AS product_name,
         SUM(s.qty_sold) AS total_qty_sold,
@@ -661,7 +661,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesSummaryByDate` (IN `p
         total_qty_sold DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesSummaryToday` ()   BEGIN
+CREATE  PROCEDURE `ReportGetSalesSummaryToday` ()   BEGIN
     SELECT 
         COUNT(sale_id) AS totalSales,
         SUM(total_price) AS totalRevenue
@@ -672,7 +672,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetSalesSummaryToday` ()   BE
         DATE(timestamp) = CURDATE();
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetStockAdjustmentHistory` ()   BEGIN
+CREATE  PROCEDURE `ReportGetStockAdjustmentHistory` ()   BEGIN
     SELECT
         sa.timestamp,
         u.username,
@@ -694,7 +694,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetStockAdjustmentHistory` ()
     LIMIT 200; -- Add a limit for performance
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetStockAdjustmentHistoryByDate` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
+CREATE  PROCEDURE `ReportGetStockAdjustmentHistoryByDate` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT 
         sa.timestamp,
         u.username,
@@ -716,7 +716,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetStockAdjustmentHistoryByDa
         sa.timestamp DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetUnsoldProducts` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
+CREATE  PROCEDURE `ReportGetUnsoldProducts` (IN `p_date_start` DATE, IN `p_date_end` DATE)   BEGIN
     SELECT
         p.product_id,
         p.name,
@@ -737,7 +737,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `ReportGetUnsoldProducts` (IN `p_dat
         p.name;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleProcessReturn` (IN `p_sale_id` INT, IN `p_user_id` INT, IN `p_return_qty` INT, IN `p_reason` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `SaleProcessReturn` (IN `p_sale_id` INT, IN `p_user_id` INT, IN `p_return_qty` INT, IN `p_reason` VARCHAR(255))   BEGIN
     DECLARE v_product_id INT;
     DECLARE v_original_qty INT;
     DECLARE v_already_returned INT;
@@ -790,7 +790,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleProcessReturn` (IN `p_sale_id` 
     COMMIT;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleRecordTransaction` (IN `user_id` INT, IN `product_id` INT, IN `qty_sold` INT, IN `p_discount_percent` DECIMAL(5,2), OUT `status` VARCHAR(100), OUT `sale_id` INT)   BEGIN
+CREATE  PROCEDURE `SaleRecordTransaction` (IN `user_id` INT, IN `product_id` INT, IN `qty_sold` INT, IN `p_discount_percent` DECIMAL(5,2), OUT `status` VARCHAR(100), OUT `sale_id` INT)   BEGIN
     DECLARE current_stock INT;
     DECLARE product_price DECIMAL(10,2);
     DECLARE product_status VARCHAR(20); -- Fixed data type
@@ -833,7 +833,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `SaleRecordTransaction` (IN `user_id
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCheckAvailability` (IN `p_username` VARCHAR(100), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+CREATE  PROCEDURE `UserCheckAvailability` (IN `p_username` VARCHAR(100), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
     SELECT user_id 
     FROM users 
     WHERE username = p_username 
@@ -843,7 +843,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCheckAvailability` (IN `p_usern
     LIMIT 1;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCheckAvailabilityForUpdate` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+CREATE  PROCEDURE `UserCheckAvailabilityForUpdate` (IN `p_user_id` INT, IN `p_username` VARCHAR(100), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
     SELECT user_id 
     FROM users 
     WHERE (username = p_username OR email = p_email OR (p_phone IS NOT NULL AND p_phone != '' AND phone_number = p_phone))
@@ -851,26 +851,26 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCheckAvailabilityForUpdate` (IN
     LIMIT 1;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserCreateAccount` (IN `p_username` VARCHAR(100), IN `p_hashed_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier','assistant_manager'), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
+CREATE  PROCEDURE `UserCreateAccount` (IN `p_username` VARCHAR(100), IN `p_hashed_password` VARCHAR(255), IN `p_role` ENUM('manager','cashier','assistant_manager'), IN `p_email` VARCHAR(150), IN `p_phone` VARCHAR(11))   BEGIN
     -- FIX: Changed p_phone_number to p_phone to match the parameter above
     INSERT INTO users (username, password, role, email, phone_number)
     VALUES (p_username, p_hashed_password, p_role, p_email, p_phone);
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserFindById` (IN `p_user_id` INT)   BEGIN
+CREATE  PROCEDURE `UserFindById` (IN `p_user_id` INT)   BEGIN
     SELECT user_id, username, role, email, phone_number FROM users WHERE user_id = p_user_id;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserFindByPhone` (IN `p_phone_number` VARCHAR(11))   BEGIN
+CREATE  PROCEDURE `UserFindByPhone` (IN `p_phone_number` VARCHAR(11))   BEGIN
     SELECT * FROM users WHERE phone_number = p_phone_number;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserLogin` (IN `p_username` VARCHAR(100))   BEGIN
+CREATE  PROCEDURE `UserLogin` (IN `p_username` VARCHAR(100))   BEGIN
     -- This LOWER() function fixes the case-sensitive login (e.g., Camile123 vs camile123)
     SELECT * FROM users WHERE LOWER(username) = LOWER(p_username);
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserRequestPasswordReset` (IN `email` VARCHAR(150), OUT `token` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `UserRequestPasswordReset` (IN `email` VARCHAR(150), OUT `token` VARCHAR(255))   BEGIN
     DECLARE user_id INT;
 
     SELECT users.user_id INTO user_id FROM users WHERE users.email = email;
@@ -885,7 +885,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `UserRequestPasswordReset` (IN `emai
     END IF;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserResetPassword` (IN `p_token_or_otp` VARCHAR(255), IN `p_new_hashed_password` VARCHAR(255))   BEGIN
+CREATE  PROCEDURE `UserResetPassword` (IN `p_token_or_otp` VARCHAR(255), IN `p_new_hashed_password` VARCHAR(255))   BEGIN
     DECLARE v_user_id INT;
     DECLARE v_reset_id INT;
     DECLARE v_status VARCHAR(100) DEFAULT 'Error';
@@ -920,7 +920,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `UserResetPassword` (IN `p_token_or_
     SELECT v_status AS status;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `UserStorePhoneOTP` (IN `p_user_id` INT, IN `p_otp_code` VARCHAR(10), IN `p_expiration_time` DATETIME)   BEGIN
+CREATE  PROCEDURE `UserStorePhoneOTP` (IN `p_user_id` INT, IN `p_otp_code` VARCHAR(10), IN `p_expiration_time` DATETIME)   BEGIN
     INSERT INTO password_resets (user_id, reset_method, otp_code, expiration, used)
     VALUES (p_user_id, 'phone_otp', p_otp_code, p_expiration_time, 0);
 END$$
@@ -939,7 +939,7 @@ CREATE TABLE `alerts` (
   `message` text NOT NULL,
   `status` enum('unread','resolved') NOT NULL DEFAULT 'unread',
   `date_triggered` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `alerts`
@@ -960,7 +960,7 @@ CREATE TABLE `ingredients` (
   `unit` varchar(50) DEFAULT NULL,
   `stock_qty` float DEFAULT 0,
   `reorder_level` float DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `ingredients`
@@ -1012,7 +1012,7 @@ CREATE TABLE `ingredient_batches` (
   `quantity` float NOT NULL DEFAULT 0,
   `expiration_date` date DEFAULT NULL,
   `date_received` date NOT NULL DEFAULT curdate()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `ingredient_batches`
@@ -1067,7 +1067,7 @@ CREATE TABLE `login_history` (
   `status` enum('success','failure') NOT NULL,
   `device_type` varchar(50) DEFAULT 'Unknown',
   `timestamp` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `login_history`
@@ -1137,7 +1137,7 @@ CREATE TABLE `password_resets` (
   `otp_code` varchar(10) DEFAULT NULL,
   `expiration` datetime DEFAULT NULL,
   `used` tinyint(1) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `password_resets`
@@ -1178,7 +1178,7 @@ CREATE TABLE `production` (
   `product_id` int(11) NOT NULL,
   `qty_baked` int(11) NOT NULL,
   `date` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `production`
@@ -1214,7 +1214,7 @@ CREATE TABLE `products` (
   `stock_unit` varchar(20) NOT NULL DEFAULT 'pcs',
   `is_sellable` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1 = Appears on POS, 0 = Intermediate product',
   `batch_size` int(11) NOT NULL DEFAULT 1 COMMENT 'Number of units produced per recipe'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `products`
@@ -1266,7 +1266,7 @@ CREATE TABLE `product_recalls` (
   `status` enum('active','completed') NOT NULL DEFAULT 'active',
   `affected_batch_date_start` date DEFAULT NULL,
   `affected_batch_date_end` date DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1281,7 +1281,7 @@ CREATE TABLE `recalled_stock_log` (
   `qty_removed` int(11) NOT NULL,
   `date_removed` datetime NOT NULL,
   `notes` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1295,7 +1295,7 @@ CREATE TABLE `recipes` (
   `ingredient_id` int(11) NOT NULL,
   `qty_needed` float NOT NULL,
   `unit` varchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `recipes`
@@ -1505,7 +1505,7 @@ CREATE TABLE `returns` (
   `return_value` decimal(10,2) NOT NULL COMMENT 'Value of the items returned',
   `reason` varchar(255) DEFAULT NULL,
   `timestamp` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `returns`
@@ -1532,7 +1532,7 @@ CREATE TABLE `sales` (
   `discount_percent` decimal(5,2) NOT NULL DEFAULT 0.00,
   `qty_returned` int(11) NOT NULL DEFAULT 0,
   `timestamp` datetime DEFAULT current_timestamp() COMMENT 'Was DATE, now DATETIME'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `sales`
@@ -1654,7 +1654,7 @@ CREATE TABLE `stock_adjustments` (
   `adjustment_qty` float NOT NULL COMMENT 'Can be positive (add) or negative (remove)',
   `reason` varchar(255) DEFAULT NULL,
   `timestamp` datetime DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `stock_adjustments`
@@ -1763,7 +1763,7 @@ CREATE TABLE `unit_conversions` (
   `unit` varchar(20) NOT NULL,
   `base_unit` enum('g','ml','pcs') NOT NULL,
   `to_base_factor` float NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `unit_conversions`
@@ -1795,7 +1795,7 @@ CREATE TABLE `users` (
   `phone_number` varchar(11) NOT NULL,
   `enable_daily_report` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'For daily SMS reports',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `users`
@@ -1879,7 +1879,7 @@ CREATE TABLE `view_productinventory` (
 --
 DROP TABLE IF EXISTS `view_activelowstockalerts`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_activelowstockalerts`  AS SELECT `a`.`alert_id` AS `alert_id`, `a`.`ingredient_id` AS `ingredient_id`, `i`.`name` AS `ingredient_name`, `i`.`stock_qty` AS `current_stock`, `i`.`reorder_level` AS `reorder_level`, `a`.`message` AS `message`, `a`.`date_triggered` AS `date_triggered` FROM (`alerts` `a` join `ingredients` `i` on(`a`.`ingredient_id` = `i`.`ingredient_id`)) WHERE `a`.`status` = 'unread' ;
+CREATE ALGORITHM=UNDEFINED  SQL SECURITY DEFINER VIEW `view_activelowstockalerts`  AS SELECT `a`.`alert_id` AS `alert_id`, `a`.`ingredient_id` AS `ingredient_id`, `i`.`name` AS `ingredient_name`, `i`.`stock_qty` AS `current_stock`, `i`.`reorder_level` AS `reorder_level`, `a`.`message` AS `message`, `a`.`date_triggered` AS `date_triggered` FROM (`alerts` `a` join `ingredients` `i` on(`a`.`ingredient_id` = `i`.`ingredient_id`)) WHERE `a`.`status` = 'unread' ;
 
 -- --------------------------------------------------------
 
@@ -1888,7 +1888,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `view_discontinuedproducts`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_discontinuedproducts`  AS SELECT `products`.`product_id` AS `product_id`, `products`.`name` AS `name`, `products`.`price` AS `price`, `products`.`stock_qty` AS `stock_qty`, `products`.`status` AS `status`, `products`.`stock_unit` AS `stock_unit`, `products`.`is_sellable` AS `is_sellable` FROM `products` WHERE `products`.`status` = 'discontinued' ORDER BY `products`.`name` ASC ;
+CREATE ALGORITHM=UNDEFINED  SQL SECURITY DEFINER VIEW `view_discontinuedproducts`  AS SELECT `products`.`product_id` AS `product_id`, `products`.`name` AS `name`, `products`.`price` AS `price`, `products`.`stock_qty` AS `stock_qty`, `products`.`status` AS `status`, `products`.`stock_unit` AS `stock_unit`, `products`.`is_sellable` AS `is_sellable` FROM `products` WHERE `products`.`status` = 'discontinued' ORDER BY `products`.`name` ASC ;
 
 -- --------------------------------------------------------
 
@@ -1897,7 +1897,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `view_ingredientstocklevel`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_ingredientstocklevel`  AS SELECT `i`.`ingredient_id` AS `ingredient_id`, `i`.`name` AS `name`, `i`.`unit` AS `unit`, coalesce(sum(`ib`.`quantity`),0) AS `stock_qty`, `i`.`reorder_level` AS `reorder_level`, coalesce(sum(`ib`.`quantity`),0) - `i`.`reorder_level` AS `stock_surplus` FROM (`ingredients` `i` left join `ingredient_batches` `ib` on(`i`.`ingredient_id` = `ib`.`ingredient_id`)) GROUP BY `i`.`ingredient_id` ;
+CREATE ALGORITHM=UNDEFINED  SQL SECURITY DEFINER VIEW `view_ingredientstocklevel`  AS SELECT `i`.`ingredient_id` AS `ingredient_id`, `i`.`name` AS `name`, `i`.`unit` AS `unit`, coalesce(sum(`ib`.`quantity`),0) AS `stock_qty`, `i`.`reorder_level` AS `reorder_level`, coalesce(sum(`ib`.`quantity`),0) - `i`.`reorder_level` AS `stock_surplus` FROM (`ingredients` `i` left join `ingredient_batches` `ib` on(`i`.`ingredient_id` = `ib`.`ingredient_id`)) GROUP BY `i`.`ingredient_id` ;
 
 -- --------------------------------------------------------
 
@@ -1906,7 +1906,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `view_productinventory`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `view_productinventory`  AS SELECT `p`.`product_id` AS `product_id`, `p`.`name` AS `name`, `p`.`price` AS `price`, `p`.`image_url` AS `image_url`, `p`.`stock_qty` AS `stock_qty`, `p`.`status` AS `status`, `p`.`stock_unit` AS `stock_unit`, `p`.`is_sellable` AS `is_sellable` FROM `products` AS `p` WHERE `p`.`status` in ('available','recalled') ;
+CREATE ALGORITHM=UNDEFINED  SQL SECURITY DEFINER VIEW `view_productinventory`  AS SELECT `p`.`product_id` AS `product_id`, `p`.`name` AS `name`, `p`.`price` AS `price`, `p`.`image_url` AS `image_url`, `p`.`stock_qty` AS `stock_qty`, `p`.`status` AS `status`, `p`.`stock_unit` AS `stock_unit`, `p`.`is_sellable` AS `is_sellable` FROM `products` AS `p` WHERE `p`.`status` in ('available','recalled') ;
 
 --
 -- Indexes for dumped tables
