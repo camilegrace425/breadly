@@ -1,8 +1,58 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+        /* Smooth fade for table transitions */
+        .table-body-transition {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .table-loading {
+            opacity: 0.4;
+            transform: translateY(3px);
+            pointer-events: none; /* Prevent clicks while loading */
+        }
 
-    // --- SEARCH LOGIC ---
+        /* Card Entrance Animation */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-enter {
+            animation: fadeInUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+        }
 
-    // 1. Product Search
+        /* Number Pulse (Green) for Positive Updates */
+        @keyframes pulseGreen {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); color: #198754; text-shadow: 0 0 5px rgba(25, 135, 84, 0.2); }
+            100% { transform: scale(1); }
+        }
+        .pulse-update-green {
+            animation: pulseGreen 0.4s ease-out;
+        }
+
+        /* Number Pulse (Red) for Negative Updates */
+        @keyframes pulseRed {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); color: #dc3545; text-shadow: 0 0 5px rgba(220, 53, 69, 0.2); }
+            100% { transform: scale(1); }
+        }
+        .pulse-update-red {
+            animation: pulseRed 0.4s ease-out;
+        }
+        
+        /* Helper Text Slide */
+        .helper-text-transition {
+            transition: all 0.3s ease;
+            height: auto;
+            opacity: 1;
+        }
+    `;
+    document.head.appendChild(style);
+    // ==========================================
+    // 1. Product Search (With Entrance Animations)
+    // ==========================================
     const productSearch = document.getElementById('product-search-input');
     const productList = document.getElementById('product-card-list');
     const productNoResults = document.getElementById('product-no-results');
@@ -15,7 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             items.forEach(item => {
                 const name = item.dataset.productName ? item.dataset.productName.toLowerCase() : '';
-                if (name.includes(term)) {
+                const isMatch = name.includes(term);
+
+                if (isMatch) {
+                    // **ANIMATION**: If it was hidden, add animation class
+                    if (item.style.display === 'none') {
+                        item.classList.remove('animate-enter'); // Reset
+                        void item.offsetWidth; // Trigger reflow
+                        item.classList.add('animate-enter');
+                    }
                     item.style.display = '';
                     found++;
                 } else {
@@ -23,9 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             
+            // **ANIMATION**: Smooth fade for "No Results"
             if(productNoResults) {
                 if(found === 0 && items.length > 0) {
                      productNoResults.classList.remove('hidden');
+                     productNoResults.classList.add('animate-enter');
                 } else {
                      productNoResults.classList.add('hidden');
                 }
@@ -33,28 +93,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==========================================
     // 2. Ingredient Search
+    // ==========================================
     const ingredientSearch = document.getElementById('ingredient-search-input');
     const ingredientTable = document.getElementById('ingredient-table-body');
     const ingredientNoResults = document.getElementById('ingredient-no-results');
     
     if (ingredientSearch && ingredientTable) {
+        // Apply transition class to table immediately
+        ingredientTable.classList.add('table-body-transition');
+
         ingredientSearch.addEventListener('keyup', (e) => {
             const term = e.target.value.toLowerCase();
-            // Filter out non-data rows for search purposes
             const rows = ingredientTable.querySelectorAll('tr:not(#ingredient-no-results)');
             let found = 0;
 
             rows.forEach(row => {
-                // Check if the row contains actual data
                 if (row.cells.length < 2 && !row.dataset.name) return; 
 
-                // Use data-name for robust filtering, fall back to cell content
                 const name = row.dataset.name || (row.cells[0] ? row.cells[0].textContent.toLowerCase() : '');
                 
                 if (name.includes(term)) {
                     row.style.display = '';
-                    row.dataset.paginatedHidden = 'false'; // Ensure pagination does not hide it if search found it
+                    row.dataset.paginatedHidden = 'false'; 
                     found++;
                 } else {
                     row.style.display = 'none';
@@ -65,18 +127,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if(ingredientNoResults) {
                  if(found === 0 && rows.length > 0) {
                      ingredientNoResults.classList.remove('hidden');
+                     // Simple fade in for no results row
+                     ingredientNoResults.style.opacity = '0';
+                     setTimeout(() => ingredientNoResults.style.opacity = '1', 50);
                 } else {
                      ingredientNoResults.classList.add('hidden');
                 }
             }
             
-            // Re-apply pagination logic after filtering
             const select = document.getElementById('ingredient-rows-select');
             if (select) select.dispatchEvent(new Event('change'));
         });
     }
 
-    // --- MODAL DATA POPULATION LOGIC ---
+    // ==========================================
+    // 3. Modal Data Logic (Unchanged)
+    // ==========================================
 
     function onModalOpen(modalId, callback) {
         const modal = document.getElementById(modalId);
@@ -87,13 +153,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Add Ingredient (Reset form)
+    // Add Ingredient
     onModalOpen('addIngredientModal', (button) => {
         const form = document.querySelector('#addIngredientModal form');
         if(form) form.reset();
     });
 
-    // Add Product (Reset form)
+    // Add Product
     onModalOpen('addProductModal', (button) => {
         const form = document.querySelector('#addProductModal form');
         if(form) form.reset();
@@ -110,6 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 expiryInput.value = '';
                 expiryInput.disabled = this.checked;
                 expiryInput.required = !this.checked;
+                // **ANIMATION**: Opacity change on disable
+                expiryInput.style.opacity = this.checked ? '0.5' : '1';
+                expiryInput.style.transition = 'opacity 0.2s';
             });
         }
 
@@ -132,45 +201,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 expiryInput.value = '';
                 expiryInput.disabled = false;
                 expiryInput.required = true;
+                expiryInput.style.opacity = '1';
             }
         });
     }
 
-    // Adjust Product Modal
+    // Adjust Product Modal (With animated Helper Text)
     const adjustProductModal = document.getElementById('adjustProductModal');
     if (adjustProductModal) {
         const qtyInput = adjustProductModal.querySelector('#adjust_adjustment_qty');
         const typeSelect = adjustProductModal.querySelector('#adjust_type');
         const qtyHelper = adjustProductModal.querySelector('#adjust_qty_helper');
 
+        if(qtyHelper) qtyHelper.classList.add('helper-text-transition'); // Add transition class
+
         const updateHelperText = () => {
             const qty = parseInt(qtyInput.value, 10);
             const type = typeSelect.value;
+            
+            // **ANIMATION**: Fade out slightly before changing
+            qtyHelper.style.opacity = '0.7';
 
-            if (!qty || isNaN(qty)) {
-                qtyHelper.textContent = 'Enter a whole number.';
-                qtyHelper.className = 'text-xs text-gray-500 mt-1';
-                return;
-            }
-
-            if (type === 'Production' && qty < 0) {
-                qtyHelper.textContent = 'Production quantity should be positive.';
-                qtyHelper.className = 'text-xs text-red-500 mt-1';
-            } else if (type === 'Recall' && qty > 0) { 
-                qtyHelper.textContent = 'Recall quantity should be negative (e.g., -5).'; 
-                qtyHelper.className = 'text-xs text-red-500 mt-1';
-            } else {
-                let actionText = '';
-                if (type === 'Production') {
-                    actionText = `ADD ${qty} pcs to stock and DEDUCT ingredients.`;
-                } else if (type === 'Recall') { 
-                    actionText = `REMOVE ${Math.abs(qty)} pcs from stock.`;
-                } else if (type === 'Correction') {
-                    actionText = (qty > 0) ? `ADD ${qty} pcs.` : `REMOVE ${Math.abs(qty)} pcs.`;
+            setTimeout(() => {
+                if (!qty || isNaN(qty)) {
+                    qtyHelper.textContent = 'Enter a whole number.';
+                    qtyHelper.className = 'text-xs text-gray-500 mt-1 helper-text-transition';
+                    return;
                 }
-                qtyHelper.textContent = actionText;
-                qtyHelper.className = (qty > 0) ? 'text-xs text-green-600 mt-1' : 'text-xs text-red-500 mt-1';
-            }
+
+                if (type === 'Production' && qty < 0) {
+                    qtyHelper.textContent = 'Production quantity should be positive.';
+                    qtyHelper.className = 'text-xs text-red-500 mt-1 helper-text-transition';
+                } else if (type === 'Recall' && qty > 0) { 
+                    qtyHelper.textContent = 'Recall quantity should be negative (e.g., -5).'; 
+                    qtyHelper.className = 'text-xs text-red-500 mt-1 helper-text-transition';
+                } else {
+                    let actionText = '';
+                    if (type === 'Production') {
+                        actionText = `ADD ${qty} pcs to stock and DEDUCT ingredients.`;
+                    } else if (type === 'Recall') { 
+                        actionText = `REMOVE ${Math.abs(qty)} pcs from stock.`;
+                    } else if (type === 'Correction') {
+                        actionText = (qty > 0) ? `ADD ${qty} pcs.` : `REMOVE ${Math.abs(qty)} pcs.`;
+                    }
+                    qtyHelper.textContent = actionText;
+                    qtyHelper.className = (qty > 0) ? 'text-xs text-green-600 mt-1 helper-text-transition' : 'text-xs text-red-500 mt-1 helper-text-transition';
+                }
+                // **ANIMATION**: Fade back in
+                qtyHelper.style.opacity = '1';
+            }, 100);
         };
 
         if(qtyInput) qtyInput.addEventListener('input', updateHelperText);
@@ -243,11 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     
-    // --- BATCH DETAILS MODAL LOGIC (unchanged) ---
+    // ==========================================
+    // 4. Batch Details Logic (With Pulse Animations)
+    // ==========================================
     
     const batchesModalEl = document.getElementById('batchesModal');
     if (batchesModalEl) {
-        // A. LOAD DATA ON OPEN
         onModalOpen('batchesModal', (button) => {
             if (!button) return;
 
@@ -264,7 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadBatchData(id, unit);
         });
 
-        // B. HANDLE BUTTON CLICKS IN TABLE
         const tbody = document.getElementById('batches_table_body');
         if (tbody) {
             tbody.addEventListener('click', function(e) {
@@ -303,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // C. HANDLE INPUT CHANGES
+            // **ANIMATION**: Pulse effect when number changes
             tbody.addEventListener('input', function(e) {
                 if (e.target.classList.contains('qty-adjustment-input')) {
                     const row = e.target.closest('tr');
@@ -314,7 +393,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!isNaN(adjustment)) {
                         const newTotal = current + adjustment;
                         newTotalSpan.textContent = newTotal.toFixed(2);
-                        newTotalSpan.className = 'new-total-display font-bold ' + (newTotal < 0 ? 'text-red-500' : 'text-green-600');
+                        
+                        // Decide color
+                        const isNegative = newTotal < 0; // Though total shouldn't be negative usually
+                        newTotalSpan.className = 'new-total-display font-bold ' + (isNegative ? 'text-red-500' : 'text-green-600');
+                        
+                        // Add Pulse Class based on adjustment
+                        newTotalSpan.classList.remove('pulse-update-green', 'pulse-update-red');
+                        void newTotalSpan.offsetWidth; // Trigger reflow
+                        newTotalSpan.classList.add(adjustment >= 0 ? 'pulse-update-green' : 'pulse-update-red');
+
                     } else {
                         newTotalSpan.textContent = current.toFixed(2);
                         newTotalSpan.className = 'new-total-display font-bold text-gray-500';
@@ -324,29 +412,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Helper: Load Batch Data (unchanged) ---
+    // Helper stubs (unchanged)
     function loadBatchData(id, unit) { /* ... */ }
-
-    // --- Helper: Toggle View/Edit Mode (unchanged) ---
     function toggleEditMode(row, type, isEditing) { /* ... */ }
-
-    // --- Helper: API Call (unchanged) ---
     function callAPI(action, payload, onSuccess) { /* ... */ }
-
     function updateMainTableStock(adjustmentAmount) { /* ... */ }
-
     function saveExpiry(row, batchId) { /* ... */ }
-
     function saveQuantity(row, batchId) { /* ... */ }
-
     function deleteBatch(row, batchId) { /* ... */ }
     
-    // --- Reusable Table Functions for Sorting and Pagination ---
+    // ==========================================
+    // 5. Reusable Table Functions (With Smooth Transitions)
+    // ==========================================
 
     function getSortableValue(cell, type = 'text') {
         const textValue = cell.innerText;
-        
-        // 1. Use data-sort-value if available for explicit number sorting 
         if (type === 'number' && cell.dataset.sortValue !== undefined) {
              const num = parseFloat(cell.dataset.sortValue);
              return isNaN(num) ? 0 : num;
@@ -355,17 +435,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let cleaned = textValue.trim();
         switch (type) {
             case 'number':
-                // 2. Clean common non-numeric characters for general number columns
                 cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+|\(|\)/gi, '');
                 cleaned = cleaned.replace(/,/g, '');
                 const num = parseFloat(cleaned);
                 return isNaN(num) ? 0 : num;
             case 'date':
-                // 3. Date sorting (relies on browser's Date.parse, which can be inconsistent, but common method)
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal;
             default: // 'text'
-                // 4. Text sorting, with prefixes for predictable sorting of status/type columns
                 const lowerVal = cleaned.toLowerCase();
                 if (lowerVal.includes('low stock')) return 'a_low_stock';
                 if (lowerVal.includes('in stock')) return 'b_in_stock';
@@ -388,55 +465,64 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let currentPage = 0; // 0-indexed page
+        // Add transition class to body
+        tableBody.classList.add('table-body-transition');
+
+        let currentPage = 0;
 
         const updateTableRows = () => {
-            const selectedValue = select.value;
-            
-            // Exclude non-data rows like "no results" placeholders and the total footer
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"]):not(tfoot tr)');
-            const visibleRows = [];
-            
-            // Only consider rows that were NOT hidden by an external filter (like search input)
-            all_rows.forEach(row => {
-                if (row.dataset.paginatedHidden !== 'true') {
-                    visibleRows.push(row);
+            // **ANIMATION**: Start "Loading" state (fade out slightly, move down)
+            tableBody.classList.add('table-loading');
+
+            // Wait 200ms for fade out, then swap data and fade in
+            setTimeout(() => {
+                const selectedValue = select.value;
+                const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"]):not(tfoot tr)');
+                const visibleRows = [];
+                
+                all_rows.forEach(row => {
+                    if (row.dataset.paginatedHidden !== 'true') {
+                        visibleRows.push(row);
+                    }
+                });
+
+                if (selectedValue === 'all') {
+                    visibleRows.forEach(row => row.style.display = '');
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                    // **ANIMATION**: Remove loading state
+                    tableBody.classList.remove('table-loading');
+                    return;
                 }
-            });
 
-            // If a search filter is active, it handles hiding. If not, show all.
-            if (selectedValue === 'all') {
-                visibleRows.forEach(row => row.style.display = '');
-                prevBtn.disabled = true;
-                nextBtn.disabled = true;
-                return;
-            }
-
-            const limit = parseInt(selectedValue, 10);
-            const totalRows = visibleRows.length;
-            const totalPages = Math.ceil(totalRows / limit);
-            
-            // Adjust currentPage if it exceeds the new page count
-            if (currentPage >= totalPages) {
-                currentPage = Math.max(0, totalPages - 1);
-            }
-
-            const start = currentPage * limit;
-            const end = start + limit;
-
-            all_rows.forEach(row => row.style.display = 'none'); // Hide all first
-
-            visibleRows.forEach((row, index) => {
-                if (index >= start && index < end) {
-                    row.style.display = '';
+                const limit = parseInt(selectedValue, 10);
+                const totalRows = visibleRows.length;
+                const totalPages = Math.ceil(totalRows / limit);
+                
+                if (currentPage >= totalPages) {
+                    currentPage = Math.max(0, totalPages - 1);
                 }
-            });
 
-            prevBtn.disabled = currentPage === 0;
-            nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
+                const start = currentPage * limit;
+                const end = start + limit;
+
+                all_rows.forEach(row => row.style.display = 'none'); 
+
+                visibleRows.forEach((row, index) => {
+                    if (index >= start && index < end) {
+                        row.style.display = '';
+                    }
+                });
+
+                prevBtn.disabled = currentPage === 0;
+                nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
+
+                // **ANIMATION**: Remove loading state (fade in, move up)
+                tableBody.classList.remove('table-loading');
+
+            }, 200); // 200ms delay matches CSS transition
         };
 
-        // Event listeners for controls
         prevBtn.addEventListener('click', () => {
             if (currentPage > 0) {
                 currentPage--;
@@ -455,70 +541,83 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTableRows();
         });
         
-        // Initial run
-        updateTableRows();
+        // Initial run (no delay needed for first run)
+        const initialRun = () => {
+             // ... same logic without timeout ...
+             // Simplified: just trigger the event or call function but we want instant load
+             select.dispatchEvent(new Event('change')); 
+        };
+        // Use timeout 0 to let other scripts finish first
+        setTimeout(initialRun, 0); 
     }
     
     function sortTableByDropdown(sortLink) {
         const sortBy = sortLink.dataset.sortBy;
         const sortType = sortLink.dataset.sortType;
-        const sortDir = sortLink.dataset.sortDir; // Get direction from the clicked link
+        const sortDir = sortLink.dataset.sortDir; 
 
         const tableBody = sortLink.closest('.dropdown').closest('.bg-white').querySelector('tbody');
         if (!tableBody) return;
         
-        const table = tableBody.closest('table');
-        const headerRow = table.querySelector('thead tr');
-        let colIndex = -1;
-        Array.from(headerRow.querySelectorAll('th')).forEach((th, index) => {
-            if (th.dataset.sortBy === sortBy) {
-                colIndex = index;
-            }
-        });
-        
-        if (colIndex === -1) {
-            console.error(`Sort Error: Could not find column index for data-sort-by="${sortBy}"`);
-            return;
-        }
+        // **ANIMATION**: Start Transition
+        tableBody.classList.add('table-loading');
 
-        // Only sort actual data rows
-        const rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"]):not(tfoot tr)'));
-        
-        rows.sort((a, b) => {
-            if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
-            const valA = getSortableValue(a.cells[colIndex], sortType); 
-            const valB = getSortableValue(b.cells[colIndex], sortType);
+        setTimeout(() => {
+            const table = tableBody.closest('table');
+            const headerRow = table.querySelector('thead tr');
+            let colIndex = -1;
+            Array.from(headerRow.querySelectorAll('th')).forEach((th, index) => {
+                if (th.dataset.sortBy === sortBy) {
+                    colIndex = index;
+                }
+            });
             
-            let comparison = 0;
-            if (valA > valB) comparison = 1;
-            else if (valA < valB) comparison = -1;
-            
-            // Apply direction based on the clicked link
-            return sortDir === 'DESC' ? (comparison * -1) : comparison;
-        });
-
-        tableBody.innerHTML = '';
-        rows.forEach(row => tableBody.appendChild(row));
-        
-        const dropdown = sortLink.closest('.dropdown');
-        if (dropdown) {
-            const buttonTextSpan = dropdown.querySelector('.current-sort-text');
-            // Use the text content directly from the link since it now includes the direction (e.g., "Name (ASC)")
-            buttonTextSpan.textContent = sortLink.textContent.trim();
-            
-            const dropdownItems = dropdown.querySelectorAll('.sort-trigger');
-            dropdownItems.forEach(item => item.classList.remove('active'));
-            sortLink.classList.add('active');
-        }
-        
-        // Re-apply pagination after sorting
-        const paginationSelectId = table.closest('.bg-white').querySelector('select[id$="-rows-select"]')?.id;
-        if (paginationSelectId) {
-            const paginationSelect = document.getElementById(paginationSelectId);
-            if (paginationSelect) {
-                paginationSelect.dispatchEvent(new Event('change'));
+            if (colIndex === -1) {
+                console.error(`Sort Error: Could not find column index for data-sort-by="${sortBy}"`);
+                tableBody.classList.remove('table-loading'); // Reset if error
+                return;
             }
-        }
+
+            const rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"]):not(tfoot tr)'));
+            
+            rows.sort((a, b) => {
+                if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
+                const valA = getSortableValue(a.cells[colIndex], sortType); 
+                const valB = getSortableValue(b.cells[colIndex], sortType);
+                
+                let comparison = 0;
+                if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
+            });
+
+            // Detach and re-append sorted rows
+            rows.forEach(row => tableBody.appendChild(row));
+            
+            const dropdown = sortLink.closest('.dropdown');
+            if (dropdown) {
+                const buttonTextSpan = dropdown.querySelector('.current-sort-text');
+                buttonTextSpan.textContent = sortLink.textContent.trim();
+                
+                const dropdownItems = dropdown.querySelectorAll('.sort-trigger');
+                dropdownItems.forEach(item => item.classList.remove('active'));
+                sortLink.classList.add('active');
+            }
+            
+            // Re-apply pagination
+            const paginationSelectId = table.closest('.bg-white').querySelector('select[id$="-rows-select"]')?.id;
+            if (paginationSelectId) {
+                const paginationSelect = document.getElementById(paginationSelectId);
+                if (paginationSelect) {
+                    paginationSelect.dispatchEvent(new Event('change'));
+                }
+            }
+            
+            // **ANIMATION**: End Transition
+            tableBody.classList.remove('table-loading');
+
+        }, 200); // Wait for transition
     }
     
     function setupDropdown(dropdownId) {
@@ -527,29 +626,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const sortMenu = document.getElementById(dropdownId.replace('-dropdown', '-menu'));
         
         if (dropdownEl && sortButton && sortMenu) {
-            // Toggle menu on button click
             sortButton.addEventListener('click', (e) => {
                 e.stopPropagation(); 
-                sortMenu.classList.toggle('hidden');
+                // Simple opacity toggle handled by CSS or class
+                if (sortMenu.classList.contains('hidden')) {
+                    sortMenu.classList.remove('hidden');
+                    // Add simple entrance animation
+                    sortMenu.style.opacity = '0';
+                    sortMenu.style.transform = 'translateY(-5px)';
+                    setTimeout(() => {
+                         sortMenu.style.transition = 'opacity 0.1s, transform 0.1s';
+                         sortMenu.style.opacity = '1';
+                         sortMenu.style.transform = 'translateY(0)';
+                    }, 10);
+                } else {
+                    sortMenu.classList.add('hidden');
+                }
             });
 
-            // Close menu when clicking outside
             document.addEventListener('click', (e) => {
                 if (!sortMenu.contains(e.target) && !sortButton.contains(e.target)) {
                     sortMenu.classList.add('hidden');
                 }
             });
             
-            // Set up click listener for sort links
             document.querySelectorAll(`#${dropdownId} .sort-trigger`).forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     sortTableByDropdown(e.target);
-                    sortMenu.classList.add('hidden'); // Close after sorting
+                    sortMenu.classList.add('hidden'); 
                 });
             });
 
-            // Apply default sort (active link) on load
             const defaultSortLink = dropdownEl.querySelector('.sort-trigger.active');
             if (defaultSortLink) {
                  setTimeout(() => sortTableByDropdown(defaultSortLink), 50);
@@ -559,8 +667,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function initTableFeatures() {
-        // Initialize Pagination and Sorting for ALL tables
-        
         // 1. Ingredients Table
         addTablePagination('ingredient-rows-select', 'ingredient-table-body');
         setupDropdown('ingredient-sort-dropdown');
@@ -578,9 +684,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDropdown('history-sort-dropdown');
     }
 
-    // Call the initialization function when DOM is ready
     initTableFeatures();
 
-    // --- MODAL DATA POPULATION LOGIC (omitted, unchanged) ---
-    // ...
 });

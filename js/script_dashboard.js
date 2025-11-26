@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // 1. Top Products Bar Chart
+    // ==========================================
+    // 1. Top Products Bar Chart(Enhanced)
+    // ==========================================
     const topProductsCtx = document.getElementById('topProductsChart');
     if (topProductsCtx) {
         const topProductsData = JSON.parse(topProductsCtx.dataset.products);
@@ -18,21 +20,57 @@ document.addEventListener('DOMContentLoaded', () => {
                         label: 'Units Sold',
                         data: productSalesData,
                         backgroundColor: '#E5A26A',
-                        borderRadius: 4
+                        borderRadius: 4, 
+                        borderSkipped: false, 
+                        hoverBackgroundColor: '#d48648' 
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // **NEW: Animation Configuration**
+                    animation: {
+                        duration: 2000, // Animation takes 2 seconds total
+                        easing: 'easeOutQuart', // "Slow down at the end" effect
+                        // **NEW: Stagger Effect** - Bars load one after another
+                        delay: (context) => {
+                            let delay = 0;
+                            // Only animate data points, and only on initial load
+                            if (context.type === 'data' && context.mode === 'default') {
+                                delay = context.dataIndex * 300 + context.datasetIndex * 100;
+                            }
+                            return delay;
+                        }
+                    },
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: false },
+                        tooltip: {
+                            // **NEW: Tooltip Animation**
+                            animation: {
+                                duration: 150
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                        }
                     },
                     scales: {
-                        y: { beginAtZero: true }
+                        y: { 
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)' // **NEW: Makes grid lines subtle**
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false // **NEW: Clean look by removing vertical lines**
+                            }
+                        }
                     }
                 }
             });
         } else {
+    
             const ctx = topProductsCtx.getContext('2d');
             ctx.font = '16px Segoe UI';
             ctx.fillStyle = '#6c757d';
@@ -41,7 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 2. Daily Revenue & Returns Trend Line Chart
+    // ==========================================
+    // 2. Daily Revenue & Returns (Enhanced)
+    // ==========================================
     const trendCtx = document.getElementById('dailyTrendChart');
     if (trendCtx) {
         let trendData = [];
@@ -65,31 +105,85 @@ document.addEventListener('DOMContentLoaded', () => {
                             label: 'Total Revenue (₱)',
                             data: trendSales,
                             borderColor: '#0d6efd', 
-                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.3,
+                            backgroundColor: (context) => {
+                                // **NEW: Gradient Fill** - Makes the area look shiny/modern
+                                const ctx = context.chart.ctx;
+                                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                                gradient.addColorStop(0, 'rgba(13, 110, 253, 0.4)'); // Darker at top
+                                gradient.addColorStop(1, 'rgba(13, 110, 253, 0.0)'); // Fades out at bottom
+                                return gradient;
+                            },
+                            borderWidth: 3, // Slightly thicker line for visibility
+                            tension: 0.4, // **NEW: Curvier lines (0.4 is smoother than 0.3)**
                             fill: true,
-                            pointRadius: 4,
+                            pointRadius: 0, // **NEW: Hide points initially for a clean look...**
+                            pointHoverRadius: 6, // **...but show them big on hover**
                             pointBackgroundColor: '#fff',
-                            pointBorderColor: '#0d6efd'
+                            pointBorderColor: '#0d6efd',
+                            pointBorderWidth: 2
                         },
                         {
                             label: 'Total Returns (₱)',
                             data: trendReturns,
                             borderColor: '#dc3545',
-                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            backgroundColor: (context) => {
+                                // **NEW: Gradient Fill for Returns too**
+                                const ctx = context.chart.ctx;
+                                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                                gradient.addColorStop(0, 'rgba(220, 53, 69, 0.4)');
+                                gradient.addColorStop(1, 'rgba(220, 53, 69, 0.0)');
+                                return gradient;
+                            },
                             borderWidth: 2,
-                            tension: 0.3,
+                            tension: 0.4,
                             fill: true,
-                            pointRadius: 4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
                             pointBackgroundColor: '#fff',
-                            pointBorderColor: '#dc3545'
+                            pointBorderColor: '#dc3545',
+                            pointBorderWidth: 2
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // **NEW: Interaction Settings**
+                    interaction: {
+                        mode: 'index', // Hovering one point shows tooltips for BOTH lines
+                        intersect: false, // You don't have to hit the exact dot to see info
+                    },
+                    // **NEW: Progressive Line Animation**
+                    animation: {
+                        x: {
+                            type: 'number',
+                            easing: 'linear',
+                            duration: 1000,
+                            from: NaN, // Draws the line from left to right
+                            delay: (ctx) => {
+                                if (ctx.type !== 'data' || ctx.xStarted) {
+                                    return 0;
+                                }
+                                ctx.xStarted = true;
+                                return ctx.index * 20; // Slight delay per point
+                            }
+                        },
+                        y: {
+                            type: 'number',
+                            easing: 'linear',
+                            duration: 1000,
+                            from: (ctx) => {
+                                return ctx.index === 0 ? ctx.chart.scales.y.getPixelForValue(0) : ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1].getProps(['y'], true).y;
+                            },
+                            delay: (ctx) => {
+                                if (ctx.type !== 'data' || ctx.yStarted) {
+                                    return 0;
+                                }
+                                ctx.yStarted = true;
+                                return ctx.index * 20;
+                            }
+                        }
+                    },
                     plugins: {
                         legend: { display: true, position: 'top' },
                         tooltip: {
@@ -110,9 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     scales: {
                         y: {
                             beginAtZero: true,
+                            grid: { borderDash: [5, 5] }, // **NEW: Dashed grid lines look modern**
                             ticks: {
                                 callback: function(value) { return '₱' + value; }
                             }
+                        },
+                        x: {
+                            grid: { display: false } // Cleaner X axis
                         }
                     }
                 }
@@ -126,7 +224,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 3. Modal Sorting Logic
+    // ==========================================
+    // 3. Modal Sorting (Unchanged)
+    // ==========================================
     function enableModalSorting(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
@@ -145,21 +245,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         const rows = Array.from(tableBody.querySelectorAll('tr'));
                         
-                        rows.sort((a, b) => {
-                            let valA = a.dataset[sortBy];
-                            let valB = b.dataset[sortBy];
-
-                            if (sortType === 'number') {
-                                valA = parseFloat(valA) || 0;
-                                valB = parseFloat(valB) || 0;
-                            }
-
-                            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
-                            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
-                            return 0;
-                        });
+                        // **Added small fade animation for sorting**
+                        tableBody.style.opacity = '0.5'; 
                         
-                        rows.forEach(row => tableBody.appendChild(row));
+                        setTimeout(() => {
+                            rows.sort((a, b) => {
+                                let valA = a.dataset[sortBy];
+                                let valB = b.dataset[sortBy];
+
+                                if (sortType === 'number') {
+                                    valA = parseFloat(valA) || 0;
+                                    valB = parseFloat(valB) || 0;
+                                }
+
+                                if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+                                if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+                                return 0;
+                            });
+                            
+                            rows.forEach(row => tableBody.appendChild(row));
+                            tableBody.style.opacity = '1'; // Restore opacity
+                        }, 200);
 
                         if (sortText) sortText.textContent = trigger.textContent;
                         sortTriggers.forEach(t => t.classList.remove('active'));
@@ -178,7 +284,9 @@ document.addEventListener('DOMContentLoaded', () => {
     enableModalSorting('stockListModal');
     enableModalSorting('ingredientStockModal');
     
-    // 4. Tab State Handling
+    // ==========================================
+    // 4. Tab State Handling (Unchanged)
+    // ==========================================
     const allTabButtons = document.querySelectorAll('#dashboardTabs .nav-link');
     const activeTabInput = document.getElementById('active_tab_input');
     const smsReportForm = document.getElementById('sms-report-form');

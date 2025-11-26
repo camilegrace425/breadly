@@ -1,6 +1,54 @@
 document.addEventListener('DOMContentLoaded', () => {
-    let cart = []; // Stores cart items
-    let discountPercent = 0; // Global state for discount
+    const style = document.createElement('style');
+    style.innerHTML = `
+        /* Product Card Click Effect */
+        .card-clicked {
+            transform: scale(0.95);
+            transition: transform 0.1s ease;
+        }
+
+        /* Cart Item Slide In (Enter) */
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .cart-item-enter {
+            animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Cart Item Slide Out (Exit) */
+        @keyframes slideOutLeft {
+            to { opacity: 0; transform: translateX(-30px); margin-bottom: -50px; }
+        }
+        .cart-item-exit {
+            animation: slideOutLeft 0.3s ease forwards !important;
+            pointer-events: none;
+        }
+
+        /* Price Pulse */
+        @keyframes pulseGreen {
+            0% { transform: scale(1); color: inherit; }
+            50% { transform: scale(1.2); color: #16a34a; text-shadow: 0 0 10px rgba(22, 163, 74, 0.3); }
+            100% { transform: scale(1); color: inherit; }
+        }
+        .pulse-price {
+            animation: pulseGreen 0.3s ease-out;
+        }
+
+        /* Search Results Stagger */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .search-enter {
+            animation: fadeUp 0.4s ease-out forwards;
+        }
+    `;
+    document.head.appendChild(style);
+
+    let cart = []; 
+    let discountPercent = 0; 
+    let previousTotal = 0; // To track price changes for animation
 
     // DOM References
     const orderItemsContainer = document.getElementById('order-items-container');
@@ -8,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const payButton = document.getElementById('pay-button');
     const clearButton = document.getElementById('clear-button');
     
-    // Wrapper/Grid Container references
     const productListWrapper = document.getElementById('product-list');
     const productListContainer = productListWrapper ? productListWrapper.querySelector('.grid') || productListWrapper : null;
 
@@ -17,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortTypeSelect = document.getElementById('sort-type');   
     const noResultsMessage = document.getElementById('no-results-message');
 
-    // --- Discount DOM References ---
+    // Discount References
     const discountModalEl = document.getElementById('discountModal');
     const discountInput = document.getElementById('discount-input');
     const applyDiscountBtn = document.getElementById('apply-discount-btn-modal'); 
@@ -37,15 +84,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById(modalId);
             if (modal) {
                 modal.classList.toggle('hidden');
-                // Basic Aria toggle if helper not found
                 const isHidden = modal.classList.contains('hidden');
                 modal.setAttribute('aria-hidden', isHidden ? 'true' : 'false');
             }
         }
     }
 
+    // --- Helper: Animate Price Change ---
+    function animatePriceChange(currentTotal) {
+        if (currentTotal !== previousTotal && totalPriceEl) {
+            // Remove class to reset animation
+            totalPriceEl.classList.remove('pulse-price');
+            void totalPriceEl.offsetWidth; // Trigger reflow
+            totalPriceEl.classList.add('pulse-price');
+            previousTotal = currentTotal;
+        }
+    }
+
      // Called when a product card is clicked.
     window.addToCart = function(cardElement) {
+        // **ANIMATION**: Visual feedback on card click
+        cardElement.classList.add('card-clicked');
+        setTimeout(() => cardElement.classList.remove('card-clicked'), 150);
+
         const productId = parseInt(cardElement.dataset.id);
         const name = cardElement.dataset.name;
         const price = parseFloat(cardElement.dataset.price);
@@ -75,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             cart.push({ id: productId, name: name, price: price, quantity: 1, maxStock: maxStock });
-            renderCart();
+            renderCart(true); // **Pass true to indicate a new item was added**
         }
     }
 
@@ -89,7 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (newQuantity === 0) {
+            // Item removed via logic (e.g. typing 0)
             cart = cart.filter(item => item.id !== productId);
+            renderCart();
         } else if (newQuantity > item.maxStock) {
             newQuantity = item.maxStock;
             Swal.fire({
@@ -99,10 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 confirmButtonColor: '#af6223'
             });
             item.quantity = newQuantity;
+            renderCart();
         } else {
             item.quantity = newQuantity;
+            renderCart();
         }
-        renderCart();
     }
 
     // UPDATED: Made global
@@ -116,14 +180,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(clearButton) {
         clearButton.addEventListener('click', () => {
-            cart = [];
-            discountPercent = 0; 
-            if (discountInput) discountInput.value = ''; 
-            renderCart(); 
+            if(cart.length > 0) {
+                // **ANIMATION**: Fade out container content before clearing
+                orderItemsContainer.style.opacity = '0';
+                orderItemsContainer.style.transition = 'opacity 0.2s';
+                
+                setTimeout(() => {
+                    cart = [];
+                    discountPercent = 0; 
+                    if (discountInput) discountInput.value = ''; 
+                    renderCart(); 
+                    orderItemsContainer.style.opacity = '1'; // Fade back in (empty state)
+                }, 200);
+            }
         });
     }
 
-    function renderCart() {
+    function renderCart(isNewItem = false) {
+        const scrollTop = orderItemsContainer.scrollTop;
+
         orderItemsContainer.innerHTML = '';
         let subTotal = 0;
         let finalTotal = 0;
@@ -131,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cart.length === 0) {
             orderItemsContainer.innerHTML = `
-                <div class="h-full flex flex-col items-center justify-center text-gray-400 opacity-60 py-10">
+                <div class="h-full flex flex-col items-center justify-center text-gray-400 opacity-60 py-10 cart-item-enter">
                     <i class='bx bx-basket text-6xl mb-2'></i>
                     <p>Select products to begin</p>
                 </div>`;
@@ -139,24 +214,22 @@ document.addEventListener('DOMContentLoaded', () => {
             payButton.disabled = true;
             payButton.classList.add('opacity-50', 'cursor-not-allowed');
             
-            // Reset Mobile UI if it exists
-            const mobileTotal = document.getElementById('mobile-cart-total');
-            const mobileCount = document.getElementById('mobile-cart-count');
-            const mobileBtn = document.getElementById('pay-button-mobile');
-            
-            if(mobileTotal) mobileTotal.textContent = 'P0.00';
-            if(mobileCount) mobileCount.textContent = '0 Items';
-            if(mobileBtn) mobileBtn.disabled = true;
+            // Reset Mobile UI
+            updateMobileUI(0, 0, true);
             
         } else {
-            cart.forEach(item => {
+            cart.forEach((item, index) => {
                 const itemTotal = item.price * item.quantity;
                 subTotal += itemTotal;
                 
                 const itemEl = document.createElement('div');
-                // Tailwind styling for Cart Item container
                 itemEl.className = 'flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow mb-2';
                 
+                // **ANIMATION**: Only animate the LAST item if it was just added to prevent flashing
+                if (isNewItem && index === cart.length - 1) {
+                    itemEl.classList.add('cart-item-enter');
+                }
+
                 itemEl.innerHTML = `
                 <div class="flex flex-col overflow-hidden mr-3">
                     <span class="font-semibold text-gray-800 truncate">${item.name}</span>
@@ -189,9 +262,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 orderItemsContainer.appendChild(itemEl);
             });
 
-            // Mobile Modal is handled by the Observer in script_pos_mobile.js
-            
-            // Attach listeners to desktop buttons
+            // Restore Scroll
+            orderItemsContainer.scrollTop = scrollTop;
+            if (isNewItem) {
+                // Scroll to bottom if new item added
+                orderItemsContainer.scrollTop = orderItemsContainer.scrollHeight;
+            }
+
             attachCartListeners(orderItemsContainer);
 
             // --- Calculate discount ---
@@ -201,32 +278,85 @@ document.addEventListener('DOMContentLoaded', () => {
             payButton.disabled = false;
             payButton.classList.remove('opacity-50', 'cursor-not-allowed');
             
-            // Update Mobile UI
-            const mobileTotal = document.getElementById('mobile-cart-total');
-            const mobileCount = document.getElementById('mobile-cart-count');
-            const mobileBtn = document.getElementById('pay-button-mobile');
-            const mobileSub = document.getElementById('subtotal-price-mobile');
-            const mobileDisc = document.getElementById('discount-amount-mobile');
-            const mobileTotalFull = document.getElementById('total-price-mobile');
-
-            if(mobileTotal) mobileTotal.textContent = `P${finalTotal.toFixed(2)}`;
-            if(mobileCount) mobileCount.textContent = `${cart.length} Item${cart.length !== 1 ? 's' : ''}`;
-            if(mobileBtn) {
-                mobileBtn.disabled = false;
-                mobileBtn.textContent = `Pay P${finalTotal.toFixed(2)}`;
-            }
-            if(mobileSub) {
-                mobileSub.textContent = `P${subTotal.toFixed(2)}`;
-                document.getElementById('subtotal-line-mobile').style.display = 'flex';
-            }
-            if(mobileDisc) {
-                 mobileDisc.textContent = `-P${discountAmount.toFixed(2)}`;
-                 document.getElementById('discount-line-mobile').style.display = 'flex';
-            }
-            if(mobileTotalFull) mobileTotalFull.textContent = `P${finalTotal.toFixed(2)}`;
+            updateMobileUI(finalTotal, subTotal, false, cart.length, discountAmount);
         }
         
         // Update Desktop Summary
+        updateDesktopSummary(subTotal, discountAmount, finalTotal);
+        
+        // **ANIMATION**: Trigger Price Pulse
+        animatePriceChange(finalTotal);
+    }
+
+    function attachCartListeners(container) {
+        container.querySelectorAll('.btn-dec').forEach(btn => {
+            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), -1));
+        });
+        container.querySelectorAll('.btn-inc').forEach(btn => {
+            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), 1));
+        });
+        
+        // **ANIMATION**: Smooth Remove
+        container.querySelectorAll('.btn-remove').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const row = btn.closest('.flex.justify-between'); // Get the row container
+                const id = parseInt(btn.dataset.id);
+                
+                // Add exit animation class
+                row.classList.add('cart-item-exit');
+                
+                // Wait for animation to finish before updating data
+                setTimeout(() => {
+                    window.setQuantity(id, 0);
+                }, 250); // Slightly faster than CSS time to feel snappy
+            });
+        });
+
+        container.querySelectorAll('.cart-quantity-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const newQty = parseInt(e.target.value, 10);
+                const productId = parseInt(e.target.dataset.id, 10);
+                window.setQuantity(productId, newQty);
+            });
+            input.addEventListener('click', (e) => e.target.select()); 
+        });
+    }
+    
+    // UI Update Helpers
+    function updateMobileUI(total, subTotal, isEmpty, count = 0, discount = 0) {
+        const mobileTotal = document.getElementById('mobile-cart-total');
+        const mobileCount = document.getElementById('mobile-cart-count');
+        const mobileBtn = document.getElementById('pay-button-mobile');
+        const mobileSub = document.getElementById('subtotal-price-mobile');
+        const mobileDisc = document.getElementById('discount-amount-mobile');
+        const mobileTotalFull = document.getElementById('total-price-mobile');
+
+        if(isEmpty) {
+            if(mobileTotal) mobileTotal.textContent = 'P0.00';
+            if(mobileCount) mobileCount.textContent = '0 Items';
+            if(mobileBtn) mobileBtn.disabled = true;
+        } else {
+             if(mobileTotal) mobileTotal.textContent = `P${total.toFixed(2)}`;
+             if(mobileCount) mobileCount.textContent = `${count} Item${count !== 1 ? 's' : ''}`;
+             if(mobileBtn) {
+                mobileBtn.disabled = false;
+                mobileBtn.textContent = `Pay P${total.toFixed(2)}`;
+             }
+             if(mobileSub) {
+                mobileSub.textContent = `P${subTotal.toFixed(2)}`;
+                const subLine = document.getElementById('subtotal-line-mobile');
+                if(subLine) subLine.style.display = 'flex';
+             }
+             if(mobileDisc) {
+                 mobileDisc.textContent = `-P${discount.toFixed(2)}`;
+                 const discLine = document.getElementById('discount-line-mobile');
+                 if(discLine) discLine.style.display = 'flex';
+             }
+             if(mobileTotalFull) mobileTotalFull.textContent = `P${total.toFixed(2)}`;
+        }
+    }
+
+    function updateDesktopSummary(subTotal, discountAmount, finalTotal) {
         if (subtotalLine) subtotalLine.classList.remove('hidden');
         if (subtotalLine) subtotalLine.style.display = 'flex';
         
@@ -238,28 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (discountAmountEl) discountAmountEl.textContent = `-P${discountAmount.toFixed(2)}`;
         
         if (totalPriceEl) totalPriceEl.textContent = `P${finalTotal.toFixed(2)}`;
-    }
-
-    function attachCartListeners(container) {
-        container.querySelectorAll('.btn-dec').forEach(btn => {
-            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), -1));
-        });
-        container.querySelectorAll('.btn-inc').forEach(btn => {
-            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), 1));
-        });
-        container.querySelectorAll('.btn-remove').forEach(btn => {
-            btn.addEventListener('click', () => {
-                window.setQuantity(parseInt(btn.dataset.id), 0);
-            });
-        });
-        container.querySelectorAll('.cart-quantity-input').forEach(input => {
-            input.addEventListener('change', (e) => {
-                const newQty = parseInt(e.target.value, 10);
-                const productId = parseInt(e.target.dataset.id, 10);
-                window.setQuantity(productId, newQty);
-            });
-            input.addEventListener('click', (e) => e.target.select()); // Auto-select text on click
-        });
     }
 
     // Handles the 'Complete Sale' button click.
@@ -275,8 +383,8 @@ document.addEventListener('DOMContentLoaded', () => {
             text: `Total amount is ${totalPriceEl.textContent}. Proceed?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#15803d', // Tailwind green-700
-            cancelButtonColor: '#6b7280',  // Tailwind gray-500
+            confirmButtonColor: '#15803d', 
+            cancelButtonColor: '#6b7280',  
             confirmButtonText: 'Yes, complete it!'
         }).then((result) => {
             if (result.isConfirmed) {
@@ -343,15 +451,18 @@ document.addEventListener('DOMContentLoaded', () => {
         card.addEventListener('click', () => window.addToCart(card));
     });
 
+    // **ANIMATION**: Enhanced Search Handler
     const searchHandler = () => { 
         const searchTerm = searchInput.value.toLowerCase();
         const searchType = searchTypeSelect.value; 
         let itemsFound = 0;
 
-        if (!productListContainer) return; // Guard clause
+        if (!productListContainer) return; 
 
-        // Updated Selector to match Tailwind layout
-        productListContainer.querySelectorAll('.col-product[data-product-name]').forEach(col => {
+        // Get all items
+        const cols = productListContainer.querySelectorAll('.col-product[data-product-name]');
+        
+        cols.forEach((col, index) => {
             let dataToSearch = '';
             
             if (searchType === 'name') {
@@ -361,6 +472,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (dataToSearch.includes(searchTerm)) {
+                // If it was previously hidden, animate it in
+                if (col.style.display === 'none') {
+                    col.classList.remove('search-enter');
+                    void col.offsetWidth; // Trigger reflow
+                    col.classList.add('search-enter');
+                    // Add slight delay based on index for "cascade" effect
+                    col.style.animationDelay = `${(itemsFound % 10) * 0.05}s`;
+                }
+                
                 col.style.display = '';
                 itemsFound++;
             } else {
@@ -371,6 +491,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (noResultsMessage) {
             if (itemsFound === 0 && (productListContainer.querySelectorAll('.col-product').length > 0)) {
                 noResultsMessage.classList.remove('hidden');
+                // Simple fade for no results
+                noResultsMessage.style.opacity = '0';
+                setTimeout(() => { 
+                    noResultsMessage.style.transition = 'opacity 0.3s';
+                    noResultsMessage.style.opacity = '1'; 
+                }, 10);
             } else {
                 noResultsMessage.classList.add('hidden');
             }
@@ -411,18 +537,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const allProductCols = Array.from(productListContainer.querySelectorAll('.col-product[data-product-name]'));
 
-        allProductCols.sort((a, b) => {
-            const valA = getSortableValue(a, sortBy);
-            const valB = getSortableValue(b, sortBy);
+        // **ANIMATION**: Fade out grid slightly while sorting
+        productListContainer.style.opacity = '0.5';
 
-            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
-            return 0; 
-        });
+        setTimeout(() => {
+            allProductCols.sort((a, b) => {
+                const valA = getSortableValue(a, sortBy);
+                const valB = getSortableValue(b, sortBy);
 
-        allProductCols.forEach(col => {
-            productListContainer.appendChild(col);
-        });
+                if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+                return 0; 
+            });
+
+            allProductCols.forEach(col => {
+                productListContainer.appendChild(col);
+                // Trigger animation on sorted items too
+                col.classList.remove('search-enter');
+                void col.offsetWidth;
+                col.classList.add('search-enter');
+                col.style.animationDelay = '0s'; // No stagger for sorting, just fade
+            });
+            
+            // Fade grid back in
+            productListContainer.style.opacity = '1';
+            productListContainer.style.transition = 'opacity 0.2s';
+        }, 150);
     }
 
     if (sortTypeSelect) {
