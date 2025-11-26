@@ -183,6 +183,21 @@ class DashboardManager extends AbstractManager {
         }
     }
 
+    // --- ADDED: Fetch detailed list of recalls for the modal ---
+    public function getRecallsByDateRange($date_start, $date_end) {
+        try {
+            $stmt = $this->conn->prepare("CALL InventoryGetRecallHistory(?, ?)");
+            $stmt->execute([$date_start, $date_end]);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+            return $data;
+        } catch (PDOException $e) {
+            error_log("Error fetching recall history: " . $e->getMessage());
+            return [];
+        }
+    }
+    // -----------------------------------------------------------
+
     public function getExpiringBatches($days_threshold = 7) {
         try {
             $sql = "SELECT b.batch_id, i.name AS ingredient_name, b.quantity, i.unit, b.expiration_date,
@@ -220,15 +235,8 @@ class DashboardManager extends AbstractManager {
             return false;
         }
 
-        $recall_data = [];
-        try {
-            $stmt = $this->conn->prepare("CALL InventoryGetRecallHistory(?, ?)");
-            $stmt->execute([$date_start, $date_end]);
-            $recall_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $stmt->closeCursor();
-        } catch (PDOException $e) {
-            error_log("Report Fetch Error (Recall): " . $e->getMessage());
-        }
+        // Use the new helper method here as well for consistency
+        $recall_data = $this->getRecallsByDateRange($date_start, $date_end);
 
         if (empty($sales_data)) {
             $message .= "No sales recorded on this day.\n";

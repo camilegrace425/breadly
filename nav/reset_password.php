@@ -69,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     <title>Reset Password</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -94,22 +96,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 </head>
 <body class="bg-breadly-bg min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-md">
+    <div class="w-full max-w-md animate-slide-in">
         <div class="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden p-8">
             
-            <div class="flex flex-col items-center justify-center mb-6">
+            <div class="flex flex-col items-center justify-center mb-6 animate-slide-in delay-100">
                 <img src="../images/breadlylogo.png" alt="Breadly Bakery Logo" class="h-24 w-auto mb-4 object-contain"/>
                 <h2 class="text-2xl font-bold text-gray-800">Set New Password</h2>
                 <p class="text-sm text-gray-500 text-center mt-2 px-4"><?php echo htmlspecialchars($instruction_text); ?></p>
             </div>
 
             <?php if (!empty($error_message)): ?>
-                <div class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200 text-center">
+                <div class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200 text-center animate-slide-in delay-200">
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
             <?php endif; ?>
 
-            <form action="reset_password.php?method=<?php echo htmlspecialchars($method); ?>" method="POST" class="space-y-5">
+            <form action="reset_password.php?method=<?php echo htmlspecialchars($method); ?>" method="POST" class="space-y-5 animate-slide-in delay-200">
                 <input type="hidden" name="action" value="reset">
                 
                 <div>
@@ -158,19 +160,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
                 </button>
             </form>
             
-            <form action="forgot_password.php" method="POST" class="mt-4 text-center">
-                <input type="hidden" name="action" value="resend">
-                <button type="submit" id="resend-button" class="text-sm font-medium text-breadly-btn hover:text-breadly-btn-hover underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline" disabled>
-                    Resend Code
-                </button>
-                <span id="timer-text" class="text-xs text-gray-500 ml-1"></span>
-            </form>
+            <div class="animate-slide-in delay-300">
+                <form action="forgot_password.php" method="POST" class="mt-4 text-center">
+                    <input type="hidden" name="action" value="resend">
+                    <button type="submit" id="resend-button" class="text-sm font-medium text-breadly-btn hover:text-breadly-btn-hover underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline" disabled>
+                        Resend Code
+                    </button>
+                    <span id="timer-text" class="text-xs text-gray-500 ml-1"></span>
+                </form>
 
-            <div class="text-center mt-6 pt-4 border-t border-gray-100">
-                <p class="text-xs text-gray-500 mb-2">Remembered your password?</p>
-                <a href="reset_password.php?action=cancel" class="inline-flex items-center gap-1 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
-                    <i class='bx bx-arrow-back'></i> Exit to Login
-                </a>
+                <div class="text-center mt-6 pt-4 border-t border-gray-100">
+                    <p class="text-xs text-gray-500 mb-2">Remembered your password?</p>
+                    <a href="reset_password.php?action=cancel" class="inline-flex items-center gap-1 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                        <i class='bx bx-arrow-back'></i> Exit to Login
+                    </a>
+                </div>
             </div>
 
         </div>

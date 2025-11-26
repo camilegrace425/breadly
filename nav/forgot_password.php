@@ -95,6 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Forgot Password</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -120,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body class="bg-breadly-bg min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-md">
+    <div class="w-full max-w-md animate-slide-in">
         <div class="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden p-8">
             
             <div class="flex flex-col items-center justify-center mb-6">

@@ -239,6 +239,9 @@ $active_nav_link = 'inventory';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Management</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
+    
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -381,7 +384,8 @@ $active_nav_link = 'inventory';
             
             <div id="pane-products" class="<?php echo ($active_tab == 'products') ? '' : 'hidden'; ?>">
                 <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
-                    <div class="p-4 border-b border-orange-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    
+                    <div class="p-4 border-b border-orange-100 flex flex-col sm:flex-row justify-between items-center gap-4 animate-slide-in delay-100">
                         <div class="relative w-full sm:w-64">
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class='bx bx-search text-gray-400'></i></span>
                             <input type="text" id="product-search-input" class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn focus:border-breadly-btn outline-none" placeholder="Search products...">
@@ -391,7 +395,7 @@ $active_nav_link = 'inventory';
                         </button>
                     </div>
                     
-                    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="product-card-list">
+                    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 animate-slide-in delay-200" id="product-card-list">
                         <?php if (empty($products)): ?>
                             <div class="col-span-full text-center py-10 text-gray-400">
                                 <i class='bx bxs-package text-4xl mb-2'></i><p>No active products found.</p>
@@ -451,7 +455,8 @@ $active_nav_link = 'inventory';
 
             <div id="pane-ingredients" class="<?php echo ($active_tab == 'ingredients') ? '' : 'hidden'; ?>">
                 <div class="bg-white rounded-xl shadow-sm border border-orange-100">
-                    <div class="p-4 border-b border-orange-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    
+                    <div class="p-4 border-b border-orange-100 flex flex-col sm:flex-row justify-between items-center gap-4 animate-slide-in delay-100">
                         <div class="relative w-full sm:w-64">
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class='bx bx-search text-gray-400'></i></span>
                             <input type="text" id="ingredient-search-input" class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn focus:border-breadly-btn outline-none" placeholder="Search ingredients...">
@@ -461,7 +466,7 @@ $active_nav_link = 'inventory';
                         </button>
                     </div>
                     
-                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100 animate-slide-in delay-200">
                         <div class="flex items-center gap-1 text-sm">
                             <span class="text-gray-500">Show:</span>
                             <select id="ingredient-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
@@ -495,7 +500,8 @@ $active_nav_link = 'inventory';
                             </div>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    <div class="overflow-x-auto animate-slide-in delay-300">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
@@ -568,11 +574,11 @@ $active_nav_link = 'inventory';
 
             <div id="pane-discontinued" class="<?php echo ($active_tab == 'discontinued') ? '' : 'hidden'; ?>">
                 <div class="bg-white rounded-xl shadow-sm border border-orange-100 ">
-                    <div class="p-4 border-b border-orange-100">
+                    <div class="p-4 border-b border-orange-100 animate-slide-in delay-100">
                         <h5 class="font-bold text-lg text-breadly-dark">Discontinued Products</h5>
                     </div>
                     
-                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100 animate-slide-in delay-200">
                         <div class="flex items-center gap-1 text-sm">
                             <span class="text-gray-500">Show:</span>
                             <select id="discontinued-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
@@ -606,7 +612,8 @@ $active_nav_link = 'inventory';
                             </div>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    <div class="overflow-x-auto animate-slide-in delay-300">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
@@ -652,11 +659,11 @@ $active_nav_link = 'inventory';
 
             <div id="pane-recall" class="<?php echo ($active_tab == 'recall') ? '' : 'hidden'; ?>">
                  <div class="bg-white rounded-xl shadow-sm border border-orange-100">
-                    <div class="p-4 border-b border-orange-100 bg-red-50/30">
+                    <div class="p-4 border-b border-orange-100 bg-red-50/30 animate-slide-in delay-100">
                         <h5 class="font-bold text-lg text-red-800">Recall Log</h5>
                     </div>
                     
-                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100 animate-slide-in delay-200">
                         <div class="flex items-center gap-1 text-sm">
                             <span class="text-gray-500">Show:</span>
                             <select id="recall-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
@@ -690,7 +697,8 @@ $active_nav_link = 'inventory';
                             </div>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    <div class="overflow-x-auto animate-slide-in delay-300">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
@@ -740,11 +748,11 @@ $active_nav_link = 'inventory';
 
             <div id="pane-history" class="<?php echo ($active_tab == 'history') ? '' : 'hidden'; ?>">
                 <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
-                    <div class="p-4 border-b border-orange-100">
+                    <div class="p-4 border-b border-orange-100 animate-slide-in delay-100">
                         <h5 class="font-bold text-lg text-breadly-dark">Adjustment History</h5>
                     </div>
                     
-                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100 animate-slide-in delay-200">
                         <div class="flex items-center gap-1 text-sm">
                             <span class="text-gray-500">Show:</span>
                             <select id="history-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
@@ -778,7 +786,8 @@ $active_nav_link = 'inventory';
                             </div>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    <div class="overflow-x-auto animate-slide-in delay-300">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
@@ -819,7 +828,7 @@ $active_nav_link = 'inventory';
     <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
     
     <div id="addIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden transform transition-all scale-100 relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden transform transition-all scale-100 relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Add New Ingredient</h5>
                 <button onclick="closeModal('addIngredientModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -859,7 +868,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="addProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Add New Product</h5>
                 <button onclick="closeModal('addProductModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -889,7 +898,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="adjustProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Adjust Product Stock</h5>
                 <button onclick="closeModal('adjustProductModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -927,7 +936,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="editIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Edit Ingredient</h5>
                 <button onclick="closeModal('editIngredientModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -961,7 +970,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="editProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50 modal-animate-in">
              <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Edit Product</h5>
                 <button onclick="closeModal('editProductModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -988,7 +997,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="restockIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Restock Ingredient</h5>
                 <button onclick="closeModal('restockIngredientModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -1016,7 +1025,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="deleteIngredientModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 bg-red-50">
                 <h5 class="font-bold text-red-800">Delete Ingredient?</h5>
             </div>
@@ -1034,7 +1043,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="deleteProductModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 bg-red-50">
                 <h5 class="font-bold text-red-800">Delete Product?</h5>
             </div>
@@ -1052,7 +1061,7 @@ $active_nav_link = 'inventory';
     </div>
 
     <div id="batchesModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Batch Details: <span id="batch_modal_title" class="text-breadly-btn"></span></h5>
                 <button onclick="closeModal('batchesModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>

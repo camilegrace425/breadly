@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     
-    // --- BATCH DETAILS MODAL LOGIC (unchanged) ---
+    // --- BATCH DETAILS MODAL LOGIC ---
     
     const batchesModalEl = document.getElementById('batchesModal');
     if (batchesModalEl) {
@@ -324,22 +324,261 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Helper: Load Batch Data (unchanged) ---
-    function loadBatchData(id, unit) { /* ... */ }
+    // --- Helper: Load Batch Data ---
+    function loadBatchData(id, unit) {
+        const tbody = document.getElementById('batches_table_body');
+        if(!tbody) return;
+        
+        tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">Loading batches...</td></tr>';
+        
+        fetch(`get_ingredient_batches.php?ingredient_id=${id}`)
+            .then(res => res.json())
+            .then(data => {
+                tbody.innerHTML = '';
+                if(!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">No active batches found.</td></tr>';
+                    return;
+                }
+                
+                data.forEach(batch => {
+                    const tr = document.createElement('tr');
+                    tr.dataset.batchId = batch.batch_id;
+                    tr.dataset.originalQty = batch.quantity;
+                    tr.dataset.originalExpiry = batch.expiration_date || '';
+                    
+                    const receivedDate = new Date(batch.date_received).toLocaleDateString();
+                    const expiryDate = batch.expiration_date ? new Date(batch.expiration_date).toLocaleDateString() : 'N/A';
+                    const expiryValue = batch.expiration_date || '';
+                    
+                    // Determine Status
+                    let statusHtml = '<span class="px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">OK</span>';
+                    if(batch.expiration_date) {
+                         const today = new Date();
+                         const exp = new Date(batch.expiration_date);
+                         const diffTime = exp - today;
+                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                         
+                         if(diffDays < 0) statusHtml = '<span class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">Expired</span>';
+                         else if(diffDays <= 7) statusHtml = '<span class="px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800">Expiring Soon</span>';
+                    }
 
-    // --- Helper: Toggle View/Edit Mode (unchanged) ---
-    function toggleEditMode(row, type, isEditing) { /* ... */ }
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 border-b text-gray-600">${receivedDate}</td>
+                        <td class="px-4 py-3 border-b">
+                            <div class="view-expiry">
+                                <span class="expiry-text font-medium text-gray-800">${expiryDate}</span>
+                            </div>
+                            <div class="edit-expiry hidden flex items-center justify-center gap-1">
+                                <input type="date" class="expiry-input text-xs border rounded p-1 w-28" value="${expiryValue}">
+                                <button class="clear-expiry-btn text-gray-400 hover:text-gray-600"><i class='bx bx-x'></i></button>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 border-b">
+                            <div class="view-qty">
+                                <span class="font-bold text-gray-800">${parseFloat(batch.quantity).toFixed(2)}</span> <span class="text-xs text-gray-500">${unit}</span>
+                            </div>
+                            <div class="edit-qty hidden flex flex-col items-center gap-1">
+                                <div class="text-xs text-gray-500">Current: ${parseFloat(batch.quantity).toFixed(2)}</div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs font-bold">+</span>
+                                    <input type="number" step="0.01" class="qty-adjustment-input text-xs border rounded p-1 w-20 text-center" placeholder="0">
+                                </div>
+                                <div class="text-xs text-gray-500">New Total: <span class="new-total-display font-bold text-gray-800">${parseFloat(batch.quantity).toFixed(2)}</span></div>
+                                <input type="text" class="qty-reason-input text-xs border rounded p-1 w-32 mt-1" placeholder="Reason (Required)">
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 border-b">${statusHtml}</td>
+                        <td class="px-4 py-3 border-b">
+                            <div class="view-actions flex justify-center gap-2">
+                                <button class="edit-expiry-btn text-blue-600 hover:bg-blue-50 p-1 rounded" title="Edit Expiry"><i class='bx bx-calendar-edit'></i></button>
+                                <button class="correction-batch-btn text-orange-600 hover:bg-orange-50 p-1 rounded" title="Correct Qty"><i class='bx bx-slider-alt'></i></button>
+                                <button class="delete-batch-btn text-red-600 hover:bg-red-50 p-1 rounded" title="Delete Batch"><i class='bx bx-trash'></i></button>
+                            </div>
+                            <div class="edit-expiry-actions hidden flex justify-center gap-2">
+                                <button class="save-expiry-btn text-green-600 hover:bg-green-50 p-1 rounded"><i class='bx bx-check'></i></button>
+                                <button class="cancel-expiry-btn text-red-600 hover:bg-red-50 p-1 rounded"><i class='bx bx-x'></i></button>
+                            </div>
+                            <div class="edit-qty-actions hidden flex justify-center gap-2 mt-1">
+                                <button class="save-qty-btn text-green-600 hover:bg-green-50 p-1 rounded text-xs border border-green-200 bg-green-50 px-2">Save</button>
+                                <button class="cancel-qty-btn text-red-600 hover:bg-red-50 p-1 rounded text-xs border border-red-200 bg-red-50 px-2">Cancel</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-500">Error loading batches.</td></tr>';
+            });
+    }
 
-    // --- Helper: API Call (unchanged) ---
-    function callAPI(action, payload, onSuccess) { /* ... */ }
+    // --- Helper: Toggle View/Edit Mode ---
+    function toggleEditMode(row, type, isEditing) {
+        if (type === 'expiry') {
+            const viewDiv = row.querySelector('.view-expiry');
+            const editDiv = row.querySelector('.edit-expiry');
+            const viewActions = row.querySelector('.view-actions');
+            const editActions = row.querySelector('.edit-expiry-actions');
+            
+            if (isEditing) {
+                viewDiv.classList.add('hidden');
+                editDiv.classList.remove('hidden');
+                viewActions.classList.add('hidden');
+                editActions.classList.remove('hidden');
+            } else {
+                viewDiv.classList.remove('hidden');
+                editDiv.classList.add('hidden');
+                viewActions.classList.remove('hidden');
+                editActions.classList.add('hidden');
+                // Reset input
+                row.querySelector('.expiry-input').value = row.dataset.originalExpiry;
+            }
+        } else if (type === 'qty') {
+            const viewDiv = row.querySelector('.view-qty');
+            const editDiv = row.querySelector('.edit-qty');
+            const viewActions = row.querySelector('.view-actions');
+            const editActions = row.querySelector('.edit-qty-actions');
+            
+            if (isEditing) {
+                viewDiv.classList.add('hidden');
+                editDiv.classList.remove('hidden');
+                viewActions.classList.add('hidden');
+                editActions.classList.remove('hidden');
+            } else {
+                viewDiv.classList.remove('hidden');
+                editDiv.classList.add('hidden');
+                viewActions.classList.remove('hidden');
+                editActions.classList.add('hidden');
+                // Reset inputs
+                row.querySelector('.qty-adjustment-input').value = '';
+                row.querySelector('.qty-reason-input').value = '';
+                row.querySelector('.new-total-display').textContent = parseFloat(row.dataset.originalQty).toFixed(2);
+                row.querySelector('.new-total-display').className = 'new-total-display font-bold text-gray-800';
+            }
+        }
+    }
 
-    function updateMainTableStock(adjustmentAmount) { /* ... */ }
+    // --- Helper: API Call ---
+    function callAPI(action, payload, onSuccess) {
+        fetch('inventory_management.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, ...payload })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                onSuccess(data);
+            } else {
+                Swal.fire('Error', data.message || 'Action failed', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('Error', 'Connection error', 'error');
+        });
+    }
 
-    function saveExpiry(row, batchId) { /* ... */ }
+    function updateMainTableStock(adjustmentAmount) {
+        const batchesModal = document.getElementById('batchesModal');
+        const ingredientId = batchesModal.dataset.currentIngredientId;
+        
+        // Find the main table row. Note: standard table rows might not have ID easily accessible if pagination hides them.
+        // We iterate or search.
+        const editBtn = document.querySelector(`button[data-ingredient-id="${ingredientId}"][onclick*="editIngredientModal"]`);
+        if (editBtn) {
+            const row = editBtn.closest('tr');
+            if (row) {
+                const stockCell = row.querySelector('td:nth-child(3)'); // 3rd column is Stock
+                if (stockCell) {
+                    const currentStock = parseFloat(stockCell.dataset.sortValue || stockCell.textContent);
+                    const newStock = currentStock + adjustmentAmount;
+                    stockCell.textContent = newStock.toFixed(2);
+                    stockCell.dataset.sortValue = newStock;
+                    
+                    // Update highlight if needed
+                    if (newStock <= 0) stockCell.classList.add('text-red-600');
+                    else stockCell.classList.remove('text-red-600');
+                }
+            }
+        }
+    }
 
-    function saveQuantity(row, batchId) { /* ... */ }
+    function saveExpiry(row, batchId) {
+        const newDate = row.querySelector('.expiry-input').value;
+        callAPI('update_expiry', { batch_id: batchId, expiration_date: newDate }, (data) => {
+            Swal.fire('Updated', data.message, 'success');
+            // Update UI
+            row.dataset.originalExpiry = newDate;
+            row.querySelector('.expiry-text').textContent = newDate ? new Date(newDate).toLocaleDateString() : 'N/A';
+            toggleEditMode(row, 'expiry', false);
+            // Optionally reload to update status badges
+            const batchesModal = document.getElementById('batchesModal');
+            loadBatchData(batchesModal.dataset.currentIngredientId, batchesModal.dataset.currentUnit);
+        });
+    }
 
-    function deleteBatch(row, batchId) { /* ... */ }
+    function saveQuantity(row, batchId) {
+        const adjustment = parseFloat(row.querySelector('.qty-adjustment-input').value);
+        const reason = row.querySelector('.qty-reason-input').value.trim();
+        const currentQty = parseFloat(row.dataset.originalQty);
+        
+        if (isNaN(adjustment) || adjustment === 0) {
+            Swal.fire('Warning', 'Please enter a valid adjustment amount.', 'warning');
+            return;
+        }
+        if (!reason) {
+            Swal.fire('Warning', 'Reason is required for stock correction.', 'warning');
+            return;
+        }
+        
+        const newQty = currentQty + adjustment;
+        if (newQty < 0) {
+            Swal.fire('Error', 'Quantity cannot be negative.', 'error');
+            return;
+        }
+
+        callAPI('update_quantity', { batch_id: batchId, new_quantity: newQty, reason: reason }, (data) => {
+            Swal.fire('Updated', data.message, 'success');
+            toggleEditMode(row, 'qty', false);
+            updateMainTableStock(adjustment);
+            // Reload batches
+            const batchesModal = document.getElementById('batchesModal');
+            loadBatchData(batchesModal.dataset.currentIngredientId, batchesModal.dataset.currentUnit);
+        });
+    }
+
+    function deleteBatch(row, batchId) {
+        Swal.fire({
+            title: 'Delete Batch?',
+            text: "This will remove the batch quantity from total stock. Reason required:",
+            input: 'text',
+            inputPlaceholder: 'Reason for deletion...',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const reason = result.value;
+                if (!reason) {
+                    Swal.fire('Error', 'Reason is required.', 'error');
+                    return;
+                }
+                
+                // Calculate amount to remove for main table update
+                const qtyToRemove = -parseFloat(row.dataset.originalQty);
+                
+                callAPI('delete_batch', { batch_id: batchId, reason: reason }, (data) => {
+                    Swal.fire('Deleted', data.message, 'success');
+                    updateMainTableStock(qtyToRemove);
+                    // Reload batches
+                    const batchesModal = document.getElementById('batchesModal');
+                    loadBatchData(batchesModal.dataset.currentIngredientId, batchesModal.dataset.currentUnit);
+                });
+            }
+        });
+    }
     
     // --- Reusable Table Functions for Sorting and Pagination ---
 
@@ -557,7 +796,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     function initTableFeatures() {
         // Initialize Pagination and Sorting for ALL tables
         
@@ -578,9 +816,5 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDropdown('history-sort-dropdown');
     }
 
-    // Call the initialization function when DOM is ready
     initTableFeatures();
-
-    // --- MODAL DATA POPULATION LOGIC (omitted, unchanged) ---
-    // ...
 });

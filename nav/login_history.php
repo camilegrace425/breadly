@@ -21,6 +21,9 @@ $login_history = $userManager->getLoginHistory();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login History</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
+    
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -123,7 +126,7 @@ $login_history = $userManager->getLoginHistory();
         </div>
         
         <div class="flex-1 overflow-y-auto p-6 pb-20">
-            <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden flex flex-col h-full max-h-[85vh]" id="login-history-card">
+            <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden flex flex-col h-full max-h-[85vh] animate-slide-in delay-100" id="login-history-card">
                 
                 <div class="p-4 border-b border-orange-100 bg-gray-50 flex flex-wrap justify-between items-center gap-3">
                     <h5 class="font-bold text-gray-800">Access Logs</h5>

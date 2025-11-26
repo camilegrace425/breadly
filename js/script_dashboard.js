@@ -1,3 +1,135 @@
+// Global functions called by onclick attributes
+function toggleSidebar() {
+    const sidebar = document.getElementById('mobileSidebar');
+    const overlay = document.getElementById('mobileSidebarOverlay');
+    
+    if (sidebar.classList.contains('-translate-x-full')) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+    }
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('hidden');
+}
+
+function switchTab(tabName) {
+    const paneSales = document.getElementById('pane-sales');
+    const paneInventory = document.getElementById('pane-inventory');
+    
+    if(paneSales) paneSales.classList.add('hidden');
+    if(paneInventory) paneInventory.classList.add('hidden');
+    
+    const targetPane = document.getElementById('pane-' + tabName);
+    if(targetPane) targetPane.classList.remove('hidden');
+    
+    const salesBtn = document.getElementById('tab-sales');
+    const invBtn = document.getElementById('tab-inventory');
+    
+    const activeClasses = ['border-breadly-btn', 'text-breadly-btn'];
+    const inactiveClasses = ['border-transparent', 'text-gray-500', 'hover:text-gray-700'];
+    
+    if (tabName === 'sales') {
+        if(salesBtn) {
+            salesBtn.classList.add(...activeClasses);
+            salesBtn.classList.remove(...inactiveClasses);
+        }
+        if(invBtn) {
+            invBtn.classList.remove(...activeClasses);
+            invBtn.classList.add(...inactiveClasses);
+        }
+    } else {
+        if(invBtn) {
+            invBtn.classList.add(...activeClasses);
+            invBtn.classList.remove(...inactiveClasses);
+        }
+        if(salesBtn) {
+            salesBtn.classList.remove(...activeClasses);
+            salesBtn.classList.add(...inactiveClasses);
+        }
+    }
+
+    // Update URL and inputs
+    const url = new URL(window.location);
+    url.searchParams.set('active_tab', tabName);
+    window.history.replaceState({}, '', url);
+
+    const activeTabInput = document.getElementById('active_tab_input');
+    if (activeTabInput) activeTabInput.value = tabName;
+
+    // Update forms that might need to retain the tab
+    updateFormActionsWithTab(tabName);
+}
+
+function updateFormActionsWithTab(tabName) {
+    const currentParams = new URLSearchParams(window.location.search);
+    currentParams.set('active_tab', tabName);
+    const newQueryString = currentParams.toString();
+
+    const smsReportForm = document.getElementById('sms-report-form');
+    if (smsReportForm) smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
+    
+    const settingsForm = document.getElementById('settings-form');
+    if (settingsForm) settingsForm.action = `dashboard_panel.php?${newQueryString}`;
+}
+
+function toggleEmailField(show, type) {
+    let containerId, formId;
+    if (type === 'pdf') {
+        containerId = 'pdfEmailContainer';
+        formId = 'pdfReportForm';
+    } else {
+        containerId = 'csvEmailContainer';
+        formId = 'csvReportForm';
+    }
+    const container = document.getElementById(containerId);
+    const emailInput = container ? container.querySelector('input') : null;
+    const form = document.getElementById(formId);
+    
+    if (container && emailInput && form) {
+        if (show) {
+            container.classList.remove('hidden');
+            emailInput.required = true;
+            form.removeAttribute('target');
+        } else {
+            container.classList.add('hidden');
+            emailInput.required = false;
+            form.setAttribute('target', '_blank');
+        }
+    }
+}
+
+function toggleSortDropdown(button) {
+    const dropdown = button.nextElementSibling;
+    if (!dropdown) return;
+
+    const isHidden = dropdown.classList.contains('hidden');
+    
+    document.querySelectorAll('.sort-dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+    });
+
+    if (isHidden) {
+        dropdown.classList.remove('hidden');
+    } else {
+        dropdown.classList.add('hidden');
+    }
+    
+    if (window.event) {
+        window.event.stopPropagation();
+    }
+}
+
+// Initialization Logic
 document.addEventListener('DOMContentLoaded', () => {
 
     // 1. Top Products Bar Chart
@@ -24,6 +156,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // --- Animation Configuration ---
+                    animation: {
+                        delay: (context) => {
+                            let delay = 0;
+                            // Apply delay only to data points
+                            if (context.type === 'data' && context.mode === 'default' && !context.dropped) {
+                                delay = context.dataIndex * 100; // Faster delay per bar
+                            }
+                            return delay;
+                        }
+                    },
+                    // ---------------------------------------
                     plugins: {
                         legend: { display: false }
                     },
@@ -90,6 +234,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // --- UPDATED: Faster Wave Animation for Line Chart ---
+                    animation: {
+                        x: {
+                            type: 'number',
+                            easing: 'linear',
+                            duration: 300, // Faster duration
+                            from: NaN, // the point is at the edge
+                            delay: function(ctx) {
+                                if (ctx.type !== 'data' || ctx.xStarted) {
+                                    return 0;
+                                }
+                                ctx.xStarted = true;
+                                return ctx.index * 30; // Faster delay: 30ms per point
+                            }
+                        },
+                        y: {
+                            type: 'number',
+                            easing: 'linear',
+                            duration: 300, // Faster duration
+                            from: function(ctx) {
+                                return ctx.index === 0 ? ctx.chart.scales.y.getPixelForValue(0) : ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1].getProps(['y'], true).y;
+                            },
+                            delay: function(ctx) {
+                                if (ctx.type !== 'data' || ctx.yStarted) {
+                                    return 0;
+                                }
+                                ctx.yStarted = true;
+                                return ctx.index * 30; // Faster delay: 30ms per point
+                            }
+                        }
+                    },
+                    // ---------------------------------------
                     plugins: {
                         legend: { display: true, position: 'top' },
                         tooltip: {
@@ -164,6 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (sortText) sortText.textContent = trigger.textContent;
                         sortTriggers.forEach(t => t.classList.remove('active'));
                         trigger.classList.add('active');
+                        
+                        // Close dropdown after selection
+                        const dropdownMenu = trigger.closest('.sort-dropdown-menu');
+                        if (dropdownMenu) {
+                            dropdownMenu.classList.add('hidden');
+                        }
                     });
                 });
 
@@ -177,40 +359,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     enableModalSorting('stockListModal');
     enableModalSorting('ingredientStockModal');
+    enableModalSorting('recallModal');
     
-    // 4. Tab State Handling
-    const allTabButtons = document.querySelectorAll('#dashboardTabs .nav-link');
-    const activeTabInput = document.getElementById('active_tab_input');
-    const smsReportForm = document.getElementById('sms-report-form');
-    const settingsForm = document.getElementById('settings-form');
-
-    allTabButtons.forEach(tabButton => {
-        tabButton.addEventListener('click', function(event) {
-            const paneId = event.target.dataset.bsTarget;
-            let activeTabValue = (paneId === '#inventory-pane') ? 'inventory' : 'sales';
+    // 4. Low Stock Filter
+    const filterCheckbox = document.getElementById('filterLowStock');
+    if (filterCheckbox) {
+        filterCheckbox.addEventListener('change', function() {
+            const showLowOnly = this.checked;
+            const rows = document.querySelectorAll('#ingredientStockModal tbody tr');
             
-            const url = new URL(window.location);
-            url.searchParams.set('active_tab', activeTabValue);
-            window.history.replaceState({}, '', url);
-
-            if (activeTabInput) activeTabInput.value = activeTabValue;
-
-            const currentParams = new URLSearchParams(window.location.search);
-            currentParams.set('active_tab', activeTabValue);
-            const newQueryString = currentParams.toString();
-
-            if (smsReportForm) smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
-            if (settingsForm) settingsForm.action = `dashboard_panel.php?${newQueryString}`;
+            rows.forEach(row => {
+                if (showLowOnly) {
+                    const isLow = row.getAttribute('data-is-low') === '1';
+                    if (!isLow) {
+                        row.classList.add('hidden');
+                    } else {
+                        row.classList.remove('hidden');
+                    }
+                } else {
+                     row.classList.remove('hidden');
+                }
+            });
         });
-    });
-
-    if (activeTabInput && activeTabInput.value) {
-        const activeTabValue = activeTabInput.value;
-        const currentParams = new URLSearchParams(window.location.search);
-        currentParams.set('active_tab', activeTabValue);
-        const newQueryString = currentParams.toString();
-        
-        if (smsReportForm) smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
-        if (settingsForm) settingsForm.action = `dashboard_panel.php?${newQueryString}`;
     }
+
+    // 5. Global Listener to close dropdowns
+    window.addEventListener('click', function(e) {
+        if (!e.target.closest('.sort-dropdown-container')) {
+            document.querySelectorAll('.sort-dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+    });
 });

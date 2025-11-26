@@ -123,110 +123,113 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderCart() {
-        orderItemsContainer.innerHTML = '';
-        let subTotal = 0;
-        let finalTotal = 0;
-        let discountAmount = 0;
-
-        if (cart.length === 0) {
-            orderItemsContainer.innerHTML = `
-                <div class="h-full flex flex-col items-center justify-center text-gray-400 opacity-60 py-10">
-                    <i class='bx bx-basket text-6xl mb-2'></i>
-                    <p>Select products to begin</p>
-                </div>`;
-            totalPriceEl.textContent = 'P0.00';
-            payButton.disabled = true;
-            payButton.classList.add('opacity-50', 'cursor-not-allowed');
-            
-            // Reset Mobile UI if it exists
-            const mobileTotal = document.getElementById('mobile-cart-total');
-            const mobileCount = document.getElementById('mobile-cart-count');
-            const mobileBtn = document.getElementById('pay-button-mobile');
-            
-            if(mobileTotal) mobileTotal.textContent = 'P0.00';
-            if(mobileCount) mobileCount.textContent = '0 Items';
-            if(mobileBtn) mobileBtn.disabled = true;
-            
-        } else {
-            cart.forEach(item => {
-                const itemTotal = item.price * item.quantity;
-                subTotal += itemTotal;
-                
-                const itemEl = document.createElement('div');
-                // Tailwind styling for Cart Item container
-                itemEl.className = 'flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow mb-2';
-                
-                itemEl.innerHTML = `
-                <div class="flex flex-col overflow-hidden mr-3">
-                    <span class="font-semibold text-gray-800 truncate">${item.name}</span>
-                    <div class="text-xs text-gray-500 mt-1">
-                        <span class="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.quantity}</span> x P${item.price.toFixed(2)}
-                    </div>
-                    <div class="text-breadly-btn font-bold text-sm mt-0.5">P${itemTotal.toFixed(2)}</div>
+    // Helper to generate HTML string for a single item
+    function generateCartItemHTML(item) {
+        const itemTotal = item.price * item.quantity;
+        return `
+            <div class="flex flex-col overflow-hidden mr-3">
+                <span class="font-semibold text-gray-800 truncate">${item.name}</span>
+                <div class="text-xs text-gray-500 mt-1 item-qty-text">
+                    <span class="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.quantity}</span> x P${item.price.toFixed(2)}
                 </div>
+                <div class="text-breadly-btn font-bold text-sm mt-0.5 item-total-price">P${itemTotal.toFixed(2)}</div>
+            </div>
+            
+            <div class="flex items-center gap-1 flex-shrink-0">
+                <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all active:scale-95 btn-dec" data-id="${item.id}">
+                    <i class='bx bx-minus'></i>
+                </button>
                 
-                <div class="flex items-center gap-1 flex-shrink-0">
-                    <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all active:scale-95 btn-dec" data-id="${item.id}">
-                        <i class='bx bx-minus'></i>
-                    </button>
-                    
-                    <input type="number" class="w-10 text-center text-sm font-semibold bg-transparent outline-none cart-quantity-input appearance-none m-0" 
-                           value="${item.quantity}" data-id="${item.id}" min="0" max="${item.maxStock}">
-                    
-                    <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all active:scale-95 btn-inc" data-id="${item.id}">
-                        <i class='bx bx-plus'></i>
-                    </button>
-                    
-                    <div class="w-px h-6 bg-gray-200 mx-1"></div>
-                    
-                    <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 hover:border-red-200 transition-all active:scale-95 btn-remove" data-id="${item.id}">
-                        <i class='bx bx-trash'></i>
-                    </button>
-                </div>
-            `;
+                <input type="number" class="w-10 text-center text-sm font-semibold bg-transparent outline-none cart-quantity-input appearance-none m-0" 
+                       value="${item.quantity}" data-id="${item.id}" min="0" max="${item.maxStock}">
                 
-                orderItemsContainer.appendChild(itemEl);
-            });
+                <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all active:scale-95 btn-inc" data-id="${item.id}">
+                    <i class='bx bx-plus'></i>
+                </button>
+                
+                <div class="w-px h-6 bg-gray-200 mx-1"></div>
+                
+                <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 hover:border-red-200 transition-all active:scale-95 btn-remove" data-id="${item.id}">
+                    <i class='bx bx-trash'></i>
+                </button>
+            </div>
+        `;
+    }
 
-            // Mobile Modal is handled by the Observer in script_pos_mobile.js
-            
-            // Attach listeners to desktop buttons
-            attachCartListeners(orderItemsContainer);
-
-            // --- Calculate discount ---
-            discountAmount = subTotal * (discountPercent / 100);
-            finalTotal = subTotal - discountAmount;
-            
-            payButton.disabled = false;
-            payButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            
-            // Update Mobile UI
-            const mobileTotal = document.getElementById('mobile-cart-total');
-            const mobileCount = document.getElementById('mobile-cart-count');
-            const mobileBtn = document.getElementById('pay-button-mobile');
-            const mobileSub = document.getElementById('subtotal-price-mobile');
-            const mobileDisc = document.getElementById('discount-amount-mobile');
-            const mobileTotalFull = document.getElementById('total-price-mobile');
-
-            if(mobileTotal) mobileTotal.textContent = `P${finalTotal.toFixed(2)}`;
-            if(mobileCount) mobileCount.textContent = `${cart.length} Item${cart.length !== 1 ? 's' : ''}`;
-            if(mobileBtn) {
-                mobileBtn.disabled = false;
-                mobileBtn.textContent = `Pay P${finalTotal.toFixed(2)}`;
-            }
-            if(mobileSub) {
-                mobileSub.textContent = `P${subTotal.toFixed(2)}`;
-                document.getElementById('subtotal-line-mobile').style.display = 'flex';
-            }
-            if(mobileDisc) {
-                 mobileDisc.textContent = `-P${discountAmount.toFixed(2)}`;
-                 document.getElementById('discount-line-mobile').style.display = 'flex';
-            }
-            if(mobileTotalFull) mobileTotalFull.textContent = `P${finalTotal.toFixed(2)}`;
-        }
+    // Helper to attach event listeners to a newly created node
+    function attachListenersToNode(node) {
+        const id = parseInt(node.dataset.id);
+        node.querySelector('.btn-dec').addEventListener('click', () => window.updateQuantity(id, -1));
+        node.querySelector('.btn-inc').addEventListener('click', () => window.updateQuantity(id, 1));
+        node.querySelector('.btn-remove').addEventListener('click', () => window.setQuantity(id, 0));
         
-        // Update Desktop Summary
+        const input = node.querySelector('.cart-quantity-input');
+        input.addEventListener('change', (e) => window.setQuantity(id, parseInt(e.target.value, 10)));
+        input.addEventListener('click', (e) => e.target.select());
+    }
+
+    // --- MAIN RENDER FUNCTION (Replaces Full Re-render with Sync) ---
+    function renderCart() {
+        // 1. Calculate Totals
+        let subTotal = 0;
+        cart.forEach(item => { subTotal += item.price * item.quantity; });
+        let discountAmount = subTotal * (discountPercent / 100);
+        let finalTotal = subTotal - discountAmount;
+
+        // 2. Sync DOM Items
+        const existingNodes = Array.from(orderItemsContainer.querySelectorAll('.cart-item-row'));
+        const cartIds = cart.map(i => i.id);
+
+        // Remove items not in cart (Slide Out)
+        existingNodes.forEach(node => {
+            const id = parseInt(node.dataset.id);
+            if (!cartIds.includes(id)) {
+                if (!node.classList.contains('cart-item-exit')) { 
+                    node.classList.add('cart-item-exit');
+                    node.addEventListener('animationend', () => {
+                        node.remove();
+                        checkEmptyState();
+                    });
+                    // Fallback timeout
+                    setTimeout(() => {
+                        if(node.parentNode) {
+                            node.remove();
+                            checkEmptyState();
+                        }
+                    }, 450); 
+                }
+            }
+        });
+
+        // Add or Update items (Slide In)
+        cart.forEach(item => {
+            let node = orderItemsContainer.querySelector(`.cart-item-row[data-id="${item.id}"]`);
+            
+            if (node) {
+                // Update existing
+                const qtyInput = node.querySelector('.cart-quantity-input');
+                if (qtyInput && qtyInput.value != item.quantity) qtyInput.value = item.quantity;
+                
+                const priceDiv = node.querySelector('.item-total-price');
+                if (priceDiv) priceDiv.textContent = `P${(item.price * item.quantity).toFixed(2)}`;
+                
+                const qtyText = node.querySelector('.item-qty-text');
+                if (qtyText) qtyText.innerHTML = `<span class="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.quantity}</span> x P${item.price.toFixed(2)}`;
+            } else {
+                // Create New
+                const emptyState = orderItemsContainer.querySelector('.empty-cart-message');
+                if (emptyState) emptyState.remove();
+
+                const newItem = document.createElement('div');
+                newItem.className = 'cart-item-row flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow mb-2 cart-item-enter';
+                newItem.dataset.id = item.id;
+                newItem.innerHTML = generateCartItemHTML(item);
+                orderItemsContainer.appendChild(newItem);
+                attachListenersToNode(newItem);
+            }
+        });
+
+        // 3. Update Desktop Totals
         if (subtotalLine) subtotalLine.classList.remove('hidden');
         if (subtotalLine) subtotalLine.style.display = 'flex';
         
@@ -238,28 +241,71 @@ document.addEventListener('DOMContentLoaded', () => {
         if (discountAmountEl) discountAmountEl.textContent = `-P${discountAmount.toFixed(2)}`;
         
         if (totalPriceEl) totalPriceEl.textContent = `P${finalTotal.toFixed(2)}`;
+
+        // 4. Enable/Disable Pay Button
+        if (cart.length === 0) {
+            payButton.disabled = true;
+            payButton.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            payButton.disabled = false;
+            payButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        // 5. Update Mobile UI
+        updateMobileUI(subTotal, finalTotal, discountAmount);
+        checkEmptyState();
     }
 
-    function attachCartListeners(container) {
-        container.querySelectorAll('.btn-dec').forEach(btn => {
-            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), -1));
-        });
-        container.querySelectorAll('.btn-inc').forEach(btn => {
-            btn.addEventListener('click', () => window.updateQuantity(parseInt(btn.dataset.id), 1));
-        });
-        container.querySelectorAll('.btn-remove').forEach(btn => {
-            btn.addEventListener('click', () => {
-                window.setQuantity(parseInt(btn.dataset.id), 0);
-            });
-        });
-        container.querySelectorAll('.cart-quantity-input').forEach(input => {
-            input.addEventListener('change', (e) => {
-                const newQty = parseInt(e.target.value, 10);
-                const productId = parseInt(e.target.dataset.id, 10);
-                window.setQuantity(productId, newQty);
-            });
-            input.addEventListener('click', (e) => e.target.select()); // Auto-select text on click
-        });
+    function checkEmptyState() {
+        if (cart.length === 0) {
+             // Only append if no rows exist (to handle animation timing)
+             const hasRows = orderItemsContainer.querySelectorAll('.cart-item-row:not(.cart-item-exit)').length > 0;
+             const hasExitRows = orderItemsContainer.querySelectorAll('.cart-item-exit').length > 0;
+             
+             if (!hasRows && !hasExitRows && !orderItemsContainer.querySelector('.empty-cart-message')) {
+                 orderItemsContainer.innerHTML = `
+                    <div class="empty-cart-message h-full flex flex-col items-center justify-center text-gray-400 opacity-60 py-10">
+                        <i class='bx bx-basket text-6xl mb-2'></i>
+                        <p>Select products to begin</p>
+                    </div>`;
+             }
+        }
+    }
+
+    function updateMobileUI(subTotal, finalTotal, discountAmount) {
+        const mobileTotal = document.getElementById('mobile-cart-total');
+        const mobileCount = document.getElementById('mobile-cart-count');
+        const mobileBtn = document.getElementById('pay-button-mobile');
+        const mobileSub = document.getElementById('subtotal-price-mobile');
+        const mobileDisc = document.getElementById('discount-amount-mobile');
+        const mobileTotalFull = document.getElementById('total-price-mobile');
+
+        if(mobileTotal) mobileTotal.textContent = `P${finalTotal.toFixed(2)}`;
+        if(mobileCount) mobileCount.textContent = `${cart.length} Item${cart.length !== 1 ? 's' : ''}`;
+        
+        if(mobileBtn) {
+            if (cart.length === 0) {
+                mobileBtn.disabled = true;
+                mobileBtn.textContent = 'Complete Sale';
+            } else {
+                mobileBtn.disabled = false;
+                mobileBtn.textContent = `Pay P${finalTotal.toFixed(2)}`;
+            }
+        }
+        
+        if(mobileSub) {
+            mobileSub.textContent = `P${subTotal.toFixed(2)}`;
+            const row = document.getElementById('subtotal-line-mobile');
+            if(row) row.style.display = cart.length ? 'flex' : 'none';
+        }
+        
+        if(mobileDisc) {
+             mobileDisc.textContent = `-P${discountAmount.toFixed(2)}`;
+             const row = document.getElementById('discount-line-mobile');
+             if(row) row.style.display = cart.length ? 'flex' : 'none';
+        }
+        
+        if(mobileTotalFull) mobileTotalFull.textContent = `P${finalTotal.toFixed(2)}`;
     }
 
     // Handles the 'Complete Sale' button click.

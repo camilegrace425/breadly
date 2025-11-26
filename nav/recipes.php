@@ -24,7 +24,7 @@ if (isset($_SESSION['message'])) {
     unset($_SESSION['message_type']);
 }
 
-// Handle Form Actions
+// Handle Form Actions (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $product_id_redirect = $_POST['product_id'] ?? $_GET['product_id'] ?? null;
@@ -65,8 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['message_type'] = 'danger';
     }
     
-    // Handle AJAX requests
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+    // Handle AJAX POST requests
+    if (!empty($_POST['ajax_request']) && $_POST['ajax_request'] === 'true') {
         header('Content-Type: application/json');
         echo json_encode(['status' => 'success', 'message' => $_SESSION['message']]);
         unset($_SESSION['message']);
@@ -82,7 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Data Fetching
+// --- DATA FETCHING & VIEW PREPARATION ---
+
 $selected_product_id = $_GET['product_id'] ?? null;
 $current_recipe_items = [];
 $current_batch_size = 0;
@@ -103,6 +104,130 @@ if ($selected_product_id) {
 }
 
 $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
+
+// --- GENERATE RIGHT COLUMN HTML (Using Output Buffering) ---
+ob_start();
+?>
+    <?php if ($selected_product_id): ?>
+        
+        <div class="bg-white rounded-xl shadow-sm border border-orange-100 p-6 mb-6 animate-slide-in delay-100">
+            <h5 class="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">Batch Size Configuration</h5>
+            <form onsubmit="handleUpdateBatch(event)" class="flex flex-col md:flex-row gap-4 items-end">
+                <input type="hidden" name="action" value="update_batch_size">
+                <input type="hidden" name="product_id" value="<?php echo $selected_product_id; ?>">
+                <input type="hidden" name="ajax_request" value="true">
+                
+                <div class="flex-1 w-full">
+                    <label for="batch_size" class="block text-sm font-medium text-gray-700 mb-1">Quantity per Recipe (pcs)</label>
+                    <input type="number" step="1" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none" id="batch_size" name="batch_size" required min="1" value="<?php echo htmlspecialchars($current_batch_size); ?>">
+                    <p class="text-xs text-gray-500 mt-1">Used to calculate ingredient usage during production.</p>
+                </div>
+                <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+                    Update
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden mb-6 animate-slide-in delay-200">
+            <div class="p-4 border-b border-orange-100 bg-gray-50 flex justify-between items-center">
+                <h5 class="font-bold text-gray-800">Recipe for: <span class="text-breadly-btn"><?php echo htmlspecialchars($selected_product_name); ?></span></h5>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-xs uppercase text-gray-500 font-semibold">
+                        <tr>
+                            <th class="px-6 py-3">Ingredient</th>
+                            <th class="px-6 py-3">Quantity Needed</th>
+                            <th class="px-6 py-3">Unit</th>
+                            <th class="px-6 py-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <?php if (empty($current_recipe_items)): ?>
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                                    <i class='bx bxs-book-content text-4xl mb-2'></i>
+                                    <p>No ingredients in this recipe yet.</p>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($current_recipe_items as $item): ?>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($item['name']); ?></td>
+                                <td class="px-6 py-3 font-bold text-blue-600"><?php echo htmlspecialchars($item['qty_needed']); ?></td>
+                                <td class="px-6 py-3 text-gray-600"><?php echo htmlspecialchars($item['unit']); ?></td>
+                                <td class="px-6 py-3 text-right">
+                                    <button class="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium flex items-center gap-1 ml-auto"
+                                            onclick="openDeleteModal('<?php echo $item['recipe_id']; ?>', '<?php echo htmlspecialchars($item['name']); ?>')">
+                                        <i class='bx bx-trash'></i> Remove
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-orange-100 p-6 animate-slide-in delay-300">
+            <h5 class="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">Add Ingredient to Recipe</h5>
+            <form onsubmit="handleAddIngredient(event)">
+                <input type="hidden" name="action" value="add_recipe_item">
+                <input type="hidden" name="product_id" value="<?php echo $selected_product_id; ?>">
+                <input type="hidden" name="ajax_request" value="true">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ingredient</label>
+                        <select name="ingredient_id" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none">
+                            <option value="" disabled selected>-- Select --</option>
+                            <?php foreach ($all_ingredients as $ing): ?>
+                                <option value="<?php echo $ing['ingredient_id']; ?>">
+                                    <?php echo htmlspecialchars($ing['name']) . ' (' . htmlspecialchars($ing['unit']) . ')'; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity Needed</label>
+                        <input type="number" step="0.01" name="qty_needed" required min="0.01" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                        <select name="unit" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none">
+                            <option value="" selected disabled>-- Select --</option>
+                            <?php foreach ($unit_options as $unit): ?>
+                                <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="px-6 py-2.5 bg-breadly-btn text-white font-medium rounded-lg hover:bg-breadly-btn-hover transition-colors shadow-sm flex items-center gap-2">
+                        <i class='bx bx-plus-circle'></i> Add to Recipe
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    <?php else: ?>
+        <div class="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl p-10 bg-gray-50/50 animate-slide-in delay-100">
+            <i class='bx bx-left-arrow-circle text-6xl mb-4 opacity-50'></i>
+            <h4 class="text-xl font-bold text-gray-600">Select a Product</h4>
+            <p class="text-sm mt-2">Choose a product from the list on the left to manage its recipe.</p>
+        </div>
+    <?php endif; ?>
+<?php
+$right_column_content = ob_get_clean();
+
+// --- AJAX RESPONSE CHECK ---
+if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
+    echo $right_column_content;
+    exit();
+}
+
+// --- FULL PAGE RENDER ---
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -111,6 +236,9 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recipe Management</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
+    
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -242,7 +370,7 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
                 
                 <div class="lg:col-span-4 xl:col-span-3 flex flex-col h-full">
-                    <div class="bg-white rounded-xl shadow-sm border border-orange-100 flex flex-col h-full overflow-hidden">
+                    <div class="bg-white rounded-xl shadow-sm border border-orange-100 flex flex-col h-full overflow-hidden animate-slide-in delay-100">
                         <div class="p-4 border-b border-orange-100">
                             <h4 class="font-bold text-gray-800 mb-3">Select a Product</h4>
                             <div class="relative">
@@ -255,12 +383,13 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                                 <?php foreach ($products as $product): ?>
                                     <?php $is_active = ($selected_product_id == $product['product_id']); ?>
                                     <div class="col-product" data-product-name="<?= htmlspecialchars(strtolower($product['name'])) ?>">
-                                        <a href="recipes.php?product_id=<?php echo $product['product_id']; ?>" 
-                                           class="product-card block p-3 rounded-lg border transition-all duration-200 hover:shadow-md flex flex-col h-full <?php echo $is_active ? 'border-breadly-btn bg-orange-50 ring-1 ring-breadly-btn' : 'border-gray-100 bg-white hover:border-orange-200'; ?>"
-                                           data-product-name="<?php echo htmlspecialchars($product['name']); ?>">
+                                        <button onclick="loadRecipeView('<?php echo $product['product_id']; ?>', this)" 
+                                           class="product-card block w-full text-left p-3 rounded-lg border transition-all duration-200 hover:shadow-md flex flex-col h-full <?php echo $is_active ? 'border-breadly-btn bg-orange-50 ring-1 ring-breadly-btn' : 'border-gray-100 bg-white hover:border-orange-200'; ?>"
+                                           data-product-name="<?php echo htmlspecialchars($product['name']); ?>"
+                                           data-id="<?php echo $product['product_id']; ?>">
                                              <div class="font-semibold text-sm text-gray-800 mb-1 line-clamp-2"><?= htmlspecialchars($product['name']) ?></div>
                                              <div class="mt-auto text-xs text-gray-500 bg-white/50 rounded px-1 py-0.5 w-fit border border-gray-100">Batch: <?= htmlspecialchars($product['batch_size'] ?? '0') ?> pcs</div>
-                                        </a>
+                                        </button>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -279,131 +408,24 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
                     </div>
                 </div>
 
-                <div class="lg:col-span-8 xl:col-span-9 h-full overflow-y-auto recipe-content-col">
-                    <?php if ($selected_product_id): ?>
-                        
-                        <div class="bg-white rounded-xl shadow-sm border border-orange-100 p-6 mb-6">
-                            <h5 class="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">Batch Size Configuration</h5>
-                            <form action="recipes.php?product_id=<?php echo $selected_product_id; ?>" method="POST" class="flex flex-col md:flex-row gap-4 items-end">
-                                <input type="hidden" name="action" value="update_batch_size">
-                                <input type="hidden" name="product_id" value="<?php echo $selected_product_id; ?>">
-                                
-                                <div class="flex-1 w-full">
-                                    <label for="batch_size" class="block text-sm font-medium text-gray-700 mb-1">Quantity per Recipe (pcs)</label>
-                                    <input type="number" step="1" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none" id="batch_size" name="batch_size" required min="1" value="<?php echo htmlspecialchars($current_batch_size); ?>">
-                                    <p class="text-xs text-gray-500 mt-1">Used to calculate ingredient usage during production.</p>
-                                </div>
-                                <button type="submit" class="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
-                                    Update
-                                </button>
-                            </form>
-                        </div>
-
-                        <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden mb-6">
-                            <div class="p-4 border-b border-orange-100 bg-gray-50 flex justify-between items-center">
-                                <h5 class="font-bold text-gray-800">Recipe for: <span class="text-breadly-btn"><?php echo htmlspecialchars($selected_product_name); ?></span></h5>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left border-collapse">
-                                    <thead class="bg-gray-100 text-xs uppercase text-gray-500 font-semibold">
-                                        <tr>
-                                            <th class="px-6 py-3">Ingredient</th>
-                                            <th class="px-6 py-3">Quantity Needed</th>
-                                            <th class="px-6 py-3">Unit</th>
-                                            <th class="px-6 py-3 text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        <?php if (empty($current_recipe_items)): ?>
-                                            <tr>
-                                                <td colspan="4" class="px-6 py-8 text-center text-gray-400">
-                                                    <i class='bx bxs-book-content text-4xl mb-2'></i>
-                                                    <p>No ingredients in this recipe yet.</p>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($current_recipe_items as $item): ?>
-                                            <tr class="hover:bg-gray-50 transition-colors">
-                                                <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($item['name']); ?></td>
-                                                <td class="px-6 py-3 font-bold text-blue-600"><?php echo htmlspecialchars($item['qty_needed']); ?></td>
-                                                <td class="px-6 py-3 text-gray-600"><?php echo htmlspecialchars($item['unit']); ?></td>
-                                                <td class="px-6 py-3 text-right">
-                                                    <button class="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium flex items-center gap-1 ml-auto"
-                                                            onclick="openDeleteModal('<?php echo $item['recipe_id']; ?>', '<?php echo htmlspecialchars($item['name']); ?>')">
-                                                        <i class='bx bx-trash'></i> Remove
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div class="bg-white rounded-xl shadow-sm border border-orange-100 p-6">
-                            <h5 class="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">Add Ingredient to Recipe</h5>
-                            <form action="recipes.php?product_id=<?php echo $selected_product_id; ?>" method="POST">
-                                <input type="hidden" name="action" value="add_recipe_item">
-                                <input type="hidden" name="product_id" value="<?php echo $selected_product_id; ?>">
-                                
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Ingredient</label>
-                                        <select name="ingredient_id" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none">
-                                            <option value="" disabled selected>-- Select --</option>
-                                            <?php foreach ($all_ingredients as $ing): ?>
-                                                <option value="<?php echo $ing['ingredient_id']; ?>">
-                                                    <?php echo htmlspecialchars($ing['name']) . ' (' . htmlspecialchars($ing['unit']) . ')'; ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity Needed</label>
-                                        <input type="number" step="0.01" name="qty_needed" required min="0.01" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                                        <select name="unit" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-breadly-btn outline-none">
-                                            <option value="" selected disabled>-- Select --</option>
-                                            <?php foreach ($unit_options as $unit): ?>
-                                                <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="flex justify-end">
-                                    <button type="submit" class="px-6 py-2.5 bg-breadly-btn text-white font-medium rounded-lg hover:bg-breadly-btn-hover transition-colors shadow-sm flex items-center gap-2">
-                                        <i class='bx bx-plus-circle'></i> Add to Recipe
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                    <?php else: ?>
-                        <div class="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl p-10 bg-gray-50/50">
-                            <i class='bx bx-left-arrow-circle text-6xl mb-4 opacity-50'></i>
-                            <h4 class="text-xl font-bold text-gray-600">Select a Product</h4>
-                            <p class="text-sm mt-2">Choose a product from the list on the left to manage its recipe.</p>
-                        </div>
-                    <?php endif; ?>
+                <div class="lg:col-span-8 xl:col-span-9 h-full overflow-y-auto recipe-content-col" id="recipe-details-container">
+                    <?php echo $right_column_content; ?>
                 </div>
             </div>
         </div>
     </main>
 
-    <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
-
-    <div id="deleteRecipeItemModal" class="fixed inset-0 z-50 hidden flex items-center justify-center pointer-events-none">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50 transform transition-all scale-100 pointer-events-auto">
+    <div id="deleteRecipeItemModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('deleteRecipeItemModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-10 modal-animate-in">
             <div class="p-4 border-b border-gray-100 bg-red-50">
                 <h5 class="font-bold text-red-800">Remove Ingredient?</h5>
             </div>
-            <form action="recipes.php?product_id=<?php echo $selected_product_id; ?>" method="POST" class="p-6">
+            <form onsubmit="handleDeleteIngredient(event)" class="p-6">
                 <input type="hidden" name="action" value="delete_recipe_item">
                 <input type="hidden" name="recipe_id" id="delete_recipe_id">
                 <input type="hidden" name="product_id" value="<?php echo $selected_product_id; ?>">
+                <input type="hidden" name="ajax_request" value="true">
                 
                 <p class="text-sm text-gray-600 mb-4">Are you sure you want to remove <strong id="delete_ingredient_name" class="text-gray-900"></strong> from this recipe?</p>
                 
@@ -415,8 +437,9 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
         </div>
     </div>
 
-    <div id="recipeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center pointer-events-none">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] m-4 overflow-hidden flex flex-col relative z-50 pointer-events-auto">
+    <div id="recipeModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('recipeModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] m-4 overflow-hidden flex flex-col relative z-10 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800" id="recipeModalLabel">Loading...</h5>
                 <button onclick="closeModal('recipeModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -433,10 +456,8 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <?php $js_version = file_exists("../js/script_recipes.js") ? filemtime("../js/script_recipes.js") : "1"; ?>
-    <script src="../js/script_recipes.js?v=<?php echo $js_version; ?>"></script>
-
     <script>
+        // --- Shared Functions ---
         function toggleSidebar() {
             const sidebar = document.getElementById('mobileSidebar');
             const overlay = document.getElementById('mobileSidebarOverlay');
@@ -451,24 +472,18 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
 
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
-            const backdrop = document.getElementById('modalBackdrop');
             if (modal) {
                 modal.classList.remove('hidden');
-                if(backdrop) backdrop.classList.remove('hidden');
             }
         }
 
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
-            const backdrop = document.getElementById('modalBackdrop');
             if (modal) modal.classList.add('hidden');
-            if(backdrop) backdrop.classList.add('hidden');
         }
         
         function closeAllModals() {
-            document.querySelectorAll('.fixed.z-50').forEach(el => el.classList.add('hidden'));
-            const backdrop = document.getElementById('modalBackdrop');
-            if(backdrop) backdrop.classList.add('hidden');
+            document.querySelectorAll('.fixed.z-50, .fixed.z-[60]').forEach(el => el.classList.add('hidden'));
         }
 
         function openDeleteModal(recipeId, ingredientName) {
@@ -480,10 +495,194 @@ $unit_options = ['kg', 'g', 'L', 'ml', 'pcs', 'pack', 'tray', 'can', 'bottle'];
             
             openModal('deleteRecipeItemModal');
         }
+
+        // --- AJAX Loading Logic ---
+        let currentProductId = "<?php echo $selected_product_id; ?>";
+
+        function loadRecipeView(productId, clickedElement) {
+            currentProductId = productId;
+            const detailsContainer = document.getElementById('recipe-details-container');
+            const productName = clickedElement ? clickedElement.dataset.productName : 'Recipe';
+
+            // UI: Update active class in list
+            document.querySelectorAll('.product-card').forEach(c => {
+                c.classList.remove('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
+                c.classList.add('border-gray-100', 'bg-white', 'hover:border-orange-200');
+            });
+            // Find card even if clickedElement isn't passed (e.g. programmatic reload)
+            const card = clickedElement || document.querySelector(`.product-card[data-id="${productId}"]`);
+            if(card) {
+                card.classList.remove('border-gray-100', 'bg-white', 'hover:border-orange-200');
+                card.classList.add('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
+            }
+
+            // --- MOBILE LOGIC ---
+            if (window.innerWidth < 1024) { // Check for mobile breakpoint
+                const modalLabel = document.getElementById('recipeModalLabel');
+                const modalBody = document.getElementById('recipeModalBody');
+                
+                if(modalLabel) modalLabel.textContent = productName;
+                if(modalBody) {
+                    modalBody.innerHTML = `
+                        <div class="flex justify-center p-10">
+                            <div class="spinner"></div>
+                        </div>
+                    `;
+                }
+                openModal('recipeModal');
+                
+                // Fetch logic for Modal
+                fetch(`recipes.php?product_id=${productId}&ajax_render=true`)
+                    .then(response => response.text())
+                    .then(html => {
+                        if(modalBody) modalBody.innerHTML = html;
+                    })
+                    .catch(err => {
+                        if(modalBody) modalBody.innerHTML = '<p class="text-center text-red-500 p-4">Error loading data.</p>';
+                    });
+                    
+            } else {
+                // --- DESKTOP LOGIC (Existing) ---
+                detailsContainer.innerHTML = `
+                    <div class="h-full flex items-center justify-center text-gray-400 animate-pulse">
+                        <div class="text-center">
+                            <div class="spinner mx-auto mb-4"></div>
+                            <p>Loading Recipe...</p>
+                        </div>
+                    </div>
+                `;
+
+                fetch(`recipes.php?product_id=${productId}&ajax_render=true`)
+                    .then(response => {
+                        if(!response.ok) throw new Error('Network response was not ok');
+                        return response.text();
+                    })
+                    .then(html => {
+                        detailsContainer.innerHTML = html;
+                        const newUrl = `recipes.php?product_id=${productId}`;
+                        window.history.pushState({path: newUrl}, '', newUrl);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        detailsContainer.innerHTML = `
+                            <div class="h-full flex items-center justify-center text-red-500">
+                                <p>Error loading recipe. Please try again.</p>
+                            </div>
+                        `;
+                    });
+            }
+        }
+
+        // --- Form Handling ---
+        function handleAddIngredient(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            fetch('recipes.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' || data.status === 'warning') {
+                    Swal.fire({
+                        icon: data.status,
+                        title: data.status === 'success' ? 'Added' : 'Notice',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    loadRecipeView(currentProductId);
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            })
+            .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
+        }
+
+        function handleUpdateBatch(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            fetch('recipes.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Updated',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    loadRecipeView(currentProductId);
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            })
+            .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
+        }
+
+        function handleDeleteIngredient(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            fetch('recipes.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Removed',
+                        text: data.message,
+                        timer: 1000,
+                        showConfirmButton: false
+                    });
+                    closeModal('deleteRecipeItemModal');
+                    loadRecipeView(currentProductId);
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            })
+            .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
+        }
+
+        // Search logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('recipe-product-search');
+            if(searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const term = e.target.value.toLowerCase();
+                    const items = document.querySelectorAll('.col-product');
+                    let visibleCount = 0;
+                    
+                    items.forEach(item => {
+                        const name = item.dataset.productName;
+                        if(name.includes(term)) {
+                            item.style.display = '';
+                            visibleCount++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                    
+                    const noResults = document.getElementById('recipe-no-results');
+                    if(noResults) {
+                        noResults.classList.toggle('hidden', visibleCount > 0);
+                    }
+                });
+            }
+        });
         
-        window.openModal = openModal;
-        window.closeModal = closeModal;
-        window.openDeleteModal = openDeleteModal;
+        window.addEventListener('popstate', function(event) {
+            location.reload();
+        });
     </script>
 </body>
 </html>

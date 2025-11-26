@@ -11,151 +11,154 @@ $userManager = new UserManager();
 $current_user_id = $_SESSION['user_id'];
 $current_role = $_SESSION["role"];
 
-// Handle Flash Messages
-$flash_message = $_SESSION['flash_message'] ?? '';
-$flash_type = $_SESSION['flash_type'] ?? 'info';
-unset($_SESSION['flash_message']);
-unset($_SESSION['flash_type']);
+// --- AJAX HANDLERS ---
+if (isset($_POST['ajax_action']) || isset($_GET['ajax_action'])) {
+    header('Content-Type: application/json');
+    $action = $_REQUEST['ajax_action'];
 
-$alert_message = '';
-$alert_type = ''; 
-
-if ($flash_message && empty($alert_message)) {
-    $alert_message = $flash_message;
-    $alert_type = $flash_type;
-}
-
-// User Management State
-$is_edit = false;
-$edit_user_id = 0;
-$edit_data = [];
-
-if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) {
-    $is_edit = true;
-    $edit_user_id = intval($_GET['id']);
-    $edit_data = $userManager->getUserById($edit_user_id);
-    if (!$edit_data) {
-        $alert_message = "User not found.";
-        $alert_type = 'danger';
-        $is_edit = false;
-    }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle Settings Update
-    if (isset($_POST['action']) && $_POST['action'] === 'update_settings') {
-        $phone = $_POST['my_phone_number'] ?? '';
-        $daily = isset($_POST['enable_daily_report']) ? 1 : 0;
-        
-        if ($userManager->updateMySettings($current_user_id, $phone, $daily)) {
-            $_SESSION['flash_message'] = 'Settings updated successfully.';
-            $_SESSION['flash_type'] = 'success';
-        } else {
-            $_SESSION['flash_message'] = 'Failed to update settings.';
-            $_SESSION['flash_type'] = 'danger';
+    try {
+        // 1. Fetch Users (Returns HTML for Table Body)
+        if ($action === 'fetch_users') {
+            $users = $userManager->getAllUsers();
+            ob_start();
+            foreach ($users as $user): 
+                $badgeClass = 'bg-gray-100 text-gray-800';
+                if ($user['role'] == 'manager') $badgeClass = 'bg-blue-100 text-blue-800';
+                if ($user['role'] == 'assistant_manager') $badgeClass = 'bg-purple-100 text-purple-800';
+                if ($user['role'] == 'cashier') $badgeClass = 'bg-green-100 text-green-800';
+            ?>
+            <tr class="hover:bg-gray-50 transition-colors animate-slide-in">
+                <td class="px-6 py-3">
+                    <div class="font-semibold text-gray-800">
+                        <?php echo htmlspecialchars($user['username']); ?>
+                        <?php if($user['user_id'] == $_SESSION['user_id']): ?>
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800">YOU</span>
+                        <?php endif; ?>
+                    </div>
+                </td>
+                <td class="px-6 py-3">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $badgeClass; ?>">
+                        <?php echo ucwords(str_replace('_', ' ', $user['role'])); ?>
+                    </span>
+                </td>
+                <td class="px-6 py-3 text-sm text-gray-500 space-y-1">
+                    <?php if(!empty($user['phone_number'])): ?>
+                        <div class="flex items-center gap-1"><i class='bx bx-phone'></i> <?php echo htmlspecialchars($user['phone_number']); ?></div>
+                    <?php endif; ?>
+                    <?php if(!empty($user['email'])): ?>
+                        <div class="flex items-center gap-1"><i class='bx bx-envelope'></i> <?php echo htmlspecialchars($user['email']); ?></div>
+                    <?php endif; ?>
+                </td>
+                <td class="px-6 py-3 text-right">
+                    <?php if($user['user_id'] != $_SESSION['user_id']): ?>
+                        <div class="flex justify-end gap-2">
+                            <button onclick="editUser(<?php echo $user['user_id']; ?>)" class="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors" title="Edit">
+                                <i class='bx bx-edit text-lg'></i>
+                            </button>
+                            <button onclick="deleteUser(<?php echo $user['user_id']; ?>)" class="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors" title="Delete">
+                                <i class='bx bx-trash text-lg'></i>
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <div class="flex justify-end gap-2">
+                            <button onclick="editUser(<?php echo $user['user_id']; ?>)" class="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors" title="Edit">
+                                <i class='bx bx-edit text-lg'></i>
+                            </button>
+                            <button class="p-1.5 text-gray-400 bg-gray-100 rounded cursor-not-allowed" title="Cannot delete self">
+                                <i class='bx bx-trash text-lg'></i>
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endforeach; 
+            $html = ob_get_clean();
+            echo json_encode(['success' => true, 'html' => $html, 'count' => count($users)]);
+            exit();
         }
-        header("Location: account_management.php");
+
+        // 2. Get Single User (Returns JSON)
+        if ($action === 'get_user') {
+            $id = intval($_REQUEST['id']);
+            $data = $userManager->getUserById($id);
+            if ($data) {
+                // Don't send password back
+                unset($data['password_hash']);
+                echo json_encode(['success' => true, 'data' => $data]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'User not found']);
+            }
+            exit();
+        }
+
+        // 3. Save User (Create/Update)
+        if ($action === 'save_user') {
+            $id = intval($_POST['user_id'] ?? 0);
+            $username = trim($_POST['username']);
+            $password = $_POST['password'];
+            $role = $_POST['role'];
+            $phone = trim($_POST['phone']);
+            $email = trim($_POST['email']);
+            if ($email === '') $email = null;
+
+            if (empty($username) || empty($phone)) {
+                echo json_encode(['success' => false, 'message' => 'Username and Phone are required.']);
+                exit();
+            }
+
+            if ($id > 0) {
+                // Update
+                // Check last manager logic
+                if ($id == $current_user_id && $role !== 'manager') {
+                    $all_users = $userManager->getAllUsers();
+                    $manager_count = 0;
+                    foreach ($all_users as $u) if ($u['role'] === 'manager') $manager_count++;
+                    
+                    if ($manager_count <= 1) {
+                        echo json_encode(['success' => false, 'message' => 'Cannot remove the last Manager account.']);
+                        exit();
+                    }
+                }
+                $res = $userManager->updateUser($id, $username, $password, $role, $email, $phone);
+            } else {
+                // Create
+                if (empty($password)) {
+                    echo json_encode(['success' => false, 'message' => 'Password is required for new users.']);
+                    exit();
+                }
+                $res = $userManager->createUser($username, $password, $role, $email, $phone);
+            }
+
+            if ($res === true) {
+                echo json_encode(['success' => true, 'message' => $id > 0 ? 'User updated!' : 'User created!']);
+            } else {
+                echo json_encode(['success' => false, 'message' => $res]);
+            }
+            exit();
+        }
+
+        // 4. Delete User
+        if ($action === 'delete_user') {
+            $id = intval($_POST['id']);
+            if ($id == $current_user_id) {
+                echo json_encode(['success' => false, 'message' => 'Cannot delete yourself.']);
+                exit();
+            }
+            if ($userManager->deleteUser($id)) {
+                echo json_encode(['success' => true, 'message' => 'User deleted.']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Delete failed.']);
+            }
+            exit();
+        }
+
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         exit();
     }
-
-    // Handle User Creation/Update
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $role = $_POST['role'] ?? '';
-    $email = trim($_POST['email'] ?? ''); 
-    $phone = trim($_POST['phone'] ?? ''); 
-    
-    if ($email === '') $email = null;
-
-    if (isset($_POST['action']) && $_POST['action'] === 'create_user') {
-        if (empty($username) || empty($password) || empty($phone)) {
-            $alert_message = "Username, Password, and Phone Number are required.";
-            $alert_type = 'danger';
-        } else {
-            $result = $userManager->createUser($username, $password, $role, $email, $phone);
-            if ($result === true) {
-                $alert_message = "User account created successfully!";
-                $alert_type = 'success';
-            } else {
-                $alert_message = $result;
-                $alert_type = 'danger';
-            }
-        }
-    } elseif (isset($_POST['action']) && $_POST['action'] === 'update_user') {
-        $id_to_update = intval($_POST['user_id']);
-        $proceed_update = true;
-        
-        // Prevent removing the last manager
-        if ($id_to_update == $current_user_id && $role !== 'manager') {
-            $all_users_check = $userManager->getAllUsers();
-            $manager_count = 0;
-            foreach ($all_users_check as $u) {
-                if ($u['role'] === 'manager') {
-                    $manager_count++;
-                }
-            }
-            
-            if ($manager_count <= 1) {
-                $alert_message = "Action Denied: You cannot remove the last Manager account.";
-                $alert_type = 'danger';
-                $proceed_update = false;
-                
-                $is_edit = true;
-                $edit_data = [
-                    'user_id' => $id_to_update, 
-                    'username' => $username, 
-                    'role' => 'manager', 
-                    'email' => $email, 
-                    'phone_number' => $phone
-                ];
-            }
-        }
-
-        if ($proceed_update) {
-            if (empty($username) || empty($phone)) {
-                $alert_message = "Username and Phone Number are required.";
-                $alert_type = 'danger';
-            } else {
-                $result = $userManager->updateUser($id_to_update, $username, $password, $role, $email, $phone);
-                if ($result === true) {
-                    $_SESSION['flash_message'] = "User account updated successfully!";
-                    $_SESSION['flash_type'] = "success";
-                    header('Location: account_management.php');
-                    exit();
-                } else {
-                    $alert_message = $result;
-                    $alert_type = 'danger';
-                    $is_edit = true;
-                    $edit_data = ['user_id' => $id_to_update, 'username' => $username, 'role' => $role, 'email' => $email, 'phone_number' => $phone];
-                }
-            }
-        }
-    }
 }
 
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
-    $delete_id = intval($_GET['id']);
-    if ($delete_id == $_SESSION['user_id']) {
-        $alert_message = "You cannot delete your own account.";
-        $alert_type = 'danger';
-    } else {
-        if ($userManager->deleteUser($delete_id)) {
-            $_SESSION['flash_message'] = "User deleted successfully.";
-            $_SESSION['flash_type'] = "success";
-            header('Location: account_management.php');
-            exit();
-        } else {
-            $alert_message = "Failed to delete user.";
-            $alert_type = 'danger';
-        }
-    }
-}
-
-if (isset($_GET['msg']) && $_GET['msg'] === 'updated' && empty($alert_message)) {
-    $alert_message = "User account updated successfully!";
-    $alert_type = 'success';
-}
-
+// --- Standard Page Load ---
 $users = $userManager->getAllUsers();
 $userSettings = $userManager->getUserSettings($current_user_id);
 ?>
@@ -167,10 +170,13 @@ $userSettings = $userManager->getUserSettings($current_user_id);
     <title>User Management</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/global.css">
+    <link rel="stylesheet" href="../styles/account_management.css">
 
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -190,12 +196,6 @@ $userSettings = $userManager->getUserSettings($current_user_id);
             }
         }
     </script>
-    <style>
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    </style>
 </head>
 <body class="bg-breadly-bg text-breadly-dark font-sans h-screen flex overflow-hidden selection:bg-orange-200">
 
@@ -265,27 +265,18 @@ $userSettings = $userManager->getUserSettings($current_user_id);
             </div>
         </div>
 
-        <?php if ($alert_message): ?>
-        <div class="px-6">
-            <div class="<?php echo ($alert_type === 'success') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'; ?> border px-4 py-3 rounded-lg flex justify-between items-center mb-4 shadow-sm">
-                <span><?php echo htmlspecialchars($alert_message); ?></span>
-                <button onclick="this.parentElement.remove()" class="text-lg font-bold">&times;</button>
-            </div>
-        </div>
-        <?php endif; ?>
-
         <div class="flex-1 overflow-y-auto p-6 pb-20">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <div class="lg:col-span-2">
+                <div class="lg:col-span-2 animate-slide-in delay-100">
                     <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden h-full flex flex-col">
                         <div class="p-4 border-b border-orange-100 flex justify-between items-center bg-gray-50">
                             <h5 class="font-bold text-gray-800">Existing Accounts</h5>
-                            <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-lg text-xs font-bold"><?php echo count($users); ?> Users</span>
+                            <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-lg text-xs font-bold" id="user-count"><?php echo count($users); ?> Users</span>
                         </div>
                         <div class="flex-1 overflow-y-auto p-0">
                             <table class="w-full text-left border-collapse">
-                                <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                                <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold sticky top-0 z-10">
                                     <tr>
                                         <th class="px-6 py-3">Username</th>
                                         <th class="px-6 py-3">Role</th>
@@ -293,8 +284,13 @@ $userSettings = $userManager->getUserSettings($current_user_id);
                                         <th class="px-6 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    <?php foreach ($users as $user): ?>
+                                <tbody class="divide-y divide-gray-100" id="user-table-body">
+                                    <?php foreach ($users as $user): 
+                                        $badgeClass = 'bg-gray-100 text-gray-800';
+                                        if ($user['role'] == 'manager') $badgeClass = 'bg-blue-100 text-blue-800';
+                                        if ($user['role'] == 'assistant_manager') $badgeClass = 'bg-purple-100 text-purple-800';
+                                        if ($user['role'] == 'cashier') $badgeClass = 'bg-green-100 text-green-800';
+                                    ?>
                                     <tr class="hover:bg-gray-50 transition-colors">
                                         <td class="px-6 py-3">
                                             <div class="font-semibold text-gray-800">
@@ -305,12 +301,6 @@ $userSettings = $userManager->getUserSettings($current_user_id);
                                             </div>
                                         </td>
                                         <td class="px-6 py-3">
-                                            <?php 
-                                                $badgeClass = 'bg-gray-100 text-gray-800';
-                                                if ($user['role'] == 'manager') $badgeClass = 'bg-blue-100 text-blue-800';
-                                                if ($user['role'] == 'assistant_manager') $badgeClass = 'bg-purple-100 text-purple-800';
-                                                if ($user['role'] == 'cashier') $badgeClass = 'bg-green-100 text-green-800';
-                                            ?>
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $badgeClass; ?>">
                                                 <?php echo ucwords(str_replace('_', ' ', $user['role'])); ?>
                                             </span>
@@ -326,18 +316,18 @@ $userSettings = $userManager->getUserSettings($current_user_id);
                                         <td class="px-6 py-3 text-right">
                                             <?php if($user['user_id'] != $_SESSION['user_id']): ?>
                                                 <div class="flex justify-end gap-2">
-                                                    <a href="account_management.php?action=edit&id=<?php echo $user['user_id']; ?>" class="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors" title="Edit">
+                                                    <button onclick="editUser(<?php echo $user['user_id']; ?>)" class="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors" title="Edit">
                                                         <i class='bx bx-edit text-lg'></i>
-                                                    </a>
-                                                    <a href="account_management.php?action=delete&id=<?php echo $user['user_id']; ?>" class="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors" onclick="return confirm('Are you sure you want to delete this user?');" title="Delete">
+                                                    </button>
+                                                    <button onclick="deleteUser(<?php echo $user['user_id']; ?>)" class="p-1.5 text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors" title="Delete">
                                                         <i class='bx bx-trash text-lg'></i>
-                                                    </a>
+                                                    </button>
                                                 </div>
                                             <?php else: ?>
                                                 <div class="flex justify-end gap-2">
-                                                    <a href="account_management.php?action=edit&id=<?php echo $user['user_id']; ?>" class="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors" title="Edit">
+                                                    <button onclick="editUser(<?php echo $user['user_id']; ?>)" class="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors" title="Edit">
                                                         <i class='bx bx-edit text-lg'></i>
-                                                    </a>
+                                                    </button>
                                                     <button class="p-1.5 text-gray-400 bg-gray-100 rounded cursor-not-allowed" title="Cannot delete self">
                                                         <i class='bx bx-trash text-lg'></i>
                                                     </button>
@@ -352,71 +342,60 @@ $userSettings = $userManager->getUserSettings($current_user_id);
                     </div>
                 </div>
 
-                <div class="lg:col-span-1">
+                <div class="lg:col-span-1 animate-slide-in delay-200">
                     <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden sticky top-4">
-                        <div class="p-4 border-b border-orange-100 <?php echo $is_edit ? 'bg-orange-50' : 'bg-blue-50'; ?> flex items-center gap-2">
-                            <i class='bx <?php echo $is_edit ? 'bx-edit text-orange-600' : 'bx-user-plus text-blue-600'; ?> text-xl'></i>
-                            <h5 class="font-bold <?php echo $is_edit ? 'text-orange-800' : 'text-blue-800'; ?>">
-                                <?php echo $is_edit ? 'Edit Account' : 'Create Account'; ?>
-                            </h5>
+                        <div class="p-4 border-b border-orange-100 bg-blue-50 flex items-center gap-2 transition-colors" id="form-header">
+                            <i class='bx bx-user-plus text-blue-600 text-xl' id="form-icon"></i>
+                            <h5 class="font-bold text-blue-800" id="form-title">Create Account</h5>
                         </div>
                         <div class="p-6">
-                            <form action="account_management.php" method="POST" class="space-y-4">
-                                <input type="hidden" name="action" value="<?php echo $is_edit ? 'update_user' : 'create_user'; ?>">
-                                <?php if($is_edit): ?>
-                                    <input type="hidden" name="user_id" value="<?php echo $edit_user_id; ?>">
-                                <?php endif; ?>
+                            <form id="user-form" onsubmit="handleSaveUser(event)" class="space-y-4">
+                                <input type="hidden" name="user_id" id="user_id" value="0">
                                 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Role</label>
-                                    <select name="role" required class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
-                                        <option value="manager" <?php if($is_edit && $edit_data['role'] == 'manager') echo 'selected'; ?>>Manager</option>
-                                        <option value="assistant_manager" <?php if($is_edit && $edit_data['role'] == 'assistant_manager') echo 'selected'; ?>>Assistant Manager</option>
-                                        <option value="cashier" <?php if($is_edit && $edit_data['role'] == 'cashier') echo 'selected'; ?>>Cashier</option>
+                                    <select name="role" id="role" required class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
+                                        <option value="manager">Manager</option>
+                                        <option value="assistant_manager">Assistant Manager</option>
+                                        <option value="cashier">Cashier</option>
                                     </select>
                                 </div>
 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Username</label>
-                                    <input type="text" name="username" 
-                                           value="<?php echo $is_edit ? htmlspecialchars($edit_data['username']) : ''; ?>" 
-                                           placeholder="e.g. juan123" required
+                                    <input type="text" name="username" id="username" placeholder="e.g. juan123" required
                                            class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
                                 </div>
 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                                        Password <?php if($is_edit) echo '<span class="text-red-500 font-normal normal-case text-[10px] ml-1">(Leave blank to keep)</span>'; ?>
+                                        Password <span id="password-hint" class="hidden text-red-500 font-normal normal-case text-[10px] ml-1">(Leave blank to keep)</span>
                                     </label>
-                                    <input type="password" name="password" 
-                                           placeholder="<?php echo $is_edit ? 'New password (optional)' : 'Strong password'; ?>" 
-                                           <?php echo $is_edit ? '' : 'required'; ?>
+                                    <input type="password" name="password" id="password" placeholder="Strong password" required
                                            class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
                                 </div>
 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Phone Number <span class="text-red-500">*</span></label>
-                                    <input type="text" name="phone" 
-                                           value="<?php echo $is_edit ? htmlspecialchars($edit_data['phone_number']) : ''; ?>"
-                                           placeholder="0917..." maxlength="11" required
+                                    <input type="text" name="phone" id="phone" placeholder="0917..." maxlength="11" required
                                            class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
                                 </div>
 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Email Address (Optional)</label>
-                                    <input type="email" name="email" 
-                                           value="<?php echo $is_edit ? htmlspecialchars($edit_data['email']) : ''; ?>"
-                                           placeholder="For recovery"
+                                    <input type="email" name="email" id="email" placeholder="For recovery"
                                            class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
                                 </div>
 
-                                <button type="submit" class="w-full py-2.5 text-white font-medium rounded-lg shadow transition-colors mt-2 <?php echo $is_edit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'; ?>">
-                                    <?php echo $is_edit ? 'Update User' : 'Create User'; ?>
+                                <button type="submit" id="form-btn" class="w-full py-2.5 text-white font-medium rounded-lg shadow transition-colors mt-2 bg-blue-600 hover:bg-blue-700">
+                                    Create User
                                 </button>
                                 
-                                <?php if($is_edit): ?>
-                                    <a href="account_management.php" class="block w-full text-center py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm transition-colors">Cancel</a>
-                                <?php endif; ?>
+                                <div id="cancel-btn-container" class="hidden">
+                                    <button type="button" onclick="resetForm()" class="block w-full text-center py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm transition-colors">
+                                        Cancel
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -427,8 +406,8 @@ $userSettings = $userManager->getUserSettings($current_user_id);
 
     <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
 
-    <div id="settingsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden transform transition-all scale-100 relative z-50">
+    <div id="settingsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-animate-in">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden relative z-50">
             <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                 <h5 class="font-bold text-gray-800 flex items-center gap-2"><i class='bx bx-cog'></i> My Settings</h5>
                 <button onclick="closeModal('settingsModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
@@ -461,7 +440,9 @@ $userSettings = $userManager->getUserSettings($current_user_id);
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        // --- UI Helper Functions ---
         function toggleSidebar() {
             const sidebar = document.getElementById('mobileSidebar');
             const overlay = document.getElementById('mobileSidebarOverlay');
@@ -494,6 +475,137 @@ $userSettings = $userManager->getUserSettings($current_user_id);
             document.querySelectorAll('.fixed.z-50').forEach(el => el.classList.add('hidden'));
             const backdrop = document.getElementById('modalBackdrop');
             if(backdrop) backdrop.classList.add('hidden');
+        }
+
+        // --- AJAX LOGIC ---
+
+        function refreshTable() {
+            fetch('account_management.php?ajax_action=fetch_users')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('user-table-body').innerHTML = data.html;
+                        document.getElementById('user-count').innerText = data.count + ' Users';
+                    }
+                })
+                .catch(err => console.error('Error refreshing table:', err));
+        }
+
+        function editUser(id) {
+            fetch(`account_management.php?ajax_action=get_user&id=${id}`)
+                .then(res => res.json())
+                .then(resp => {
+                    if (resp.success) {
+                        const user = resp.data;
+                        document.getElementById('user_id').value = user.user_id;
+                        document.getElementById('username').value = user.username;
+                        document.getElementById('role').value = user.role;
+                        document.getElementById('phone').value = user.phone_number;
+                        document.getElementById('email').value = user.email || '';
+                        
+                        // Update UI for Edit Mode
+                        document.getElementById('form-title').innerText = 'Edit Account';
+                        document.getElementById('form-btn').innerText = 'Update User';
+                        document.getElementById('form-btn').classList.replace('bg-blue-600', 'bg-orange-500');
+                        document.getElementById('form-btn').classList.replace('hover:bg-blue-700', 'hover:bg-orange-600');
+                        
+                        document.getElementById('form-header').classList.replace('bg-blue-50', 'bg-orange-50');
+                        document.getElementById('form-title').classList.replace('text-blue-800', 'text-orange-800');
+                        document.getElementById('form-icon').classList.replace('text-blue-600', 'text-orange-600');
+                        document.getElementById('form-icon').classList.replace('bx-user-plus', 'bx-edit');
+
+                        document.getElementById('password').required = false;
+                        document.getElementById('password').placeholder = 'New password (optional)';
+                        document.getElementById('password-hint').classList.remove('hidden');
+                        
+                        document.getElementById('cancel-btn-container').classList.remove('hidden');
+                    } else {
+                        Swal.fire('Error', resp.message, 'error');
+                    }
+                })
+                .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
+        }
+
+        function resetForm() {
+            document.getElementById('user-form').reset();
+            document.getElementById('user_id').value = '0';
+            
+            // Reset UI to Create Mode
+            document.getElementById('form-title').innerText = 'Create Account';
+            document.getElementById('form-btn').innerText = 'Create User';
+            document.getElementById('form-btn').classList.replace('bg-orange-500', 'bg-blue-600');
+            document.getElementById('form-btn').classList.replace('hover:bg-orange-600', 'hover:bg-blue-700');
+
+            document.getElementById('form-header').classList.replace('bg-orange-50', 'bg-blue-50');
+            document.getElementById('form-title').classList.replace('text-orange-800', 'text-blue-800');
+            document.getElementById('form-icon').classList.replace('text-orange-600', 'text-blue-600');
+            document.getElementById('form-icon').classList.replace('bx-edit', 'bx-user-plus');
+
+            document.getElementById('password').required = true;
+            document.getElementById('password').placeholder = 'Strong password';
+            document.getElementById('password-hint').classList.add('hidden');
+            
+            document.getElementById('cancel-btn-container').classList.add('hidden');
+        }
+
+        function handleSaveUser(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            formData.append('ajax_action', 'save_user');
+
+            fetch('account_management.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(resp => {
+                if (resp.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: resp.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    resetForm();
+                    refreshTable();
+                } else {
+                    Swal.fire('Error', resp.message, 'error');
+                }
+            })
+            .catch(err => Swal.fire('Error', 'Request failed', 'error'));
+        }
+
+        function deleteUser(id) {
+            Swal.fire({
+                title: 'Delete User?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formData = new FormData();
+                    formData.append('ajax_action', 'delete_user');
+                    formData.append('id', id);
+
+                    fetch('account_management.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(resp => {
+                        if (resp.success) {
+                            Swal.fire('Deleted!', resp.message, 'success');
+                            refreshTable();
+                        } else {
+                            Swal.fire('Error', resp.message, 'error');
+                        }
+                    })
+                    .catch(err => Swal.fire('Error', 'Request failed', 'error'));
+                }
+            });
         }
     </script>
 </body>

@@ -96,11 +96,13 @@ $dailyTrendData = array_values($trendData);
 $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
 
-// --- MODIFIED: Fetch Recall Summary for the date range ---
+// --- Fetch Recall Summary & List for the date range ---
 $recallSummary = $dashboardManager->getRecallSummaryByDateRange($date_start, $date_end);
 $totalRecalledCount = $recallSummary['count'];
 $totalRecalledValue = $recallSummary['value'];
-// --------------------------------------------------------
+
+$recallList = $dashboardManager->getRecallsByDateRange($date_start, $date_end);
+// ---------------------------------------------------------------
 
 $expiringBatches = $dashboardManager->getExpiringBatches(7); 
 $expiringCount = count($expiringBatches);
@@ -133,6 +135,8 @@ $active_nav_link = 'dashboard';
     <title>Manager Dashboard</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
     
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -288,7 +292,7 @@ $active_nav_link = 'dashboard';
             
             <div id="pane-sales" class="<?php echo ($active_tab == 'sales') ? '' : 'hidden'; ?>">
                 
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6 animate-slide-in delay-100">
                     <form method="GET" action="dashboard_panel.php" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end" id="date-filter-form">
                         <input type="hidden" name="active_tab" id="active_tab_input" value="<?php echo htmlspecialchars($active_tab); ?>">
                         
@@ -311,7 +315,7 @@ $active_nav_link = 'dashboard';
 
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                     
-                    <div class="bg-breadly-card-1 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100">
+                    <div class="bg-breadly-card-1 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-200">
                         <div>
                             <h2 class="text-3xl font-bold text-green-700">₱<?php echo number_format($netRevenue, 2); ?></h2>
                             <p class="text-sm text-breadly-dark font-medium mt-1">Net Sales Revenue</p>
@@ -328,7 +332,7 @@ $active_nav_link = 'dashboard';
                         </div>
                     </div>
 
-                    <div class="bg-breadly-card-2 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100">
+                    <div class="bg-breadly-card-2 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-300">
                         <div>
                             <h2 class="text-3xl font-bold text-breadly-dark"><?php echo $dateRangeSummary['totalSales']; ?></h2>
                             <p class="text-sm text-breadly-dark font-medium mt-1">Total Products Sold</p>
@@ -336,7 +340,7 @@ $active_nav_link = 'dashboard';
                         <p class="text-xs text-gray-500 mt-2"><?php echo $date_range_text; ?></p>
                     </div>
 
-                    <div class="bg-breadly-card-4 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100">
+                    <div class="bg-breadly-card-4 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-400">
                         <div>
                             <h2 class="text-3xl font-bold <?php echo ($totalReturnsCount > 0) ? 'text-red-600' : 'text-green-700'; ?>">
                                 <?php echo $totalReturnsCount; ?>
@@ -346,7 +350,7 @@ $active_nav_link = 'dashboard';
                         <p class="text-xs text-gray-600 mt-2">Items Returned</p>
                     </div>
 
-                    <div class="bg-breadly-card-2 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100">
+                    <div class="bg-breadly-card-2 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-500">
                         <div>
                             <h2 class="text-3xl font-bold <?php echo ($totalReturnsValue > 0) ? 'text-red-600' : 'text-green-700'; ?>">
                                 ₱<?php echo number_format($totalReturnsValue, 2); ?>
@@ -358,7 +362,7 @@ $active_nav_link = 'dashboard';
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-orange-100">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-orange-100 animate-slide-in delay-600">
                         <h3 class="font-bold text-gray-800 mb-4">Top Selling Products</h3>
                         <div class="chart-container">
                             <canvas id="topProductsChart" 
@@ -368,7 +372,7 @@ $active_nav_link = 'dashboard';
                         </div>
                     </div>
 
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-orange-100">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-orange-100 animate-slide-in delay-700">
                         <h3 class="font-bold text-gray-800 mb-4">Revenue vs Returns Trend</h3>
                         <div class="chart-container">
                             <canvas id="dailyTrendChart" 
@@ -381,14 +385,14 @@ $active_nav_link = 'dashboard';
 
             <div id="pane-inventory" class="<?php echo ($active_tab == 'inventory') ? '' : 'hidden'; ?>">
                 
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6 animate-slide-in delay-100">
                     <h2 class="text-lg font-bold text-breadly-dark flex items-center gap-2">
                         <i class='bx bxs-data'></i> Inventory Tracking (Daily Snapshot)
                     </h2>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <div onclick="openModal('stockListModal')" class="bg-breadly-card-3 p-6 rounded-xl shadow-sm border border-orange-100 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden">
+                    <div onclick="openModal('stockListModal')" class="bg-breadly-card-3 p-6 rounded-xl shadow-sm border border-orange-100 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden animate-slide-in delay-200">
                         <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <i class='bx bxs-box text-6xl text-breadly-dark'></i>
                         </div>
@@ -403,7 +407,7 @@ $active_nav_link = 'dashboard';
                         </div>
                     </div>
 
-                    <div onclick="openModal('ingredientStockModal')" class="p-6 rounded-xl shadow-sm border cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden <?php echo ($lowStockCount > 0) ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'; ?>">
+                    <div onclick="openModal('ingredientStockModal')" class="p-6 rounded-xl shadow-sm border cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden animate-slide-in delay-300 <?php echo ($lowStockCount > 0) ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'; ?>">
                         <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <i class='bx bxs-error-circle text-6xl text-black'></i>
                         </div>
@@ -418,7 +422,7 @@ $active_nav_link = 'dashboard';
                         </div>
                     </div>
 
-                    <a href="inventory_management.php?active_tab=recall" class="bg-breadly-card-4 p-6 rounded-xl shadow-sm border border-orange-100 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden block">
+                    <div onclick="openModal('recallModal')" class="bg-breadly-card-4 p-6 rounded-xl shadow-sm border border-orange-100 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden animate-slide-in delay-400">
                         <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <i class='bx bxs-x-circle text-6xl text-breadly-dark'></i>
                         </div>
@@ -434,9 +438,9 @@ $active_nav_link = 'dashboard';
                                 ₱<?php echo number_format($totalRecalledValue, 2); ?>
                             </strong>
                         </div>
-                    </a>
+                    </div>
 
-                    <div onclick="openModal('expirationModal')" class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-100 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden">
+                    <div onclick="openModal('expirationModal')" class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-100 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all group h-40 flex flex-col justify-between relative overflow-hidden animate-slide-in delay-500">
                         <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <i class='bx bxs-hourglass text-6xl text-yellow-700'></i>
                         </div>
@@ -456,12 +460,11 @@ $active_nav_link = 'dashboard';
         </div>
     </main>
 
-    <div id="exportCsvModal" class="fixed inset-0 z-50 hidden">
+    <div id="exportCsvModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('exportCsvModal')"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate-in">
             <div class="bg-green-600 p-4 flex justify-between items-center text-white">
                 <h5 class="font-bold flex items-center gap-2"><i class='bx bxs-file-csv'></i> Export CSV Report</h5>
-                <button onclick="closeModal('exportCsvModal')" class="text-white/80 hover:text-white"><i class='bx bx-x text-2xl'></i></button>
             </div>
             <form action="generate_csv_report.php" method="POST" target="_blank" id="csvReportForm" class="p-6">
                 <div class="mb-4">
@@ -519,12 +522,11 @@ $active_nav_link = 'dashboard';
         </div>
     </div>
 
-    <div id="sendReportModal" class="fixed inset-0 z-50 hidden">
+    <div id="sendReportModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('sendReportModal')"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden modal-animate-in">
             <div class="bg-breadly-dark p-4 flex justify-between items-center text-white">
                 <h5 class="font-bold flex items-center gap-2"><i class='bx bx-message-detail'></i> Send SMS Report</h5>
-                <button onclick="closeModal('sendReportModal')" class="text-white/80 hover:text-white"><i class='bx bx-x text-2xl'></i></button>
             </div>
             <form id="sms-report-form" action="dashboard_panel.php" method="POST" class="p-6">
                 <input type="hidden" name="action" value="send_summary_report">
@@ -557,12 +559,11 @@ $active_nav_link = 'dashboard';
         </div>
     </div>
 
-    <div id="generatePdfModal" class="fixed inset-0 z-50 hidden">
+    <div id="generatePdfModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('generatePdfModal')"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden modal-animate-in">
             <div class="bg-blue-600 p-4 flex justify-between items-center text-white">
                 <h5 class="font-bold flex items-center gap-2"><i class='bx bxs-file-pdf'></i> Generate PDF</h5>
-                <button onclick="closeModal('generatePdfModal')" class="text-white/80 hover:text-white"><i class='bx bx-x text-2xl'></i></button>
             </div>
             <form action="generate_pdf_report.php" method="POST" target="_blank" id="pdfReportForm" class="p-6">
                 <div class="mb-4">
@@ -597,49 +598,18 @@ $active_nav_link = 'dashboard';
         </div>
     </div>
 
-    <div id="settingsModal" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('settingsModal')"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div class="bg-gray-800 p-4 flex justify-between items-center text-white">
-                <h5 class="font-bold flex items-center gap-2"><i class='bx bx-cog'></i> My Settings</h5>
-                <button onclick="closeModal('settingsModal')" class="text-white/80 hover:text-white"><i class='bx bx-x text-2xl'></i></button>
-            </div>
-            <form id="settings-form" action="dashboard_panel.php" method="POST" class="p-6">
-                <input type="hidden" name="action" value="update_settings">
-                <input type="hidden" name="active_tab" value="<?php echo htmlspecialchars($active_tab); ?>">
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">My Phone Number</label>
-                    <input type="text" name="my_phone_number" value="<?php echo htmlspecialchars($userSettings['phone_number'] ?? ''); ?>" placeholder="0917xxxxxxx" maxlength="12" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                </div>
-                <div class="mb-6 flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                        <input type="checkbox" name="enable_daily_report" id="enable_daily_report" class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer checked:right-0 checked:border-green-500" style="right: 100%; transform: translateX(100%);" value="1" <?php if (!empty($userSettings['enable_daily_report'])) echo 'checked'; ?>>
-                        <label for="enable_daily_report" class="block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                    </div>
-                    <label for="enable_daily_report" class="text-sm font-medium text-gray-700 cursor-pointer">Receive Daily Reports</label>
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('settingsModal')" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow transition-colors">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="stockListModal" class="fixed inset-0 z-50 hidden">
+    <div id="stockListModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('stockListModal')"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center">
                 <h5 class="font-bold text-lg">Products in Stock</h5>
-                <button onclick="closeModal('stockListModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
             </div>
             <div class="p-4 bg-gray-50 flex justify-end border-b border-gray-100">
-                <div class="relative group">
-                    <button class="flex items-center gap-1 text-sm font-medium text-gray-600 bg-white border px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                <div class="relative sort-dropdown-container">
+                    <button onclick="toggleSortDropdown(this)" class="flex items-center gap-1 text-sm font-medium text-gray-600 bg-white border px-3 py-1.5 rounded-lg hover:bg-gray-50 focus:outline-none">
                         Sort By: <span class="current-sort-text">Name (A-Z)</span> <i class='bx bx-chevron-down'></i>
                     </button>
-                    <div class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden group-hover:block z-20">
+                    <div class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 sort-dropdown-menu">
                         <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text">Name (A-Z)</a>
                         <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text">Name (Z-A)</a>
                         <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number">Stock (High-Low)</a>
@@ -681,23 +651,22 @@ $active_nav_link = 'dashboard';
         </div>
     </div>
 
-    <div id="ingredientStockModal" class="fixed inset-0 z-50 hidden">
+    <div id="ingredientStockModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('ingredientStockModal')"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center">
                 <h5 class="font-bold text-lg">Ingredient Stock Levels</h5>
-                <button onclick="closeModal('ingredientStockModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
             </div>
             <div class="p-4 bg-gray-50 flex justify-between items-center border-b border-gray-100">
                 <label class="flex items-center gap-2 cursor-pointer select-none">
                     <input type="checkbox" id="filterLowStock" class="w-4 h-4 text-breadly-btn rounded border-gray-300 focus:ring-breadly-btn">
                     <span class="text-sm font-medium text-gray-700">Show Low Stock Only</span>
                 </label>
-                <div class="relative group">
-                    <button class="flex items-center gap-1 text-sm font-medium text-gray-600 bg-white border px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                <div class="relative sort-dropdown-container">
+                    <button onclick="toggleSortDropdown(this)" class="flex items-center gap-1 text-sm font-medium text-gray-600 bg-white border px-3 py-1.5 rounded-lg hover:bg-gray-50 focus:outline-none">
                         Sort By: <span class="current-sort-text">Name (A-Z)</span> <i class='bx bx-chevron-down'></i>
                     </button>
-                    <div class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden group-hover:block z-20">
+                    <div class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 sort-dropdown-menu">
                         <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text">Name (A-Z)</a>
                         <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text">Name (Z-A)</a>
                         <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-dir="desc" data-sort-type="number">Stock (High-Low)</a>
@@ -747,13 +716,74 @@ $active_nav_link = 'dashboard';
             </div>
         </div>
     </div>
+    
+    <div id="recallModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('recallModal')"></div>
+        <div class="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col modal-animate-in">
+            <div class="p-4 border-b border-red-100 bg-red-50 flex justify-between items-center">
+                <h5 class="font-bold text-lg text-red-800 flex items-center gap-2"><i class='bx bxs-x-circle'></i> Product Recalls</h5>
+            </div>
+            <div class="p-4 bg-gray-50 flex justify-end border-b border-gray-100">
+                <div class="relative sort-dropdown-container">
+                    <button onclick="toggleSortDropdown(this)" class="flex items-center gap-1 text-sm font-medium text-gray-600 bg-white border px-3 py-1.5 rounded-lg hover:bg-gray-50 focus:outline-none">
+                        Sort By: <span class="current-sort-text">Product (A-Z)</span> <i class='bx bx-chevron-down'></i>
+                    </button>
+                    <div class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 sort-dropdown-menu">
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="name" data-sort-dir="asc" data-sort-type="text">Product (A-Z)</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="name" data-sort-dir="desc" data-sort-type="text">Product (Z-A)</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-dir="desc" data-sort-type="number">Qty (High-Low)</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-dir="desc" data-sort-type="text">Date (Newest)</a>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-50 sticky top-0 text-xs uppercase text-gray-500 font-semibold">
+                        <tr>
+                            <th class="px-6 py-3">Date</th>
+                            <th class="px-6 py-3">Product</th>
+                            <th class="px-6 py-3">Reason</th>
+                            <th class="px-6 py-3">Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 sortable-tbody">
+                        <?php if (empty($recallList)): ?>
+                            <tr>
+                                <td colspan="4" class="px-6 py-12 text-center text-gray-400">
+                                    <i class='bx bx-check-circle text-4xl text-green-500 mb-2'></i>
+                                    <p class="text-gray-500">No product recalls for this period.</p>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($recallList as $recall): 
+                                $qty = abs($recall['adjustment_qty']);
+                            ?>
+                                <tr class="hover:bg-gray-50 transition-colors"
+                                    data-name="<?php echo htmlspecialchars(strtolower($recall['item_name'])); ?>"
+                                    data-qty="<?php echo $qty; ?>"
+                                    data-date="<?php echo htmlspecialchars($recall['timestamp'] ?? ''); ?>">
+                                    <td class="px-6 py-3 text-sm text-gray-600"><?php echo date('M d, Y', strtotime($recall['timestamp'] ?? 'now')); ?></td>
+                                    <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($recall['item_name']); ?></td>
+                                    <td class="px-6 py-3 text-sm text-gray-600"><?php echo htmlspecialchars($recall['reason']); ?></td>
+                                    <td class="px-6 py-3 font-bold text-red-600"><?php echo $qty; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-gray-100 flex justify-between items-center bg-gray-50">
+                <a href="inventory_management.php?active_tab=recall" class="px-4 py-2 bg-breadly-btn text-white rounded-lg text-sm font-medium hover:bg-breadly-btn-hover transition-colors">Manage Recalls</a>
+                <button onclick="closeModal('recallModal')" class="px-4 py-2 bg-white border text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">Close</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="expirationModal" class="fixed inset-0 z-50 hidden">
+    <div id="expirationModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('expirationModal')"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col modal-animate-in">
             <div class="p-4 border-b border-yellow-100 bg-yellow-50 flex justify-between items-center">
                 <h5 class="font-bold text-lg text-yellow-800 flex items-center gap-2"><i class='bx bx-hourglass'></i> Expiring Batches (Next 7 Days)</h5>
-                <button onclick="closeModal('expirationModal')" class="text-yellow-700 hover:text-yellow-900"><i class='bx bx-x text-2xl'></i></button>
             </div>
             <div class="flex-1 overflow-y-auto p-0">
                 <table class="w-full text-left border-collapse">
@@ -812,101 +842,5 @@ $active_nav_link = 'dashboard';
     
     <?php $js_version = filemtime('../js/script_dashboard.js'); ?>
     <script src="../js/script_dashboard.js?v=<?php echo $js_version; ?>"></script>
-
-    <script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('mobileSidebar');
-        const overlay = document.getElementById('mobileSidebarOverlay');
-        
-        if (sidebar.classList.contains('-translate-x-full')) {
-            sidebar.classList.remove('-translate-x-full');
-            overlay.classList.remove('hidden');
-        } else {
-            sidebar.classList.add('-translate-x-full');
-            overlay.classList.add('hidden');
-        }
-    }
-
-    function openModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.remove('hidden');
-    }
-
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.add('hidden');
-    }
-
-    function switchTab(tabName) {
-        document.getElementById('pane-sales').classList.add('hidden');
-        document.getElementById('pane-inventory').classList.add('hidden');
-        document.getElementById('pane-' + tabName).classList.remove('hidden');
-        
-        const salesBtn = document.getElementById('tab-sales');
-        const invBtn = document.getElementById('tab-inventory');
-        
-        const activeClasses = ['border-breadly-btn', 'text-breadly-btn'];
-        const inactiveClasses = ['border-transparent', 'text-gray-500', 'hover:text-gray-700'];
-        
-        if (tabName === 'sales') {
-            salesBtn.classList.add(...activeClasses);
-            salesBtn.classList.remove(...inactiveClasses);
-            invBtn.classList.remove(...activeClasses);
-            invBtn.classList.add(...inactiveClasses);
-        } else {
-            invBtn.classList.add(...activeClasses);
-            invBtn.classList.remove(...inactiveClasses);
-            salesBtn.classList.remove(...activeClasses);
-            salesBtn.classList.add(...inactiveClasses);
-        }
-    }
-
-    function toggleEmailField(show, type) {
-        let containerId, formId;
-        if (type === 'pdf') {
-            containerId = 'pdfEmailContainer';
-            formId = 'pdfReportForm';
-        } else {
-            containerId = 'csvEmailContainer';
-            formId = 'csvReportForm';
-        }
-        const container = document.getElementById(containerId);
-        const emailInput = container.querySelector('input');
-        const form = document.getElementById(formId);
-        
-        if (show) {
-            container.classList.remove('hidden');
-            emailInput.required = true;
-            form.removeAttribute('target');
-        } else {
-            container.classList.add('hidden');
-            emailInput.required = false;
-            form.setAttribute('target', '_blank');
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const filterCheckbox = document.getElementById('filterLowStock');
-        if (filterCheckbox) {
-            filterCheckbox.addEventListener('change', function() {
-                const showLowOnly = this.checked;
-                const rows = document.querySelectorAll('#ingredientStockModal tbody tr');
-                
-                rows.forEach(row => {
-                    if (showLowOnly) {
-                        const isLow = row.getAttribute('data-is-low') === '1';
-                        if (!isLow) {
-                            row.classList.add('hidden');
-                        } else {
-                            row.classList.remove('hidden');
-                        }
-                    } else {
-                         row.classList.remove('hidden');
-                    }
-                });
-            });
-        }
-    });
-    </script>
 </body>
 </html>

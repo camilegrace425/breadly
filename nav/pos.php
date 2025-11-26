@@ -76,6 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Point of Sale</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
+    
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -112,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="h-full w-full p-2 lg:p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
     
-    <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden h-full border border-orange-100">
+    <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden h-full border border-orange-100 animate-slide-in delay-100">
         <div class="p-4 border-b border-gray-100 bg-white z-10">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <h2 class="text-xl font-bold text-breadly-dark flex items-center gap-2">
@@ -206,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <div class="hidden lg:flex lg:col-span-1 bg-white rounded-2xl shadow-lg flex-col h-full border border-orange-100 overflow-hidden relative">
+    <div class="hidden lg:flex lg:col-span-1 bg-white rounded-2xl shadow-lg flex-col h-full border border-orange-100 overflow-hidden relative animate-slide-in delay-200">
         <div class="p-4 border-b border-gray-100 bg-white flex justify-between items-center z-10">
             <h4 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <i class='bx bx-cart text-breadly-btn'></i> Current Order
@@ -222,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
        
         <div id="order-items-container" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50 flex flex-col gap-2">
-            <div class="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
+            <div class="empty-cart-message h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
                 <i class='bx bx-basket text-6xl mb-2'></i>
                 <p>Select products to begin</p>
             </div>
@@ -249,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button id="clear-button" class="col-span-1 py-3 border border-red-200 text-red-500 font-semibold rounded-xl hover:bg-red-50 transition-colors text-sm flex items-center justify-center gap-1">
                     <i class='bx bx-trash'></i> Clear
                 </button>
-                <button id="pay-button" class="col-span-2 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" disabled>
+                <button id="pay-button" class="col-span-2 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                     Complete Sale <i class='bx bx-check-circle'></i>
                 </button>
             </div>
@@ -257,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
-<div class="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-4 z-50 flex items-center justify-between">
+<div class="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-4 z-50 flex items-center justify-between animate-slide-in delay-300">
     <div class="flex flex-col">
         <small class="text-gray-500 text-xs" id="mobile-cart-count">0 Items</small>
         <strong class="text-xl text-breadly-dark" id="mobile-cart-total">P0.00</strong>
@@ -289,7 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <div class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50 flex flex-col gap-2">
              <div id="order-items-container-mobile" class="flex flex-col gap-2">
-                <div class="py-10 text-center text-gray-400">
+                <div class="empty-cart-message py-10 text-center text-gray-400">
                     <p>Cart is empty</p>
                 </div>
             </div>

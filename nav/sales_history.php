@@ -124,6 +124,9 @@ $net_revenue = $total_sales_revenue - $total_return_value;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales & Transactions</title>
     <link rel="icon" href="../images/kzklogo.png" type="image/x-icon"> 
+    
+    <link rel="stylesheet" href="../styles/global.css">
+
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -268,7 +271,8 @@ $net_revenue = $total_sales_revenue - $total_return_value;
             
             <div id="pane-sales" class="<?php echo ($active_tab == 'sales') ? '' : 'hidden'; ?>">
                 <div class="bg-white rounded-xl shadow-sm border border-orange-100"> 
-                    <div class="p-4 border-b border-orange-100">
+                    
+                    <div class="p-4 border-b border-orange-100 animate-slide-in delay-100">
                         <form method="GET" action="sales_history.php" class="flex flex-col md:flex-row gap-4 items-end">
                             <input type="hidden" name="active_tab" value="sales">
                             <div class="w-full md:w-auto flex-1">
@@ -285,7 +289,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                         </form>
                     </div>
 
-                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100">
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100 animate-slide-in delay-200">
                         <div class="flex items-center gap-1 text-sm">
                             <span class="text-gray-500">Show:</span>
                             <select id="sales-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
@@ -317,7 +321,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                         </div>
                     </div>
                     
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto animate-slide-in delay-300">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
@@ -411,7 +415,8 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                             </tbody>
                         </table>
                     </div>
-                    <div class="bg-gray-50 p-4 border-t border-gray-200">
+                    
+                    <div class="bg-gray-50 p-4 border-t border-gray-200 animate-slide-in delay-300">
                         <div class="flex flex-col items-end gap-1 text-sm">
                             <div class="flex justify-between w-48 text-gray-600">
                                 <span>Gross Revenue:</span>
@@ -432,7 +437,9 @@ $net_revenue = $total_sales_revenue - $total_return_value;
             </div>
 
             <div id="pane-returns" class="<?php echo ($active_tab == 'returns') ? '' : 'hidden'; ?>">
-               <div class="bg-white rounded-xl shadow-sm border border-blue-100"> <div class="p-4 border-b border-blue-100">
+               <div class="bg-white rounded-xl shadow-sm border border-blue-100"> 
+                    
+                    <div class="p-4 border-b border-blue-100 animate-slide-in delay-100">
                         <form method="GET" action="sales_history.php" class="flex flex-col md:flex-row gap-4 items-end">
                             <input type="hidden" name="active_tab" value="returns">
                             <div class="w-full md:w-auto flex-1">
@@ -449,7 +456,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                         </form>
                     </div>
 
-                    <div class="p-4 border-b border-blue-100 bg-blue-50/30 flex justify-between items-center">
+                    <div class="p-4 border-b border-blue-100 bg-blue-50/30 flex justify-between items-center animate-slide-in delay-200">
                         <h5 class="font-bold text-lg text-blue-800">Returns Log</h5>
                         
                         <div class="flex items-center gap-3">
@@ -482,7 +489,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                         </div>
                     </div>
                     
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto animate-slide-in delay-300">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
@@ -523,7 +530,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
     <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
 
     <div id="returnSaleModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4 overflow-hidden relative z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4 overflow-hidden relative z-50 modal-animate-in">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                 <h5 class="font-bold text-gray-800">Process Return</h5>
                 <button onclick="closeModal('returnSaleModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
