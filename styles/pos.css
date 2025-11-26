@@ -47,7 +47,7 @@ height: 100%;
 overflow-y: auto; 
 }
 
-/* --- ::: ALL MODIFICATIONS ARE HERE ::: --- */
+/* --- ::: MODIFICATION IS HERE ::: --- */
 .product-card {
     border: 1px solid #eee;
     border-radius: 0.5rem;
@@ -55,7 +55,7 @@ overflow-y: auto;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
     height: 110px; /* Set a fixed height */
-    width: 300px;
+    width: 100%; /* MODIFIED: Was 300px. Now 100% of its grid column. */
     display: flex;
     flex-direction: row; /* This is the main change */
     align-items: center; /* Vertically center content */

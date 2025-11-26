@@ -1,75 +1,90 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- ::: NEW Reusable Table Pagination Function (REWRITTEN) ::: ---
+    // --- Reusable Table Pagination Function ---
     function addTablePagination(selectId, tableBodyId) {
         const select = document.getElementById(selectId);
         const tableBody = document.getElementById(tableBodyId);
+        if (!select || !tableBody) return;
 
-        // --- ::: MODIFICATION: Get button IDs from selectId ::: ---
-        const baseId = selectId.replace('-rows-select', ''); // e.g., "product"
+        const baseId = selectId.replace('-rows-select', '');
         const prevBtn = document.getElementById(`${baseId}-prev-btn`);
         const nextBtn = document.getElementById(`${baseId}-next-btn`);
         
-        if (!select || !tableBody || !prevBtn || !nextBtn) {
-            // console.warn('Pagination elements not found for:', selectId, tableBodyId);
-            return;
-        }
+        if (!prevBtn || !nextBtn) return;
 
         let currentPage = 0; // 0-indexed page
 
         const updateTableRows = () => {
             const selectedValue = select.value;
             
-            // Get all rows, but ONLY count those visible by the search filter
-            // (Search filter sets style.display = 'none')
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const visibleRows = [];
-            all_rows.forEach(row => {
-                // Check if row is hidden by search
-                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
-                if (!isHiddenBySearch) {
-                    // If it's not hidden by search (or only hidden by us), consider it
-                    visibleRows.push(row);
-                }
-            });
+            // Determine what constitutes a "row" to paginate.
+            // For 'sales-table-body', we paginate based on class '.order-row'
+            // For 'returns-table-body', we paginate strictly on 'tr'
+            let dataRows;
+            if (tableBodyId === 'sales-table-body') {
+                dataRows = Array.from(tableBody.querySelectorAll('tr.order-row'));
+            } else {
+                dataRows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"])'));
+            }
 
-            // Reset all rows we manage to be visible (so search filter can re-hide them)
-            visibleRows.forEach(row => {
-                row.style.display = '';
-                row.dataset.paginatedHidden = 'false';
-            });
-
+            const totalRows = dataRows.length;
+            
+            // 1. Handle 'All' case
             if (selectedValue === 'all') {
-                // "Show All" is selected, disable buttons and exit
+                dataRows.forEach(row => {
+                    row.style.display = '';
+                    // If it's an order row, ensure its details row stays hidden by default logic (or kept current state)
+                    // Note: We don't force display on details-row, expanding logic handles that.
+                });
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
                 return;
             }
 
             const limit = parseInt(selectedValue, 10);
-            const totalRows = visibleRows.length;
-            const totalPages = Math.ceil(totalRows / limit);
+            const totalPages = (totalRows === 0) ? 1 : Math.ceil(totalRows / limit);
+            
+            if (currentPage >= totalPages) {
+                currentPage = Math.max(0, totalPages - 1);
+            }
 
-            // --- Apply pagination ---
             const start = currentPage * limit;
             const end = start + limit;
-
-            visibleRows.forEach((row, index) => {
+            
+            // Iterate rows and set visibility
+            dataRows.forEach((row, index) => {
                 if (index >= start && index < end) {
-                    row.style.display = ''; // Show
-                    row.dataset.paginatedHidden = 'false';
+                    row.style.display = '';
                 } else {
-                    row.style.display = 'none'; // Hide
-                    row.dataset.paginatedHidden = 'true';
+                    row.style.display = 'none';
+                    // If it's an order row and hidden, also hide its details just in case visual glitches occur? 
+                    // CSS 'hidden' on parent usually suffices, but the details row is a sibling.
+                    if (row.classList.contains('order-row')) {
+                        const nextRow = row.nextElementSibling;
+                        if (nextRow && nextRow.classList.contains('details-row')) {
+                            nextRow.style.display = 'none'; 
+                        }
+                    }
+                }
+                
+                // Re-check visibility for active items (handling the sibling details row)
+                if (row.classList.contains('order-row') && index >= start && index < end) {
+                    const nextRow = row.nextElementSibling;
+                    // Restore detail row visibility logic: 
+                    // The details row usually has 'hidden' class controlled by toggle.
+                    // We just need to remove the 'display:none' inline style potentially added by pagination logic previously.
+                    if (nextRow && nextRow.classList.contains('details-row')) {
+                        nextRow.style.display = ''; 
+                    }
                 }
             });
 
-            // --- Update button states ---
+            // Update buttons
             prevBtn.disabled = currentPage === 0;
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
         };
 
-        // --- ::: ADDED: Event Listeners for buttons ::: ---
+        // Event listeners
         prevBtn.addEventListener('click', () => {
             if (currentPage > 0) {
                 currentPage--;
@@ -78,207 +93,228 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         nextBtn.addEventListener('click', () => {
-            const selectedValue = select.value;
-            if (selectedValue === 'all') return;
-            
-            const limit = parseInt(selectedValue, 10);
-            const all_rows = tableBody.querySelectorAll('tr:not([id$="-no-results"])');
-            const visibleRows = [];
-            all_rows.forEach(row => {
-                const isHiddenBySearch = row.style.display === 'none' && row.dataset.paginatedHidden !== 'true';
-                if (!isHiddenBySearch) {
-                    visibleRows.push(row);
-                }
-            });
-            const totalRows = visibleRows.length;
-            const totalPages = Math.ceil(totalRows / limit);
-
-            if (currentPage < totalPages - 1) {
-                currentPage++;
-                updateTableRows();
-            }
+            if (select.value === 'all') return;
+            currentPage++;
+            updateTableRows();
         });
-        
-        // Re-apply pagination when search happens
-        const searchInputId = select.id.replace('-rows-select', '-search-input');
-        const searchInput = document.getElementById(searchInputId);
-        if (searchInput) {
-            searchInput.addEventListener('keyup', () => {
-                currentPage = 0; // Reset to first page on search
-                updateTableRows();
-            });
-        }
 
-        // Add event listener for changes
         select.addEventListener('change', () => {
-            currentPage = 0; // Reset to first page on limit change
+            currentPage = 0; 
             updateTableRows();
         });
         
-        // Call once on initial load
+        // Initial run
         updateTableRows();
     }
-    // --- ::: END NEW PAGINATION FUNCTION ::: ---
     
-    // --- JS Sorting for Recall & Return Tabs ---
-    function getSortableValue(value, type = 'text') {
-        if (value === null || value === undefined) return '';
-        let cleaned = value.trim();
+    // --- JS Sorting ---
+    
+    function getSortableValue(cell, type = 'text') {
+        const textValue = cell.innerText;
+        if ((type === 'number' || type === 'date') && cell.dataset.sortValue !== undefined) {
+             const num = parseFloat(cell.dataset.sortValue);
+             return isNaN(num) ? 0 : num;
+        }
+        let cleaned = textValue.trim();
         switch (type) {
             case 'number':
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
+                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+|\(|\)/gi, '');
                 cleaned = cleaned.replace(/,/g, '');
                 const num = parseFloat(cleaned);
                 return isNaN(num) ? 0 : num;
             case 'date':
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal;
-            default: // 'text'
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+/gi, '');
-                cleaned = cleaned.replace(/,/g, '');
-                const lowerVal = cleaned.toLowerCase();
-                if (lowerVal.includes('low stock')) return 'a_low_stock';
-                if (lowerVal.includes('in stock')) return 'b_in_stock';
-                if (lowerVal.includes('ingredient')) return 'a_ingredient';
-                if (lowerVal.includes('product')) return 'b_product';
-                return lowerVal;
+            default: 
+                return cleaned.toLowerCase();
         }
     }
 
     function sortTableByDropdown(sortLink) {
-        const { sortBy, sortDir, sortType } = sortLink.dataset;
-        const table = sortLink.closest('.card').querySelector('table');
-        if (!table) return;
-        const tbody = table.querySelector('tbody');
-        if (!tbody) return;
-        const th = table.querySelector(`thead th[data-sort-by="${sortBy}"]`);
-        if (!th) {
-            console.error(`Sort Error: No table header found with data-sort-by="${sortBy}"`);
-            return;
-        }
-        const colIndex = Array.from(th.parentNode.children).indexOf(th);
-        const rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])')); // Exclude no-results
-
-        rows.sort((a, b) => {
-            if (!a.cells[colIndex] || !b.cells[colIndex]) return 0;
-            const valA = getSortableValue(a.cells[colIndex].innerText, sortType);
-            const valB = getSortableValue(b.cells[colIndex].innerText, sortType);
-            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        tbody.append(...rows);
+        const sortBy = sortLink.dataset.sortBy;
+        const sortType = sortLink.dataset.sortType;
+        const sortDir = sortLink.dataset.sortDir;
         
-        // After sorting, re-apply pagination
-        const paginationSelectId = table.closest('.card').querySelector('select[id$="-rows-select"]')?.id;
-        if (paginationSelectId) {
-             // Find the select element and trigger its change event to re-apply pagination
-            const paginationSelect = document.getElementById(paginationSelectId);
-            if (paginationSelect) {
-                paginationSelect.dispatchEvent(new Event('change'));
+        const tableBody = sortLink.closest('.dropdown').closest('.bg-white').querySelector('tbody');
+        if (!tableBody) return;
+        
+        const table = tableBody.closest('table');
+        const headerRow = table.querySelector('thead tr');
+        let colIndex = -1;
+        
+        Array.from(headerRow.querySelectorAll('th')).forEach((th, index) => {
+            if (th.dataset.sortBy === sortBy) {
+                colIndex = index;
             }
-        }
-
-        const buttonTextSpan = sortLink.closest('.dropdown').querySelector('.current-sort-text');
-        if (buttonTextSpan) buttonTextSpan.innerText = sortLink.innerText;
+        });
         
-        const dropdownItems = sortLink.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
-        dropdownItems.forEach(item => item.classList.remove('active'));
-        sortLink.classList.add('active');
+        if (colIndex === -1) return;
+
+        // Check if we are sorting Order Rows or standard rows
+        let isOrderTable = (tableBody.id === 'sales-table-body');
+        let rows = [];
+
+        if (isOrderTable) {
+            // For Orders: We must keep Order Row + Details Row pairs together
+            // Select only the order rows first
+            let orderRows = Array.from(tableBody.querySelectorAll('tr.order-row'));
+            
+            orderRows.sort((a, b) => {
+                if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
+                const valA = getSortableValue(a.cells[colIndex], sortType);
+                const valB = getSortableValue(b.cells[colIndex], sortType);
+                
+                let comparison = 0;
+                if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
+            });
+
+            // Reconstruct the body
+            // Note: We use DocumentFragment for performance, but innerHTML is okay here
+            // We must move the Detail Row immediately after the Order Row
+            tableBody.innerHTML = '';
+            orderRows.forEach(row => {
+                const detailsRow = document.getElementById('details-' + row.querySelector('[data-sort-value]').innerText.replace('#','')); // Fallback ID selector or use nextSibling from original DOM?
+                // Better: Since we just grabbed orderRows, their .nextElementSibling in the *original* DOM was likely the details row. 
+                // But sorting breaks that link if we pull them out.
+                // However, we can find the details row by ID logic we set up: id="details-{order_id}"
+                
+                // Get Order ID from the row content to find the specific details row in the DOM before we wiped it?
+                // Actually, `orderRows` contains references to DOM nodes. The `details` rows are still in memory/DOM but detached if we cleared innerHTML? 
+                // No, `orderRows` only has the order rows. The details rows would be lost if we clear innerHTML without saving them.
+                // Strategy: Don't clear innerHTML. AppendChild moves them.
+            });
+            
+            // Optimized Strategy for Parent-Child sorting:
+            // 1. Create a list of objects { orderRow, detailsRow, sortValue }
+            // 2. Sort that list
+            // 3. Append back
+            
+            // Re-fetch rows from scratch to ensure we get the pairs currently in DOM
+            let currentPairs = [];
+            let currentOrderRows = Array.from(tableBody.querySelectorAll('tr.order-row'));
+            
+            currentOrderRows.forEach(oRow => {
+                let dRow = oRow.nextElementSibling; 
+                // Verify it is indeed the details row
+                if (dRow && dRow.classList.contains('details-row')) {
+                    currentPairs.push({ order: oRow, details: dRow });
+                } else {
+                    currentPairs.push({ order: oRow, details: null });
+                }
+            });
+
+            currentPairs.sort((a, b) => {
+                const valA = getSortableValue(a.order.cells[colIndex], sortType);
+                const valB = getSortableValue(b.order.cells[colIndex], sortType);
+                let comparison = (valA > valB) ? 1 : (valA < valB ? -1 : 0);
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
+            });
+
+            currentPairs.forEach(pair => {
+                tableBody.appendChild(pair.order);
+                if(pair.details) tableBody.appendChild(pair.details);
+            });
+
+        } else {
+            // Standard Sorting (Returns Table)
+            rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"])'));
+            rows.sort((a, b) => {
+                if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
+                const valA = getSortableValue(a.cells[colIndex], sortType);
+                const valB = getSortableValue(b.cells[colIndex], sortType);
+                
+                let comparison = 0;
+                if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
+            });
+            
+            rows.forEach(row => tableBody.appendChild(row));
+        }
+        
+        // UI Updates
+        const dropdown = sortLink.closest('.dropdown');
+        if (dropdown) {
+            dropdown.querySelector('.current-sort-text').textContent = sortLink.textContent.trim();
+            dropdown.querySelectorAll('.sort-trigger').forEach(item => item.classList.remove('active'));
+            sortLink.classList.add('active');
+        }
+        
+        // Re-trigger pagination to ensure correct view
+        const paginationSelect = table.closest('.bg-white').querySelector('select[id$="-rows-select"]');
+        if (paginationSelect) {
+            paginationSelect.dispatchEvent(new Event('change'));
+        }
     }
 
-    // ::: MODIFIED: Attach listeners to ONLY return pane :::
-    document.querySelectorAll('#returns-pane .sort-trigger').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            sortTableByDropdown(e.target);
-        });
-    });
+    function setupDropdown(dropdownId) {
+        const dropdownEl = document.getElementById(dropdownId);
+        const sortButton = document.getElementById(dropdownId.replace('-dropdown', '-btn'));
+        const sortMenu = document.getElementById(dropdownId.replace('-dropdown', '-menu'));
+        
+        if (dropdownEl && sortButton && sortMenu) {
+            sortButton.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                sortMenu.classList.toggle('hidden');
+            });
 
-    // ::: MODIFIED: Initial sort for ONLY return pane :::
-    document.querySelectorAll('#returns-pane .dropdown').forEach(dropdown => {
-        const defaultSortLink = dropdown.querySelector('.dropdown-item.active') || dropdown.querySelector('.dropdown-item');
-        if (defaultSortLink) {
-            sortTableByDropdown(defaultSortLink);
-        }
-    });
-
-    // --- Logic to set active_tab in the main filter form ---
-    const mainFilterForm = document.querySelector('#sales-pane form');
-    const allTabButtons = document.querySelectorAll('#historyTabs .nav-link');
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const activeTabFromURL = urlParams.get('active_tab') || 'sales';
-
-    if (mainFilterForm) {
-        const activeTabInput = mainFilterForm.querySelector('input[name="active_tab"]');
-        if (activeTabInput) {
-            // Set the form's hidden input value based on which tab is clicked
-            allTabButtons.forEach(tabButton => {
-                tabButton.addEventListener('click', () => {
-                    const paneId = tabButton.dataset.bsTarget;
-                    let tabValue = 'sales';
-                    // --- MODIFIED: Removed 'recall' ---
-                    if (paneId === '#returns-pane') {
-                        tabValue = 'returns';
-                    }
-                    activeTabInput.value = tabValue;
+            document.addEventListener('click', (e) => {
+                if (!sortMenu.contains(e.target) && !sortButton.contains(e.target)) {
+                    sortMenu.classList.add('hidden');
+                }
+            });
+            
+            document.querySelectorAll(`#${dropdownId} .sort-trigger`).forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    sortTableByDropdown(e.target);
+                    sortMenu.classList.add('hidden'); 
                 });
             });
-            // On page load, set it to the correct active tab
-            activeTabInput.value = activeTabFromURL;
         }
     }
 
-    // --- Logic to update URL with active tab for state persistence ---
+    // --- Initialization ---
+    const mainFilterForm = document.querySelector('#pane-sales form');
+    const returnsFilterForm = document.querySelector('#pane-returns form');
+    const allTabButtons = document.querySelectorAll('#historyTabs button');
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Set initial active tab
+    const activeTabFromURL = urlParams.get('active_tab') || 'sales';
+    if (mainFilterForm) {
+        const inp = mainFilterForm.querySelector('input[name="active_tab"]');
+        if(inp) inp.value = activeTabFromURL;
+    }
+    if (returnsFilterForm) {
+        const inp = returnsFilterForm.querySelector('input[name="active_tab"]');
+        if(inp) inp.value = 'returns';
+    }
+
     allTabButtons.forEach(tabButton => {
         tabButton.addEventListener('click', function(event) {
-            const paneId = event.target.dataset.bsTarget;
-            let activeTabValue = 'sales'; // Default
-            // --- MODIFIED: Removed 'recall' ---
-            if (paneId === '#returns-pane') {
-                activeTabValue = 'returns';
-            }
-            
+            const activeTabValue = event.currentTarget.id.replace('tab-', '');
             const url = new URL(window.location);
             url.searchParams.set('active_tab', activeTabValue);
+            
+            const form = activeTabValue === 'sales' ? mainFilterForm : returnsFilterForm;
+            if (form) {
+                const start = form.querySelector('[name="date_start"]').value;
+                const end = form.querySelector('[name="date_end"]').value;
+                url.searchParams.set('date_start', start);
+                url.searchParams.set('date_end', end);
+            }
             window.history.replaceState({}, '', url);
         });
     });
 
-    // --- ::: MODIFIED: Event Listener for Return Sale Modal ::: ---
-    const returnSaleModal = document.getElementById('returnSaleModal');
-    if (returnSaleModal) {
-        returnSaleModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            
-            // Get data from the button
-            const saleId = button.dataset.saleId;
-            const productName = button.dataset.productName;
-            const qtyAvailable = button.dataset.qtyAvailable; // <-- Use the new attribute
-            const saleDate = button.dataset.saleDate;
-
-            // Populate the modal fields
-            document.getElementById('return_sale_id').value = saleId;
-            document.getElementById('return_product_name').textContent = productName;
-            document.getElementById('return_sale_date').textContent = saleDate;
-            
-            // Set the quantity input
-            const qtyInput = document.getElementById('return_qty');
-            qtyInput.value = qtyAvailable; // Default to the max available
-            qtyInput.max = qtyAvailable; // Set max
-            document.getElementById('return_max_qty').value = qtyAvailable;
-            document.getElementById('return_qty_sold_text').textContent = qtyAvailable; // Update helper text
-
-            // Clear the reason
-            document.getElementById('return_reason').value = '';
-        });
-    }
-
-    // --- ::: NEWLY ADDED: Initialize table pagination ::: ---
+    setupDropdown('sales-sort-dropdown');
+    setupDropdown('returns-sort-dropdown');
+    
     addTablePagination('sales-rows-select', 'sales-table-body');
     addTablePagination('returns-rows-select', 'returns-table-body');
-    // --- ::: END ::: ---
-
 });
