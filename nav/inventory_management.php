@@ -24,7 +24,7 @@ $inventoryManager = new InventoryManager();
 $bakeryManager = new BakeryManager();
 $current_role = $_SESSION["role"];
 
-// 3. Handle JSON API Requests (for AJAX calls like 'get_batches')
+// 3. Handle JSON API Requests
 $input_data = json_decode(file_get_contents('php://input'), true);
 if ($input_data && isset($input_data['action'])) {
     header('Content-Type: application/json');
@@ -83,7 +83,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $success_message = "";
     $error_message = "";
 
-    // Helper for image upload
     function handleProductImageUpload($file_input_name) {
         $target_dir = "../uploads/products/"; 
         if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
@@ -158,8 +157,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $user_id_to_pass = $current_user_id ?? null;
                 $qty = floatval($_POST["adjustment_qty"]);
                 $type = $_POST["adjustment_type"];
+                $product_id = $_POST["product_id"];
 
-                // Validation: Enforce signs based on type
                 if ($type === 'Production' && $qty < 0) {
                     $error_message = "Production adjustment cannot be negative.";
                 } elseif ($type === 'Recall' && $qty > 0) {
@@ -167,10 +166,47 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 } elseif ($qty == 0) {
                      $error_message = "Quantity cannot be zero.";
                 } else {
-                    // Proceed if validation passes
-                    $status = $bakeryManager->adjustProductStock($_POST["product_id"], $user_id_to_pass, $qty, "[{$type}] {$_POST["reason_note"]}");
-                    if (strpos($status, "Success") !== false) $success_message = $status;
-                    else $error_message = $status; 
+                    if ($type === 'Production') {
+                        $products_list = $bakeryManager->getAllProductsSimple();
+                        $batch_size = 1;
+                        foreach ($products_list as $p) {
+                            if ($p['product_id'] == $product_id) {
+                                $batch_size = $p['batch_size'] > 0 ? $p['batch_size'] : 1;
+                                break;
+                            }
+                        }
+
+                        $recipe = $bakeryManager->getRecipeForProduct($product_id);
+                        $all_ingredients = $inventoryManager->getIngredientsInventory();
+                        $stock_map = [];
+                        foreach ($all_ingredients as $ing) {
+                            $stock_map[$ing['ingredient_id']] = [
+                                'qty' => $ing['stock_qty'],
+                                'unit' => $ing['unit']
+                            ];
+                        }
+
+                        $insufficient_items = [];
+                        foreach ($recipe as $item) {
+                            $ing_id = $item['ingredient_id'];
+                            $needed = ($item['qty_needed'] / $batch_size) * $qty;
+                            $current = $stock_map[$ing_id]['qty'] ?? 0;
+
+                            if ($current < $needed) {
+                                $insufficient_items[] = $item['name'] . " (Need: " . number_format($needed, 2) . " " . $item['unit'] . ", Have: " . number_format($current, 2) . ")";
+                            }
+                        }
+
+                        if (!empty($insufficient_items)) {
+                            $error_message = "Insufficient ingredients for production:<br><ul class='list-disc pl-5 text-left text-xs mt-2'><li>" . implode('</li><li>', $insufficient_items) . "</li></ul>";
+                        }
+                    }
+
+                    if (empty($error_message)) {
+                        $status = $bakeryManager->adjustProductStock($product_id, $user_id_to_pass, $qty, "[{$type}] {$_POST["reason_note"]}");
+                        if (strpos($status, "Success") !== false) $success_message = $status;
+                        else $error_message = $status; 
+                    }
                 }
                 break;
 
@@ -223,7 +259,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 } 
 
-// 5. Data Fetching
 $products = $inventoryManager->getProductsInventory();
 $ingredients = $inventoryManager->getIngredientsInventory();
 $discontinued_products = $inventoryManager->getDiscontinuedProducts();
@@ -360,7 +395,7 @@ $active_nav_link = 'inventory';
         <?php if ($message): ?>
         <div class="px-6">
             <div class="<?php echo ($message_type === 'success') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'; ?> border px-4 py-3 rounded-lg flex justify-between items-center mb-4 shadow-sm">
-                <span><?php echo htmlspecialchars($message); ?></span>
+                <span><?php echo $message; ?></span>
                 <button onclick="this.parentElement.remove()" class="text-lg font-bold">&times;</button>
             </div>
         </div>
@@ -401,6 +436,32 @@ $active_nav_link = 'inventory';
                         </button>
                     </div>
                     
+                    <div class="p-4 bg-gray-50 flex flex-wrap justify-end items-center gap-3 border-b border-gray-100 animate-slide-in delay-200">
+                        <div class="flex items-center gap-1 text-sm">
+                            <span class="text-gray-500">Show:</span>
+                            <select id="product-rows-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="product-prev-btn" disabled class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-left'></i></button>
+                            <button id="product-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
+                        </div>
+                        <div class="flex items-center gap-1 text-sm">
+                            <select id="product-sort-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none cursor-pointer focus:ring-1 focus:ring-breadly-btn text-gray-700">
+                                <option value="" disabled>Sort By...</option>
+                                <option value="name_asc" selected>Name (A-Z)</option>
+                                <option value="name_desc">Name (Z-A)</option>
+                                <option value="price_asc">Price (Low-High)</option>
+                                <option value="price_desc">Price (High-Low)</option>
+                                <option value="stock_asc">Stock (Low-High)</option>
+                                <option value="stock_desc">Stock (High-Low)</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 animate-slide-in delay-200" id="product-card-list">
                         <?php if (empty($products)): ?>
                             <div class="col-span-full text-center py-10 text-gray-400">
@@ -412,7 +473,10 @@ $active_nav_link = 'inventory';
                                 $image_path = !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : '../images/breadlylogo.png'; 
                                 $stock_class = $product['stock_qty'] <= 0 ? 'text-red-600' : 'text-gray-800';
                                 ?>
-                                <div class="product-item group bg-white rounded-xl border border-gray-100 hover:border-breadly-btn hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden h-full" data-product-name="<?php echo htmlspecialchars(strtolower($product["name"])); ?>">
+                                <div class="product-item group bg-white rounded-xl border border-gray-100 hover:border-breadly-btn hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden h-full" 
+                                     data-product-name="<?php echo htmlspecialchars(strtolower($product["name"])); ?>"
+                                     data-product-price="<?php echo $product["price"]; ?>"
+                                     data-product-stock="<?php echo $product["stock_qty"]; ?>">
                                     <div class="relative pt-[75%] bg-gray-50 border-b border-gray-100">
                                         <img src="<?php echo $image_path; ?>" class="absolute inset-0 w-full h-full object-cover">
                                         <div class="absolute top-2 right-2">

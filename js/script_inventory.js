@@ -17,9 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const name = item.dataset.productName ? item.dataset.productName.toLowerCase() : '';
                 if (name.includes(term)) {
                     item.style.display = '';
+                    item.dataset.paginatedHidden = 'false'; // Updated: Mark as visible for pagination
                     found++;
                 } else {
                     item.style.display = 'none';
+                    item.dataset.paginatedHidden = 'true'; // Updated: Mark as hidden for pagination
                 }
             });
             
@@ -30,6 +32,51 @@ document.addEventListener('DOMContentLoaded', () => {
                      productNoResults.classList.add('hidden');
                 }
             }
+
+            // Trigger pagination update to re-flow visible items
+            const select = document.getElementById('product-rows-select');
+            if (select) select.dispatchEvent(new Event('change'));
+        });
+    }
+
+    // --- PRODUCT SORTING LOGIC ---
+    const productSortSelect = document.getElementById('product-sort-select');
+    
+    if (productSortSelect && productList) {
+        productSortSelect.addEventListener('change', () => {
+            const sortValue = productSortSelect.value;
+            const [sortBy, sortDir] = sortValue.split('_'); // e.g., 'price' and 'asc'
+            
+            // Convert NodeList to Array for sorting
+            const products = Array.from(productList.querySelectorAll('.product-item'));
+            
+            products.sort((a, b) => {
+                let valA, valB;
+
+                // Get values based on sort criteria
+                if (sortBy === 'name') {
+                    valA = a.dataset.productName;
+                    valB = b.dataset.productName;
+                } else if (sortBy === 'price') {
+                    valA = parseFloat(a.dataset.productPrice);
+                    valB = parseFloat(b.dataset.productPrice);
+                } else if (sortBy === 'stock') {
+                    valA = parseFloat(a.dataset.productStock);
+                    valB = parseFloat(b.dataset.productStock);
+                }
+
+                // Compare
+                if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Re-append items in new order
+            products.forEach(product => productList.appendChild(product));
+
+            // Re-apply pagination after sorting
+            const paginationSelect = document.getElementById('product-rows-select');
+            if (paginationSelect) paginationSelect.dispatchEvent(new Event('change'));
         });
     }
 
@@ -718,6 +765,86 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initial run
         updateTableRows();
     }
+
+    // --- ADDED: NEW GRID PAGINATION FUNCTION ---
+    function addGridPagination(selectId, containerId, itemSelector) {
+        const select = document.getElementById(selectId);
+        const container = document.getElementById(containerId);
+        const baseId = selectId.replace('-rows-select', '');
+        const prevBtn = document.getElementById(`${baseId}-prev-btn`);
+        const nextBtn = document.getElementById(`${baseId}-next-btn`);
+        
+        if (!select || !container || !prevBtn || !nextBtn) {
+            return;
+        }
+
+        let currentPage = 0; 
+
+        const updateGridItems = () => {
+            const selectedValue = select.value;
+            const all_items = container.querySelectorAll(itemSelector);
+            const visibleItems = [];
+            
+            // Filter by search visibility first
+            all_items.forEach(item => {
+                if (item.dataset.paginatedHidden !== 'true') {
+                    visibleItems.push(item);
+                }
+            });
+
+            if (selectedValue === 'all') {
+                visibleItems.forEach(item => item.style.display = '');
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                return;
+            }
+
+            const limit = parseInt(selectedValue, 10);
+            const totalItems = visibleItems.length;
+            const totalPages = Math.ceil(totalItems / limit);
+            
+            if (currentPage >= totalPages) {
+                currentPage = Math.max(0, totalPages - 1);
+            }
+
+            const start = currentPage * limit;
+            const end = start + limit;
+
+            // Hide all potential items first
+            all_items.forEach(item => item.style.display = 'none'); 
+
+            // Show current page items
+            visibleItems.forEach((item, index) => {
+                if (index >= start && index < end) {
+                    item.style.display = '';
+                }
+            });
+
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = (currentPage >= totalPages - 1) || (totalItems === 0);
+        };
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                updateGridItems();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (select.value === 'all') return;
+            currentPage++;
+            updateGridItems();
+        });
+        
+        select.addEventListener('change', () => {
+            currentPage = 0; 
+            updateGridItems();
+        });
+        
+        updateGridItems();
+    }
+    // --- END ADDED FUNCTION ---
     
     // Updated Sorting Logic for <select> elements
     function setupSortSelect(selectId) {
@@ -783,19 +910,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function initTableFeatures() {
         // Initialize Pagination and Sorting for ALL tables
         
-        // 1. Ingredients Table
+        // 1. ACTIVE PRODUCTS GRID (New)
+        addGridPagination('product-rows-select', 'product-card-list', '.product-item');
+
+        // 2. Ingredients Table
         addTablePagination('ingredient-rows-select', 'ingredient-table-body');
         setupSortSelect('ingredient-sort-select');
         
-        // 2. Discontinued Products Table
+        // 3. Discontinued Products Table
         addTablePagination('discontinued-rows-select', 'discontinued-table-body');
         setupSortSelect('discontinued-sort-select');
 
-        // 3. Recall Log
+        // 4. Recall Log
         addTablePagination('recall-rows-select', 'recall-table-body');
         setupSortSelect('recall-sort-select');
 
-        // 4. Adjustment History
+        // 5. Adjustment History
         addTablePagination('history-rows-select', 'history-table-body');
         setupSortSelect('history-sort-select');
     }
