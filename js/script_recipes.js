@@ -1,171 +1,239 @@
-document.addEventListener('DOMContentLoaded', () => {
+// --- Shared Functions (Global) ---
+window.toggleSidebar = function() {
+    const sidebar = document.getElementById('mobileSidebar');
+    const overlay = document.getElementById('mobileSidebarOverlay');
+    if (sidebar.classList.contains('-translate-x-full')) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+    }
+}
 
-    // --- Search Filter Logic ---
-    const searchInput = document.getElementById('recipe-product-search');
-    const productListContainer = document.getElementById('recipe-product-list');
-    const noResultsMessage = document.getElementById('recipe-no-results');
+window.openModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
 
-    if (searchInput && productListContainer && noResultsMessage) {
-        searchInput.addEventListener('keyup', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            let itemsFound = 0;
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('hidden');
+}
 
-            // FIX 1: Updated selector to match the PHP class '.col-product'
-            productListContainer.querySelectorAll('.col-product').forEach(col => {
-                const productName = col.dataset.productName ? col.dataset.productName.toLowerCase() : '';
+window.closeAllModals = function() {
+    document.querySelectorAll('.fixed.z-50, .fixed.z-[60]').forEach(el => el.classList.add('hidden'));
+}
 
-                if (productName.includes(searchTerm)) {
-                    col.style.display = ''; // Show
-                    itemsFound++;
-                } else {
-                    col.style.display = 'none'; // Hide
-                }
-            });
+window.openDeleteModal = function(recipeId, ingredientName) {
+    const nameSpan = document.getElementById('delete_ingredient_name');
+    const idInput = document.getElementById('delete_recipe_id');
+    
+    if(nameSpan) nameSpan.textContent = ingredientName;
+    if(idInput) idInput.value = recipeId;
+    
+    openModal('deleteRecipeItemModal');
+}
 
-            // FIX 2: Properly toggle Tailwind 'hidden' class
-            if (itemsFound === 0) {
-                noResultsMessage.classList.remove('hidden');
-            } else {
-                noResultsMessage.classList.add('hidden');
-            }
-        });
+// --- AJAX Loading Logic ---
+window.loadRecipeView = function(productId, clickedElement) {
+    window.currentProductId = productId;
+    const detailsContainer = document.getElementById('recipe-details-container');
+    const productName = clickedElement ? clickedElement.dataset.productName : 'Recipe';
+
+    // UI: Update active class in list
+    document.querySelectorAll('.product-card').forEach(c => {
+        c.classList.remove('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
+        c.classList.add('border-gray-100', 'bg-white', 'hover:border-orange-200');
+    });
+    
+    // Find card even if clickedElement isn't passed (e.g. programmatic reload)
+    const card = clickedElement || document.querySelector(`.product-card[data-id="${productId}"]`);
+    if(card) {
+        card.classList.remove('border-gray-100', 'bg-white', 'hover:border-orange-200');
+        card.classList.add('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
     }
 
-    // --- Mobile Modal Logic ---
-    const recipeModal = document.getElementById('recipeModal');
-    const recipeModalTitle = document.getElementById('recipeModalLabel');
-    const recipeModalBody = document.getElementById('recipeModalBody');
-
-    // Function to show a loading spinner
-    const showModalLoading = () => {
-        if (recipeModalBody) {
-            recipeModalBody.innerHTML = `
+    // --- MOBILE LOGIC ---
+    if (window.innerWidth < 1024) { // Check for mobile breakpoint
+        const modalLabel = document.getElementById('recipeModalLabel');
+        const modalBody = document.getElementById('recipeModalBody');
+        
+        if(modalLabel) modalLabel.textContent = productName;
+        if(modalBody) {
+            modalBody.innerHTML = `
                 <div class="flex justify-center p-10">
                     <div class="spinner"></div>
-                </div>`;
+                </div>
+            `;
         }
-    };
-
-    // Function to fetch and display recipe content
-    const loadRecipeIntoModal = async (href, productName) => {
-        if (!recipeModal || !recipeModalTitle || !recipeModalBody) return;
-
-        recipeModalTitle.textContent = 'Loading ' + productName + '...';
-        showModalLoading();
+        openModal('recipeModal');
         
-        // Use the global custom modal function
-        if(window.openModal) window.openModal('recipeModal');
-
-        try {
-            const response = await fetch(href);
-            if (!response.ok) throw new Error('Network response was not ok');
+        // Fetch logic for Modal
+        fetch(`recipes.php?product_id=${productId}&ajax_render=true`)
+            .then(response => response.text())
+            .then(html => {
+                if(modalBody) modalBody.innerHTML = html;
+            })
+            .catch(err => {
+                if(modalBody) modalBody.innerHTML = '<p class="text-center text-red-500 p-4">Error loading data.</p>';
+            });
             
-            const htmlText = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, 'text/html');
-            const recipeContent = doc.querySelector('.recipe-content-col');
-            
-            if (recipeContent) {
-                recipeModalTitle.textContent = productName;
-                recipeModalBody.innerHTML = recipeContent.innerHTML;
-                
-                // Hijack form submissions to prevent full page reload on mobile
-                hijackModalForms(recipeModalBody, href, productName);
-            } else {
-                recipeModalBody.innerHTML = '<p class="text-red-500 text-center p-4">Could not load recipe content.</p>';
-            }
+    } else {
+        // --- DESKTOP LOGIC ---
+        detailsContainer.innerHTML = `
+            <div class="h-full flex items-center justify-center text-gray-400 animate-pulse">
+                <div class="text-center">
+                    <div class="spinner mx-auto mb-4"></div>
+                    <p>Loading Recipe...</p>
+                </div>
+            </div>
+        `;
 
-        } catch (error) {
-            console.error('Fetch error:', error);
-            recipeModalTitle.textContent = 'Error';
-            recipeModalBody.innerHTML = '<p class="text-red-500 text-center p-4">Could not load recipe. Please check your connection.</p>';
+        fetch(`recipes.php?product_id=${productId}&ajax_render=true`)
+            .then(response => {
+                if(!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(html => {
+                detailsContainer.innerHTML = html;
+                // No URL pushState here to prevent address bar clutter
+            })
+            .catch(err => {
+                console.error(err);
+                detailsContainer.innerHTML = `
+                    <div class="h-full flex items-center justify-center text-red-500">
+                        <p>Error loading recipe. Please try again.</p>
+                    </div>
+                `;
+            });
+    }
+}
+
+// --- Form Handling ---
+window.handleAddIngredient = function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    fetch('recipes.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success' || data.status === 'warning') {
+            Swal.fire({
+                icon: data.status,
+                title: data.status === 'success' ? 'Added' : 'Notice',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            loadRecipeView(window.currentProductId);
+        } else {
+            Swal.fire('Error', data.message, 'error');
         }
-    };
+    })
+    .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
+}
 
-    // Add click listeners to product links
-    if (productListContainer) {
-        // Selector matches the class added in PHP
-        productListContainer.querySelectorAll('a.product-card').forEach(link => {
-            link.addEventListener('click', (e) => {
-                // Check if we are on mobile (using Tailwind's lg breakpoint logic roughly)
-                if (window.innerWidth >= 1024) { 
-                    return true; // Desktop: follow link normally
-                }
+window.handleUpdateBatch = function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const productId = formData.get('product_id');
+    const newBatchSize = formData.get('batch_size');
+    
+    fetch('recipes.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Update the sidebar list item instantly
+            const batchDisplay = document.getElementById('batch-display-' + productId);
+            if (batchDisplay) {
+                batchDisplay.textContent = `Batch: ${newBatchSize} pcs`;
+            }
 
-                e.preventDefault(); 
-                const href = link.href;
-                const productName = link.dataset.productName || 'Recipe';
-                loadRecipeIntoModal(href, productName);
+            Swal.fire({
+                icon: 'success',
+                title: 'Updated',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false
             });
-        });
-    }
+            loadRecipeView(window.currentProductId);
+        } else {
+            Swal.fire('Error', data.message, 'error');
+        }
+    })
+    .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
+}
 
-    // Function to hijack forms inside the modal to use AJAX
-    const hijackModalForms = (modalBody, currentHref, productName) => {
-        modalBody.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault(); 
-                
-                const submitButton = form.querySelector('button[type="submit"]');
-                const originalButtonText = submitButton ? submitButton.innerHTML : 'Submit';
-                
-                if(submitButton) {
-                    submitButton.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div> Saving...`;
-                    submitButton.disabled = true;
-                }
-
-                try {
-                    await fetch(form.action, {
-                        method: 'POST',
-                        body: new FormData(form),
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                    });
-                    
-                    // Reload modal content to show changes
-                    loadRecipeIntoModal(currentHref, productName);
-
-                } catch (error) {
-                    console.error('Modal form submit error:', error);
-                    if(submitButton) {
-                        submitButton.innerHTML = originalButtonText;
-                        submitButton.disabled = false;
-                    }
-                }
+window.handleDeleteIngredient = function(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    fetch('recipes.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Removed',
+                text: data.message,
+                timer: 1000,
+                showConfirmButton: false
             });
-        });
-    };
+            closeModal('deleteRecipeItemModal');
+            loadRecipeView(window.currentProductId);
+        } else {
+            Swal.fire('Error', data.message, 'error');
+        }
+    })
+    .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
+}
 
-    // Handle Delete Form submission via AJAX if in mobile mode
-    const deleteRecipeItemModal = document.getElementById('deleteRecipeItemModal');
-    const deleteForm = deleteRecipeItemModal ? deleteRecipeItemModal.querySelector('form') : null;
-
-    if (deleteForm) {
-        deleteForm.addEventListener('submit', async (e) => {
-            // Check if the recipe modal is visible (implies mobile mode)
-            const isRecipeModalOpen = recipeModal && !recipeModal.classList.contains('hidden');
+// --- Search Filter & Popstate Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // Search Logic
+    const searchInput = document.getElementById('recipe-product-search');
+    if(searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.col-product');
+            let visibleCount = 0;
             
-            if (isRecipeModalOpen) {
-                e.preventDefault();
-                
-                try {
-                    await fetch(deleteForm.action, {
-                        method: 'POST',
-                        body: new FormData(deleteForm),
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                    });
-
-                    // Close Delete Modal
-                    if(window.closeModal) window.closeModal('deleteRecipeItemModal');
-
-                    // Reload Recipe Modal content to remove the deleted item from view
-                    const currentUrl = deleteForm.action;
-                    const productName = recipeModalTitle.textContent;
-                    loadRecipeIntoModal(currentUrl, productName);
-                    
-                } catch (err) {
-                    console.error("Delete error", err);
+            items.forEach(item => {
+                const name = item.dataset.productName;
+                if(name.includes(term)) {
+                    item.style.display = '';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            const noResults = document.getElementById('recipe-no-results');
+            if(noResults) {
+                if (visibleCount > 0) {
+                    noResults.classList.add('hidden');
+                } else {
+                    noResults.classList.remove('hidden');
                 }
             }
         });
     }
+
+    // Handle browser back/forward buttons if URL changes happen (legacy support)
+    window.addEventListener('popstate', function(event) {
+        location.reload();
+    });
 });

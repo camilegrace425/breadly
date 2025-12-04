@@ -1,3 +1,9 @@
+// Store chart instances globally to allow updates
+window.dashboardCharts = {
+    topProducts: null,
+    trend: null
+};
+
 // Global functions called by onclick attributes
 function toggleSidebar() {
     const sidebar = document.getElementById('mobileSidebar');
@@ -58,15 +64,13 @@ function switchTab(tabName) {
         }
     }
 
-    // Update URL and inputs
-    const url = new URL(window.location);
-    url.searchParams.set('active_tab', tabName);
-    window.history.replaceState({}, '', url);
+    // --- REMOVED URL UPDATE LOGIC HERE ---
+    // The code that updated window.history has been removed 
+    // to prevent the URL from changing.
 
     const activeTabInput = document.getElementById('active_tab_input');
     if (activeTabInput) activeTabInput.value = tabName;
 
-    // Update forms that might need to retain the tab
     updateFormActionsWithTab(tabName);
 }
 
@@ -77,9 +81,6 @@ function updateFormActionsWithTab(tabName) {
 
     const smsReportForm = document.getElementById('sms-report-form');
     if (smsReportForm) smsReportForm.action = `dashboard_panel.php?${newQueryString}`;
-    
-    const settingsForm = document.getElementById('settings-form');
-    if (settingsForm) settingsForm.action = `dashboard_panel.php?${newQueryString}`;
 }
 
 function toggleEmailField(show, type) {
@@ -129,6 +130,126 @@ function toggleSortDropdown(button) {
     }
 }
 
+// --- AJAX Dashboard Logic ---
+function attachDashboardListeners() {
+    const form = document.getElementById('dashboard-filter-form');
+    if (!form) return;
+
+    // Remove old listeners by cloning
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    const activeForm = newForm;
+
+    // Handle Form Submit
+    activeForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetchDashboardData(new FormData(activeForm));
+    });
+
+    // Auto-submit on date change
+    const dateInputs = activeForm.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            fetchDashboardData(new FormData(activeForm));
+        });
+    });
+
+    // Handle "Today" button
+    const todayBtn = document.getElementById('btn-today');
+    if (todayBtn) {
+        // Clone to clear listeners
+        const newTodayBtn = todayBtn.cloneNode(true);
+        todayBtn.parentNode.replaceChild(newTodayBtn, todayBtn);
+
+        newTodayBtn.addEventListener('click', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const startInput = activeForm.querySelector('input[name="date_start"]');
+            const endInput = activeForm.querySelector('input[name="date_end"]');
+            
+            if (startInput && endInput) {
+                startInput.value = today;
+                endInput.value = today;
+                fetchDashboardData(new FormData(activeForm));
+            }
+        });
+    }
+}
+
+function fetchDashboardData(formData) {
+    const params = new URLSearchParams(formData);
+    params.append('ajax', '1');
+
+    fetch(`dashboard_panel.php?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.summary) {
+                // Update Summary Cards
+                updateText('summary-net-revenue', '₱' + data.summary.netRevenue);
+                updateText('summary-gross-revenue', '₱' + data.summary.grossRevenue);
+                updateText('summary-less-returns', '-₱' + data.summary.totalReturnsValue);
+                
+                updateText('summary-total-sold', data.summary.totalSales);
+                updateText('summary-date-label-1', data.summary.dateRangeText);
+                
+                const returnsCountEl = document.getElementById('summary-returns-count');
+                if (returnsCountEl) {
+                    returnsCountEl.innerText = data.summary.totalReturnsCount;
+                    returnsCountEl.className = `text-3xl font-bold ${data.summary.totalReturnsCount > 0 ? 'text-red-600' : 'text-green-700'}`;
+                }
+                
+                const returnsValEl = document.getElementById('summary-returns-value');
+                if (returnsValEl) {
+                    returnsValEl.innerText = '₱' + data.summary.totalReturnsValue;
+                    returnsValEl.className = `text-3xl font-bold ${data.summary.totalReturnsValue > 0 ? 'text-red-600' : 'text-green-700'}`;
+                }
+                updateText('summary-date-label-2', data.summary.dateRangeText);
+
+                // Update Recall Card
+                const recallCountEl = document.getElementById('summary-recalled-count');
+                if (recallCountEl) {
+                    recallCountEl.innerText = data.summary.recallCount;
+                    recallCountEl.className = `text-4xl font-bold ${data.summary.recallCount > 0 ? 'text-red-600' : 'text-green-700'}`;
+                }
+                
+                const recallValEl = document.getElementById('summary-recalled-value');
+                if (recallValEl) {
+                    recallValEl.innerText = '₱' + data.summary.recallValue;
+                    recallValEl.className = `font-medium ${data.summary.recallValue > 0 ? 'text-red-700' : 'text-green-700'}`;
+                }
+            }
+
+            if (data.charts) {
+                updateCharts(data.charts);
+            }
+        })
+        .catch(err => console.error('Error fetching dashboard data:', err));
+}
+
+function updateText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = text;
+}
+
+function updateCharts(chartData) {
+    // 1. Top Products Chart
+    if (window.dashboardCharts.topProducts) {
+        const topProd = chartData.topProducts || [];
+        window.dashboardCharts.topProducts.data.labels = topProd.map(p => p.name);
+        window.dashboardCharts.topProducts.data.datasets[0].data = topProd.map(p => p.total_units_sold);
+        window.dashboardCharts.topProducts.update();
+    }
+
+    // 2. Trend Chart
+    if (window.dashboardCharts.trend) {
+        const trend = chartData.trendData || [];
+        window.dashboardCharts.trend.data.labels = trend.map(t => t.date);
+        window.dashboardCharts.trend.data.datasets[0].data = trend.map(t => t.sales);
+        window.dashboardCharts.trend.data.datasets[1].data = trend.map(t => t.returns);
+        window.dashboardCharts.trend.update();
+    }
+}
+
 // Initialization Logic
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -136,13 +257,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const topProductsCtx = document.getElementById('topProductsChart');
     if (topProductsCtx) {
         const topProductsData = JSON.parse(topProductsCtx.dataset.products);
-        const dateRangeText = topProductsCtx.dataset.dateRange || 'the selected period';
         
         const productLabels = Array.isArray(topProductsData) ? topProductsData.map(product => product.name) : [];
         const productSalesData = Array.isArray(topProductsData) ? topProductsData.map(product => product.total_units_sold) : [];
 
         if (productLabels.length > 0) {
-            new Chart(topProductsCtx, {
+            window.dashboardCharts.topProducts = new Chart(topProductsCtx, {
                 type: 'bar',
                 data: {
                     labels: productLabels,
@@ -156,32 +276,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    // --- Animation Configuration ---
                     animation: {
                         delay: (context) => {
                             let delay = 0;
-                            // Apply delay only to data points
                             if (context.type === 'data' && context.mode === 'default' && !context.dropped) {
-                                delay = context.dataIndex * 100; // Faster delay per bar
+                                delay = context.dataIndex * 100; 
                             }
                             return delay;
                         }
                     },
-                    // ---------------------------------------
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
-        } else {
-            const ctx = topProductsCtx.getContext('2d');
-            ctx.font = '16px Segoe UI';
-            ctx.fillStyle = '#6c757d';
-            ctx.textAlign = 'center';
-            ctx.fillText(`No sales data available for ${dateRangeText}.`, topProductsCtx.width / 2, topProductsCtx.height / 2);
         }
     }
 
@@ -200,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const trendReturns = Array.isArray(trendData) ? trendData.map(item => item.returns) : [];
 
         if (trendLabels.length > 0) {
-            new Chart(trendCtx, {
+            window.dashboardCharts.trend = new Chart(trendCtx, {
                 type: 'line', 
                 data: {
                     labels: trendLabels,
@@ -234,38 +341,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    // --- UPDATED: Faster Wave Animation for Line Chart ---
                     animation: {
                         x: {
                             type: 'number',
                             easing: 'linear',
-                            duration: 300, // Faster duration
-                            from: NaN, // the point is at the edge
+                            duration: 300, 
+                            from: NaN, 
                             delay: function(ctx) {
-                                if (ctx.type !== 'data' || ctx.xStarted) {
-                                    return 0;
-                                }
+                                if (ctx.type !== 'data' || ctx.xStarted) return 0;
                                 ctx.xStarted = true;
-                                return ctx.index * 30; // Faster delay: 30ms per point
+                                return ctx.index * 30; 
                             }
                         },
                         y: {
                             type: 'number',
                             easing: 'linear',
-                            duration: 300, // Faster duration
+                            duration: 300, 
                             from: function(ctx) {
                                 return ctx.index === 0 ? ctx.chart.scales.y.getPixelForValue(0) : ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1].getProps(['y'], true).y;
                             },
                             delay: function(ctx) {
-                                if (ctx.type !== 'data' || ctx.yStarted) {
-                                    return 0;
-                                }
+                                if (ctx.type !== 'data' || ctx.yStarted) return 0;
                                 ctx.yStarted = true;
-                                return ctx.index * 30; // Faster delay: 30ms per point
+                                return ctx.index * 30; 
                             }
                         }
                     },
-                    // ---------------------------------------
                     plugins: {
                         legend: { display: true, position: 'top' },
                         tooltip: {
@@ -293,15 +394,46 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-        } else {
-            const ctx = trendCtx.getContext('2d');
-            ctx.font = '16px Segoe UI';
-            ctx.fillStyle = '#6c757d';
-            ctx.textAlign = 'center';
-            ctx.fillText(`No trend data available.`, trendCtx.width / 2, trendCtx.height / 2);
         }
     }
 
+    // Initialize Helpers
+    enableModalSorting('stockListModal');
+    enableModalSorting('ingredientStockModal');
+    enableModalSorting('recallModal');
+    
+    const filterCheckbox = document.getElementById('filterLowStock');
+    if (filterCheckbox) {
+        filterCheckbox.addEventListener('change', function() {
+            const showLowOnly = this.checked;
+            const rows = document.querySelectorAll('#ingredientStockModal tbody tr');
+            
+            rows.forEach(row => {
+                if (showLowOnly) {
+                    const isLow = row.getAttribute('data-is-low') === '1';
+                    if (!isLow) {
+                        row.classList.add('hidden');
+                    } else {
+                        row.classList.remove('hidden');
+                    }
+                } else {
+                     row.classList.remove('hidden');
+                }
+            });
+        });
+    }
+
+    window.addEventListener('click', function(e) {
+        if (!e.target.closest('.sort-dropdown-container')) {
+            document.querySelectorAll('.sort-dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+    });
+
+    // --- Attach AJAX Logic ---
+    attachDashboardListeners();
+    
     // 3. Modal Sorting Logic
     function enableModalSorting(modalId) {
         const modal = document.getElementById(modalId);
@@ -341,54 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         sortTriggers.forEach(t => t.classList.remove('active'));
                         trigger.classList.add('active');
                         
-                        // Close dropdown after selection
                         const dropdownMenu = trigger.closest('.sort-dropdown-menu');
                         if (dropdownMenu) {
                             dropdownMenu.classList.add('hidden');
                         }
                     });
                 });
-
-                const activeSort = modal.querySelector('.sort-trigger.active');
-                if (activeSort) {
-                    activeSort.click();
-                }
             }
         }
     }
-
-    enableModalSorting('stockListModal');
-    enableModalSorting('ingredientStockModal');
-    enableModalSorting('recallModal');
-    
-    // 4. Low Stock Filter
-    const filterCheckbox = document.getElementById('filterLowStock');
-    if (filterCheckbox) {
-        filterCheckbox.addEventListener('change', function() {
-            const showLowOnly = this.checked;
-            const rows = document.querySelectorAll('#ingredientStockModal tbody tr');
-            
-            rows.forEach(row => {
-                if (showLowOnly) {
-                    const isLow = row.getAttribute('data-is-low') === '1';
-                    if (!isLow) {
-                        row.classList.add('hidden');
-                    } else {
-                        row.classList.remove('hidden');
-                    }
-                } else {
-                     row.classList.remove('hidden');
-                }
-            });
-        });
-    }
-
-    // 5. Global Listener to close dropdowns
-    window.addEventListener('click', function(e) {
-        if (!e.target.closest('.sort-dropdown-container')) {
-            document.querySelectorAll('.sort-dropdown-menu').forEach(menu => {
-                menu.classList.add('hidden');
-            });
-        }
-    });
 });

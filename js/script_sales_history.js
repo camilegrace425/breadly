@@ -12,14 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!prevBtn || !nextBtn) return;
 
-        let currentPage = 0; // 0-indexed page
+        // Ensure we have a default current page set on the element dataset
+        select.dataset.currentPage = select.dataset.currentPage || '0';
 
         const updateTableRows = () => {
             const selectedValue = select.value;
+            let currentPage = parseInt(select.dataset.currentPage);
             
-            // Determine what constitutes a "row" to paginate.
-            // For 'sales-table-body', we paginate based on class '.order-row'
-            // For 'returns-table-body', we paginate strictly on 'tr'
             let dataRows;
             if (tableBodyId === 'sales-table-body') {
                 dataRows = Array.from(tableBody.querySelectorAll('tr.order-row'));
@@ -29,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const totalRows = dataRows.length;
             
-            // 1. Handle 'All' case
             if (selectedValue === 'all') {
                 dataRows.forEach(row => {
                     row.style.display = '';
@@ -42,21 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const limit = parseInt(selectedValue, 10);
             const totalPages = (totalRows === 0) ? 1 : Math.ceil(totalRows / limit);
             
+            // Adjust current page if out of bounds (e.g., after filtering reduced rows)
             if (currentPage >= totalPages) {
                 currentPage = Math.max(0, totalPages - 1);
+                select.dataset.currentPage = currentPage;
             }
 
             const start = currentPage * limit;
             const end = start + limit;
             
-            // Iterate rows and set visibility
             dataRows.forEach((row, index) => {
                 if (index >= start && index < end) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
-                    // If it's an order row and hidden, also hide its details just in case visual glitches occur? 
-                    // CSS 'hidden' on parent usually suffices, but the details row is a sibling.
+                    // Hide details row if parent is hidden
                     if (row.classList.contains('order-row')) {
                         const nextRow = row.nextElementSibling;
                         if (nextRow && nextRow.classList.contains('details-row')) {
@@ -64,40 +62,48 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 }
-                
-                // Re-check visibility for active items (handling the sibling details row)
-                if (row.classList.contains('order-row') && index >= start && index < end) {
-                    const nextRow = row.nextElementSibling;
-                    // Restore detail row visibility logic: 
-                    // The details row usually has 'hidden' class controlled by toggle.
-                    // We just need to remove the 'display:none' inline style potentially added by pagination logic previously.
-                    if (nextRow && nextRow.classList.contains('details-row')) {
-                        nextRow.style.display = ''; 
-                    }
-                }
             });
 
-            // Update buttons
             prevBtn.disabled = currentPage === 0;
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
         };
 
-        // Event listeners
-        prevBtn.addEventListener('click', () => {
-            if (currentPage > 0) {
-                currentPage--;
+        // --- Event Listener Management ---
+        // Clone nodes to strip old event listeners before adding new ones
+        const newPrevBtn = prevBtn.cloneNode(true);
+        const newNextBtn = nextBtn.cloneNode(true);
+        prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+        nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+        
+        // Re-select fresh buttons
+        const freshPrevBtn = document.getElementById(`${baseId}-prev-btn`);
+        const freshNextBtn = document.getElementById(`${baseId}-next-btn`);
+
+        freshPrevBtn.addEventListener('click', () => {
+            let cur = parseInt(select.dataset.currentPage);
+            if (cur > 0) {
+                select.dataset.currentPage = cur - 1;
                 updateTableRows();
             }
         });
 
-        nextBtn.addEventListener('click', () => {
+        freshNextBtn.addEventListener('click', () => {
             if (select.value === 'all') return;
-            currentPage++;
+            let cur = parseInt(select.dataset.currentPage);
+            select.dataset.currentPage = cur + 1;
             updateTableRows();
         });
 
-        select.addEventListener('change', () => {
-            currentPage = 0; 
+        // Handle Change on Select Dropdown
+        const newSelect = select.cloneNode(true);
+        newSelect.dataset.currentPage = select.dataset.currentPage;
+        newSelect.value = select.value;
+        
+        select.parentNode.replaceChild(newSelect, select);
+        const freshSelect = document.getElementById(selectId);
+        
+        freshSelect.addEventListener('change', () => {
+            freshSelect.dataset.currentPage = '0';
             updateTableRows();
         });
         
@@ -106,8 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // --- JS Sorting ---
-    
     function getSortableValue(cell, type = 'text') {
+        if(!cell) return '';
         const textValue = cell.innerText;
         if ((type === 'number' || type === 'date') && cell.dataset.sortValue !== undefined) {
              const num = parseFloat(cell.dataset.sortValue);
@@ -132,49 +138,41 @@ document.addEventListener('DOMContentLoaded', () => {
         const select = document.getElementById(selectId);
         if (!select) return;
 
-        select.addEventListener('change', function() {
+        // Remove existing listener by cloning
+        const newSelect = select.cloneNode(true);
+        select.parentNode.replaceChild(newSelect, select);
+        const freshSelect = document.getElementById(selectId);
+
+        freshSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             const sortBy = selectedOption.dataset.sortBy;
             const sortType = selectedOption.dataset.sortType;
-            const sortDir = selectedOption.dataset.sortDir; // 'ASC' or 'DESC'
+            const sortDir = selectedOption.dataset.sortDir; 
 
             if (!sortBy) return;
 
-            // Use .shadow-sm (which belongs to the container card) to correctly scope the table search.
-            const container = select.closest('.shadow-sm');
+            const container = freshSelect.closest('.shadow-sm');
             if (!container) return;
 
             const tbody = container.querySelector('tbody');
             const thead = container.querySelector('thead');
-            if (!tbody || !thead) return;
-
-            // Find column index based on data-sort-by in <th>
+            
             let colIndex = -1;
             Array.from(thead.querySelectorAll('th')).forEach((th, index) => {
-                if (th.dataset.sortBy === sortBy) {
-                    colIndex = index;
-                }
+                if (th.dataset.sortBy === sortBy) colIndex = index;
             });
             
-            if (colIndex === -1) {
-                console.error(`Sort Error: Could not find column index for data-sort-by="${sortBy}"`);
-                return;
-            }
+            if (colIndex === -1) return;
 
-            // Check if we are sorting Order Rows (Sales table) or standard rows (Returns table)
             let isOrderTable = (tbody.id === 'sales-table-body');
-            let rows = [];
 
             if (isOrderTable) {
-                // For Orders: We must keep Order Row + Details Row pairs together
-                
-                // 1. Create a list of objects { orderRow, detailsRow }
+                // Sort Orders (maintaining row+detail pairs)
                 let currentPairs = [];
                 let currentOrderRows = Array.from(tbody.querySelectorAll('tr.order-row'));
                 
                 currentOrderRows.forEach(oRow => {
                     let dRow = oRow.nextElementSibling; 
-                    // Verify it is indeed the details row
                     if (dRow && dRow.classList.contains('details-row')) {
                         currentPairs.push({ order: oRow, details: dRow });
                     } else {
@@ -182,90 +180,141 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                // 2. Sort that list
                 currentPairs.sort((a, b) => {
-                    // Check if columns exist
                     if (a.order.cells.length <= colIndex || b.order.cells.length <= colIndex) return 0;
-
                     const valA = getSortableValue(a.order.cells[colIndex], sortType);
                     const valB = getSortableValue(b.order.cells[colIndex], sortType);
-                    
-                    let comparison = 0;
-                    if (valA > valB) comparison = 1;
-                    else if (valA < valB) comparison = -1;
-                    
+                    let comparison = (valA > valB) ? 1 : ((valA < valB) ? -1 : 0);
                     return sortDir === 'DESC' ? (comparison * -1) : comparison;
                 });
 
-                // 3. Append back
                 currentPairs.forEach(pair => {
                     tbody.appendChild(pair.order);
                     if(pair.details) tbody.appendChild(pair.details);
                 });
-
             } else {
-                // Standard Sorting (Returns Table)
-                rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])'));
+                // Sort Standard Rows
+                let rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])'));
                 rows.sort((a, b) => {
                     if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
                     const valA = getSortableValue(a.cells[colIndex], sortType);
                     const valB = getSortableValue(b.cells[colIndex], sortType);
-                    
-                    let comparison = 0;
-                    if (valA > valB) comparison = 1;
-                    else if (valA < valB) comparison = -1;
-                    
+                    let comparison = (valA > valB) ? 1 : ((valA < valB) ? -1 : 0);
                     return sortDir === 'DESC' ? (comparison * -1) : comparison;
                 });
-                
                 rows.forEach(row => tbody.appendChild(row));
             }
 
-            // Re-apply pagination after sorting (reset to page 1)
+            // Trigger pagination update (reset to page 1) by dispatching change event on pagination select
             const paginationSelect = container.querySelector('select[id$="-rows-select"]');
             if (paginationSelect) {
+                paginationSelect.dataset.currentPage = '0'; 
                 paginationSelect.dispatchEvent(new Event('change'));
             }
         });
     }
 
-    // --- Initialization ---
-    const mainFilterForm = document.querySelector('#pane-sales form');
-    const returnsFilterForm = document.querySelector('#pane-returns form');
-    const allTabButtons = document.querySelectorAll('#historyTabs button');
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Set initial active tab
-    const activeTabFromURL = urlParams.get('active_tab') || 'sales';
-    if (mainFilterForm) {
-        const inp = mainFilterForm.querySelector('input[name="active_tab"]');
-        if(inp) inp.value = activeTabFromURL;
-    }
-    if (returnsFilterForm) {
-        const inp = returnsFilterForm.querySelector('input[name="active_tab"]');
-        if(inp) inp.value = 'returns';
-    }
-
-    allTabButtons.forEach(tabButton => {
-        tabButton.addEventListener('click', function(event) {
-            const activeTabValue = event.currentTarget.id.replace('tab-', '');
-            const url = new URL(window.location);
-            url.searchParams.set('active_tab', activeTabValue);
+    // --- AJAX Handling ---
+    function attachAjaxFilters() {
+        const forms = document.querySelectorAll('#pane-sales form, #pane-returns form');
+        
+        forms.forEach(form => {
+            // Remove old listener if any
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
             
-            const form = activeTabValue === 'sales' ? mainFilterForm : returnsFilterForm;
-            if (form) {
-                const start = form.querySelector('[name="date_start"]').value;
-                const end = form.querySelector('[name="date_end"]').value;
-                url.searchParams.set('date_start', start);
-                url.searchParams.set('date_end', end);
-            }
-            window.history.replaceState({}, '', url);
-        });
-    });
+            // Re-select form for closure scope
+            const activeForm = newForm;
 
-    setupSortSelect('sales-sort-select');
-    setupSortSelect('returns-sort-select');
-    
+            activeForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const params = new URLSearchParams(formData);
+                params.append('ajax', '1');
+                
+                // Note: We don't disable the "Today" button here generically since it's just a trigger
+                // but we can add visual loading state if needed.
+
+                fetch(`sales_history.php?${params.toString()}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const activeTab = params.get('active_tab');
+                        
+                        if (activeTab === 'sales') {
+                            const tbody = document.getElementById('sales-table-body');
+                            tbody.innerHTML = data.html;
+                            
+                            // Update Totals
+                            if (data.totals) {
+                                if(document.getElementById('total-gross-revenue')) 
+                                    document.getElementById('total-gross-revenue').innerText = '₱' + data.totals.gross;
+                                if(document.getElementById('total-returns-value'))
+                                    document.getElementById('total-returns-value').innerText = '(₱' + data.totals.returns + ')';
+                                if(document.getElementById('total-net-revenue'))
+                                    document.getElementById('total-net-revenue').innerText = '₱' + data.totals.net;
+                            }
+                            
+                            // Re-init features for new elements
+                            addTablePagination('sales-rows-select', 'sales-table-body');
+                            setupSortSelect('sales-sort-select');
+                            
+                        } else if (activeTab === 'returns') {
+                            const tbody = document.getElementById('returns-table-body');
+                            tbody.innerHTML = data.html;
+                            
+                            addTablePagination('returns-rows-select', 'returns-table-body');
+                            setupSortSelect('returns-sort-select');
+                        }
+                    })
+                    .catch(err => console.error('Error:', err));
+            });
+
+            // NEW: Auto-submit on date change
+            const dateInputs = activeForm.querySelectorAll('input[type="date"]');
+            dateInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    activeForm.dispatchEvent(new Event('submit'));
+                });
+            });
+        });
+
+        // NEW: Handle "Today" buttons logic
+        const handleToday = (btnId, formSelector) => {
+            const btn = document.getElementById(btnId);
+            if(!btn) return;
+            
+            // Remove old listeners
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', () => {
+                const today = new Date().toISOString().split('T')[0];
+                const form = document.querySelector(formSelector);
+                if(!form) return;
+                
+                const start = form.querySelector('input[name="date_start"]');
+                const end = form.querySelector('input[name="date_end"]');
+                
+                if(start && end) {
+                    start.value = today;
+                    end.value = today;
+                    // Trigger submit via the form event
+                    form.dispatchEvent(new Event('submit'));
+                }
+            });
+        };
+
+        handleToday('sales-today-btn', '#pane-sales form');
+        handleToday('returns-today-btn', '#pane-returns form');
+    }
+
+    // --- REMOVED URL UPDATING LOGIC HERE ---
+    // The event listeners for history.replaceState have been removed.
+
+    // Initial Setup
     addTablePagination('sales-rows-select', 'sales-table-body');
     addTablePagination('returns-rows-select', 'returns-table-body');
+    setupSortSelect('sales-sort-select');
+    setupSortSelect('returns-sort-select');
+    attachAjaxFilters();
 });

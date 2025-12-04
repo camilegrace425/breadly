@@ -18,6 +18,174 @@ $current_role = $_SESSION["role"];
 $salesManager = new SalesManager();
 $bakeryManager = new BakeryManager();
 
+// --- AJAX HANDLER ---
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    $date_start = $_GET["date_start"] ?? date("Y-m-d");
+    $date_end = $_GET["date_end"] ?? date("Y-m-d");
+    $active_tab = $_GET["active_tab"] ?? "sales";
+    
+    // Fetch data based on the new filters
+    $sales = $salesManager->getSalesHistory($date_start, $date_end, "date", "DESC"); 
+    $all_return_history = $salesManager->getReturnHistory(); 
+
+    // Calculate Totals for the JSON response
+    $total_sales_revenue = 0;
+    foreach ($sales as $sale) {
+        $total_sales_revenue += $sale['total_price'];
+    }
+
+    $total_return_value = 0;
+    $start_date_obj = new DateTime($date_start . ' 00:00:00');
+    $end_date_obj = new DateTime($date_end . ' 23:59:59');
+
+    $filtered_return_history = [];
+    foreach ($all_return_history as $log) {
+        $return_date_obj = new DateTime($log['timestamp']);
+        if ($return_date_obj >= $start_date_obj && $return_date_obj <= $end_date_obj) {
+            $total_return_value += $log["return_value"];
+            $filtered_return_history[] = $log;
+        }
+    }
+    $net_revenue = $total_sales_revenue - $total_return_value;
+
+    // Start buffering HTML output for the table rows
+    ob_start();
+    
+    if ($active_tab === 'sales') {
+        // Group Orders Logic
+        $grouped_orders = [];
+        foreach ($sales as $sale) {
+            $order_id = $sale['order_id'];
+            if (!isset($grouped_orders[$order_id])) {
+                $grouped_orders[$order_id] = [
+                    'order_id' => $order_id,
+                    'timestamp' => $sale['date'],
+                    'cashier' => $sale['cashier_username'],
+                    'total_order_price' => 0,
+                    'items_count' => 0,
+                    'items' => []
+                ];
+            }
+            $grouped_orders[$order_id]['items'][] = $sale;
+            $grouped_orders[$order_id]['total_order_price'] += $sale['total_price'];
+            $grouped_orders[$order_id]['items_count'] += $sale['qty_sold'];
+        }
+
+        if (empty($grouped_orders)) {
+            echo '<tr id="sales-no-results"><td colspan="6" class="px-6 py-8 text-center text-gray-400">No orders found.</td></tr>';
+        } else {
+            foreach ($grouped_orders as $order) {
+                ?>
+                <tr class="order-row hover:bg-orange-50 transition-colors cursor-pointer border-b border-gray-50" 
+                    onclick="toggleOrderDetails(<?php echo $order['order_id']; ?>)">
+                    <td class="px-6 py-4 text-center text-breadly-btn">
+                        <i class='bx bx-chevron-right text-xl transition-transform duration-200' id="icon-<?php echo $order['order_id']; ?>"></i>
+                    </td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-700" data-sort-value="<?php echo strtotime($order["timestamp"]); ?>">
+                        <?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($order["timestamp"]))); ?>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600 font-bold" data-sort-value="<?php echo $order["order_id"]; ?>">
+                        #<?php echo $order["order_id"]; ?>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        <?php echo htmlspecialchars($order["cashier"]); ?>
+                    </td>
+                    <td class="px-6 py-4 text-center text-sm">
+                        <span class="bg-gray-100 px-2 py-1 rounded-md text-gray-600"><?php echo $order["items_count"]; ?> items</span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-bold text-breadly-dark text-base" data-sort-value="<?php echo $order["total_order_price"]; ?>">
+                        ₱<?php echo number_format($order["total_order_price"], 2); ?>
+                    </td>
+                </tr>
+                
+                <tr id="details-<?php echo $order['order_id']; ?>" class="details-row hidden bg-orange-50/30">
+                    <td colspan="6" class="px-0 py-0">
+                        <div class="p-4 pl-16 pr-6 border-b border-orange-100">
+                            <div class="bg-white rounded-lg border border-orange-200 overflow-hidden shadow-sm">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-orange-100 text-breadly-dark text-xs uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left">Product</th>
+                                            <th class="px-4 py-2 text-center">Qty</th>
+                                            <th class="px-4 py-2 text-right">Subtotal</th>
+                                            <th class="px-4 py-2 text-right">Discount</th>
+                                            <th class="px-4 py-2 text-right">Total</th>
+                                            <th class="px-4 py-2 text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-orange-100">
+                                        <?php foreach ($order['items'] as $item): 
+                                            $qty_available = $item["qty_sold"] - $item["qty_returned"];
+                                        ?>
+                                        <tr class="hover:bg-orange-50">
+                                            <td class="px-4 py-2 font-medium text-gray-800"><?php echo htmlspecialchars($item["product_name"]); ?></td>
+                                            <td class="px-4 py-2 text-center">
+                                                <?php echo $item["qty_sold"]; ?>
+                                                <?php if ($item["qty_returned"] > 0): ?>
+                                                    <span class="text-red-500 text-xs block">(-<?php echo $item["qty_returned"]; ?> ret)</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="px-4 py-2 text-right text-gray-500">₱<?php echo number_format($item["subtotal"], 2); ?></td>
+                                            <td class="px-4 py-2 text-right text-red-500">
+                                                <?php echo ($item["discount_percent"] > 0) ? $item["discount_percent"].'%' : '-'; ?>
+                                            </td>
+                                            <td class="px-4 py-2 text-right font-semibold text-gray-700">₱<?php echo number_format($item["total_price"], 2); ?></td>
+                                            <td class="px-4 py-2 text-center">
+                                                <button onclick="openReturnModal(this)" 
+                                                    class="text-xs px-2 py-1 rounded border border-blue-200 text-blue-600 hover:bg-blue-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    data-sale-id="<?php echo $item["sale_id"]; ?>"
+                                                    data-product-name="<?php echo htmlspecialchars($item["product_name"]); ?>"
+                                                    data-qty-available="<?php echo $qty_available; ?>"
+                                                    data-sale-date="<?php echo htmlspecialchars(date("M d, Y", strtotime($item["date"]))); ?>"
+                                                    <?php if ($qty_available <= 0) echo "disabled"; ?>>
+                                                    Return
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <?php
+            }
+        }
+    } elseif ($active_tab === 'returns') {
+        if (empty($filtered_return_history)) {
+            echo '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-400">No returns found for the selected date range.</td></tr>';
+        } else {
+            foreach ($filtered_return_history as $log) {
+                ?>
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($log["timestamp"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
+                    <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $log["sale_id"]; ?>"><?php echo $log["sale_id"]; ?></td>
+                    <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($log["product_name"] ?? "Deleted"); ?></td>
+                    <td class="px-6 py-3 font-bold text-green-600" data-sort-value="<?php echo $log["qty_returned"]; ?>">+<?php echo $log["qty_returned"]; ?></td>
+                    <td class="px-6 py-3 text-blue-600" data-sort-value="<?php echo $log["return_value"]; ?>">(₱<?php echo number_format($log["return_value"], 2); ?>)</td>
+                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["username"] ?? "N/A"); ?></td>
+                    <td class="px-6 py-3 text-sm"><?php echo htmlspecialchars($log["reason"]); ?></td>
+                </tr>
+                <?php
+            }
+        }
+    }
+
+    $html = ob_get_clean();
+    header('Content-Type: application/json');
+    echo json_encode([
+        'html' => $html,
+        'totals' => [
+            'gross' => number_format($total_sales_revenue, 2),
+            'returns' => number_format($total_return_value, 2),
+            'net' => number_format($net_revenue, 2)
+        ]
+    ]);
+    exit();
+}
+// --- END AJAX HANDLER ---
+
 // Session Messages
 $message = "";
 $message_type = "";
@@ -67,7 +235,7 @@ $date_start = $_GET["date_start"] ?? date("Y-m-d");
 $date_end = $_GET["date_end"] ?? date("Y-m-d");
 $active_tab = $_GET["active_tab"] ?? "sales";
 
-// Fetch Data
+// Fetch Data for Initial Page Load
 $sales = $salesManager->getSalesHistory($date_start, $date_end, "date", "DESC"); 
 $all_return_history = $salesManager->getReturnHistory(); 
 
@@ -89,14 +257,9 @@ foreach ($sales as $sale) {
         ];
     }
     
-    // Add item to the order
     $grouped_orders[$order_id]['items'][] = $sale;
-    
-    // Aggregate totals
     $grouped_orders[$order_id]['total_order_price'] += $sale['total_price'];
     $grouped_orders[$order_id]['items_count'] += $sale['qty_sold'];
-    
-    // Global total
     $total_sales_revenue += $sale['total_price'];
 }
 // ---------------------------------------------
@@ -154,7 +317,6 @@ $net_revenue = $total_sales_revenue - $total_return_value;
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        /* Animation for expanding rows */
         .details-row { transition: all 0.3s ease; }
     </style>
 </head>
@@ -284,7 +446,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                 <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
                             </div>
                             <div class="w-full md:w-auto">
-                                <button type="submit" class="w-full md:w-auto px-6 py-2 bg-breadly-btn text-white rounded-lg hover:bg-breadly-btn-hover transition-colors text-sm font-medium">Filter</button>
+                                <button type="button" id="sales-today-btn" class="w-full md:w-auto px-6 py-2 bg-breadly-btn text-white rounded-lg hover:bg-breadly-btn-hover transition-colors text-sm font-medium">Today</button>
                             </div>
                         </form>
                     </div>
@@ -414,16 +576,16 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                         <div class="flex flex-col items-end gap-1 text-sm">
                             <div class="flex justify-between w-48 text-gray-600">
                                 <span>Gross Revenue:</span>
-                                <span>₱<?php echo number_format($total_sales_revenue, 2); ?></span>
+                                <span id="total-gross-revenue">₱<?php echo number_format($total_sales_revenue, 2); ?></span>
                             </div>
                             <div class="flex justify-between w-48 text-red-500">
                                 <span>Less Returns:</span>
-                                <span>(₱<?php echo number_format($total_return_value, 2); ?>)</span>
+                                <span id="total-returns-value">(₱<?php echo number_format($total_return_value, 2); ?>)</span>
                             </div>
                             <div class="w-48 border-t border-gray-300 my-1"></div>
                             <div class="flex justify-between w-48 font-bold text-lg text-breadly-dark">
                                 <span>Net Revenue:</span>
-                                <span>₱<?php echo number_format($net_revenue, 2); ?></span>
+                                <span id="total-net-revenue">₱<?php echo number_format($net_revenue, 2); ?></span>
                             </div>
                         </div>
                     </div>
@@ -445,7 +607,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                 <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="w-full md:w-auto">
-                                <button type="submit" class="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">Filter Returns</button>
+                                <button type="button" id="returns-today-btn" class="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">Today</button>
                             </div>
                         </form>
                     </div>

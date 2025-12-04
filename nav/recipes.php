@@ -349,8 +349,8 @@ if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
         </div>
     </div>
 
-    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
-        <div class="p-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-breadly-bg z-10">
+    <main class="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative w-full">
+        <div class="p-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-breadly-bg z-10 shrink-0">
             <div class="flex items-center gap-3">
                 <button onclick="toggleSidebar()" class="lg:hidden text-breadly-dark text-2xl"><i class='bx bx-menu'></i></button>
                 <h1 class="text-2xl font-bold text-breadly-dark">Recipe Management</h1>
@@ -358,7 +358,7 @@ if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
         </div>
 
         <?php if ($message): ?>
-        <div class="px-6">
+        <div class="px-6 shrink-0">
             <div class="<?php echo ($message_type === 'success') ? 'bg-green-100 text-green-800 border-green-200' : (($message_type === 'warning') ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'); ?> border px-4 py-3 rounded-lg flex justify-between items-center mb-4 shadow-sm">
                 <span><?php echo htmlspecialchars($message); ?></span>
                 <button onclick="this.parentElement.remove()" class="text-lg font-bold">&times;</button>
@@ -366,12 +366,11 @@ if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
         </div>
         <?php endif; ?>
 
-        <div class="flex-1 overflow-y-auto p-6 pb-20">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-                
-                <div class="lg:col-span-4 xl:col-span-3 flex flex-col h-full">
-                    <div class="bg-white rounded-xl shadow-sm border border-orange-100 flex flex-col h-full overflow-hidden animate-slide-in delay-100">
-                        <div class="p-4 border-b border-orange-100">
+        <div class="flex-1 flex flex-col lg:flex-row h-full lg:overflow-hidden overflow-y-auto w-full">
+            
+            <div class="lg:w-1/3 xl:w-1/4 lg:h-full lg:flex lg:flex-col p-6 lg:pr-3 shrink-0">
+                 <div class="h-96 lg:h-full flex flex-col bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+                      <div class="p-4 border-b border-orange-100 shrink-0">
                             <h4 class="font-bold text-gray-800 mb-3">Select a Product</h4>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class='bx bx-search text-gray-400'></i></span>
@@ -379,7 +378,7 @@ if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto p-4" id="recipe-product-list">
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-2 lg:grid-cols-2 gap-3">
                                 <?php foreach ($products as $product): ?>
                                     <?php $is_active = ($selected_product_id == $product['product_id']); ?>
                                     <div class="col-product" data-product-name="<?= htmlspecialchars(strtolower($product['name'])) ?>">
@@ -388,7 +387,7 @@ if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
                                            data-product-name="<?php echo htmlspecialchars($product['name']); ?>"
                                            data-id="<?php echo $product['product_id']; ?>">
                                              <div class="font-semibold text-sm text-gray-800 mb-1 line-clamp-2"><?= htmlspecialchars($product['name']) ?></div>
-                                             <div class="mt-auto text-xs text-gray-500 bg-white/50 rounded px-1 py-0.5 w-fit border border-gray-100">Batch: <?= htmlspecialchars($product['batch_size'] ?? '0') ?> pcs</div>
+                                             <div id="batch-display-<?= $product['product_id'] ?>" class="mt-auto text-xs text-gray-500 bg-white/50 rounded px-1 py-0.5 w-fit border border-gray-100">Batch: <?= htmlspecialchars($product['batch_size'] ?? '0') ?> pcs</div>
                                         </button>
                                     </div>
                                 <?php endforeach; ?>
@@ -405,13 +404,13 @@ if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
                                 <p class="text-sm">No products match your search.</p>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="lg:col-span-8 xl:col-span-9 h-full overflow-y-auto recipe-content-col" id="recipe-details-container">
-                    <?php echo $right_column_content; ?>
-                </div>
+                 </div>
             </div>
+
+            <div class="lg:flex-1 lg:h-full lg:overflow-y-auto p-6 lg:pl-3 pt-0 lg:pt-6" id="recipe-details-container">
+                 <?php echo $right_column_content; ?>
+                 <div class="h-20 lg:hidden"></div> </div>
+
         </div>
     </main>
 
@@ -457,232 +456,10 @@ if (isset($_GET['ajax_render']) && $_GET['ajax_render'] === 'true') {
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // --- Shared Functions ---
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mobileSidebar');
-            const overlay = document.getElementById('mobileSidebarOverlay');
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
-            }
-        }
-
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) modal.classList.add('hidden');
-        }
-        
-        function closeAllModals() {
-            document.querySelectorAll('.fixed.z-50, .fixed.z-[60]').forEach(el => el.classList.add('hidden'));
-        }
-
-        function openDeleteModal(recipeId, ingredientName) {
-            const nameSpan = document.getElementById('delete_ingredient_name');
-            const idInput = document.getElementById('delete_recipe_id');
-            
-            if(nameSpan) nameSpan.textContent = ingredientName;
-            if(idInput) idInput.value = recipeId;
-            
-            openModal('deleteRecipeItemModal');
-        }
-
-        // --- AJAX Loading Logic ---
-        let currentProductId = "<?php echo $selected_product_id; ?>";
-
-        function loadRecipeView(productId, clickedElement) {
-            currentProductId = productId;
-            const detailsContainer = document.getElementById('recipe-details-container');
-            const productName = clickedElement ? clickedElement.dataset.productName : 'Recipe';
-
-            // UI: Update active class in list
-            document.querySelectorAll('.product-card').forEach(c => {
-                c.classList.remove('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
-                c.classList.add('border-gray-100', 'bg-white', 'hover:border-orange-200');
-            });
-            // Find card even if clickedElement isn't passed (e.g. programmatic reload)
-            const card = clickedElement || document.querySelector(`.product-card[data-id="${productId}"]`);
-            if(card) {
-                card.classList.remove('border-gray-100', 'bg-white', 'hover:border-orange-200');
-                card.classList.add('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
-            }
-
-            // --- MOBILE LOGIC ---
-            if (window.innerWidth < 1024) { // Check for mobile breakpoint
-                const modalLabel = document.getElementById('recipeModalLabel');
-                const modalBody = document.getElementById('recipeModalBody');
-                
-                if(modalLabel) modalLabel.textContent = productName;
-                if(modalBody) {
-                    modalBody.innerHTML = `
-                        <div class="flex justify-center p-10">
-                            <div class="spinner"></div>
-                        </div>
-                    `;
-                }
-                openModal('recipeModal');
-                
-                // Fetch logic for Modal
-                fetch(`recipes.php?product_id=${productId}&ajax_render=true`)
-                    .then(response => response.text())
-                    .then(html => {
-                        if(modalBody) modalBody.innerHTML = html;
-                    })
-                    .catch(err => {
-                        if(modalBody) modalBody.innerHTML = '<p class="text-center text-red-500 p-4">Error loading data.</p>';
-                    });
-                    
-            } else {
-                // --- DESKTOP LOGIC (Existing) ---
-                detailsContainer.innerHTML = `
-                    <div class="h-full flex items-center justify-center text-gray-400 animate-pulse">
-                        <div class="text-center">
-                            <div class="spinner mx-auto mb-4"></div>
-                            <p>Loading Recipe...</p>
-                        </div>
-                    </div>
-                `;
-
-                fetch(`recipes.php?product_id=${productId}&ajax_render=true`)
-                    .then(response => {
-                        if(!response.ok) throw new Error('Network response was not ok');
-                        return response.text();
-                    })
-                    .then(html => {
-                        detailsContainer.innerHTML = html;
-                        const newUrl = `recipes.php?product_id=${productId}`;
-                        window.history.pushState({path: newUrl}, '', newUrl);
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        detailsContainer.innerHTML = `
-                            <div class="h-full flex items-center justify-center text-red-500">
-                                <p>Error loading recipe. Please try again.</p>
-                            </div>
-                        `;
-                    });
-            }
-        }
-
-        // --- Form Handling ---
-        function handleAddIngredient(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            
-            fetch('recipes.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success' || data.status === 'warning') {
-                    Swal.fire({
-                        icon: data.status,
-                        title: data.status === 'success' ? 'Added' : 'Notice',
-                        text: data.message,
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    loadRecipeView(currentProductId);
-                } else {
-                    Swal.fire('Error', data.message, 'error');
-                }
-            })
-            .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
-        }
-
-        function handleUpdateBatch(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            
-            fetch('recipes.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Updated',
-                        text: data.message,
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    loadRecipeView(currentProductId);
-                } else {
-                    Swal.fire('Error', data.message, 'error');
-                }
-            })
-            .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
-        }
-
-        function handleDeleteIngredient(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            
-            fetch('recipes.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Removed',
-                        text: data.message,
-                        timer: 1000,
-                        showConfirmButton: false
-                    });
-                    closeModal('deleteRecipeItemModal');
-                    loadRecipeView(currentProductId);
-                } else {
-                    Swal.fire('Error', data.message, 'error');
-                }
-            })
-            .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
-        }
-
-        // Search logic
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('recipe-product-search');
-            if(searchInput) {
-                searchInput.addEventListener('input', function(e) {
-                    const term = e.target.value.toLowerCase();
-                    const items = document.querySelectorAll('.col-product');
-                    let visibleCount = 0;
-                    
-                    items.forEach(item => {
-                        const name = item.dataset.productName;
-                        if(name.includes(term)) {
-                            item.style.display = '';
-                            visibleCount++;
-                        } else {
-                            item.style.display = 'none';
-                        }
-                    });
-                    
-                    const noResults = document.getElementById('recipe-no-results');
-                    if(noResults) {
-                        noResults.classList.toggle('hidden', visibleCount > 0);
-                    }
-                });
-            }
-        });
-        
-        window.addEventListener('popstate', function(event) {
-            location.reload();
-        });
+        // Initialize global variable from PHP
+        window.currentProductId = "<?php echo $selected_product_id; ?>";
     </script>
+    <?php $js_version = file_exists("../js/script_recipes.js") ? filemtime("../js/script_recipes.js") : "1"; ?>
+    <script src="../js/script_recipes.js?v=<?php echo $js_version; ?>"></script>
 </body>
 </html>

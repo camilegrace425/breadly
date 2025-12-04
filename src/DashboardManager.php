@@ -12,7 +12,7 @@ class DashboardManager extends AbstractManager {
     private $salesManager;
 
     public function __construct() {
-        parent::__construct(); // Call the parent constructor to set $this->conn
+        parent::__construct(); 
         $this->salesManager = new SalesManager(); 
     }
     
@@ -157,10 +157,9 @@ class DashboardManager extends AbstractManager {
         }
     }
 
-    // NEW FUNCTION: Combines count and value of recalled items in a date range
+    // ORIGINAL: Date-filtered recall summary
     public function getRecallSummaryByDateRange($date_start, $date_end) {
         try {
-            // Calculates the sum of negative product adjustments marked as 'recall'
             $sql = "SELECT 
                         ABS(SUM(CASE WHEN sa.item_type = 'product' AND sa.adjustment_qty < 0 AND sa.reason LIKE '%recall%' THEN sa.adjustment_qty ELSE 0 END)) AS total_recalled_count,
                         ABS(SUM(CASE WHEN sa.item_type = 'product' AND sa.adjustment_qty < 0 AND sa.reason LIKE '%recall%' THEN sa.adjustment_qty * p.price ELSE 0 END)) AS total_recalled_value
@@ -183,7 +182,30 @@ class DashboardManager extends AbstractManager {
         }
     }
 
-    // --- ADDED: Fetch detailed list of recalls for the modal ---
+    // NEW: All-time recall summary (No Date Filter)
+    public function getAllRecallSummary() {
+        try {
+            $sql = "SELECT 
+                        ABS(SUM(CASE WHEN sa.item_type = 'product' AND sa.adjustment_qty < 0 AND sa.reason LIKE '%recall%' THEN sa.adjustment_qty ELSE 0 END)) AS total_recalled_count,
+                        ABS(SUM(CASE WHEN sa.item_type = 'product' AND sa.adjustment_qty < 0 AND sa.reason LIKE '%recall%' THEN sa.adjustment_qty * p.price ELSE 0 END)) AS total_recalled_value
+                    FROM stock_adjustments sa
+                    LEFT JOIN products p ON sa.item_id = p.product_id AND sa.item_type = 'product'";
+            
+            $stmt = $this->conn->query($sql);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            return [
+                'count' => (int)($row['total_recalled_count'] ?? 0),
+                'value' => (float)($row['total_recalled_value'] ?? 0.00)
+            ];
+        } catch (PDOException $e) {
+            error_log("Error getting all-time recall summary: " . $e->getMessage());
+            return ['count' => 0, 'value' => 0.00];
+        }
+    }
+
+    // ORIGINAL: Date-filtered recall list
     public function getRecallsByDateRange($date_start, $date_end) {
         try {
             $stmt = $this->conn->prepare("CALL InventoryGetRecallHistory(?, ?)");
@@ -196,7 +218,28 @@ class DashboardManager extends AbstractManager {
             return [];
         }
     }
-    // -----------------------------------------------------------
+
+    // NEW: All-time recall list (No Date Filter)
+    public function getAllRecalls() {
+        try {
+            // Using raw SQL to avoid dependency on stored procedure having an 'all time' mode
+            $sql = "SELECT sa.timestamp, p.name as item_name, sa.reason, sa.adjustment_qty
+                    FROM stock_adjustments sa
+                    JOIN products p ON sa.item_id = p.product_id
+                    WHERE sa.item_type = 'product' 
+                      AND sa.adjustment_qty < 0 
+                      AND sa.reason LIKE '%recall%'
+                    ORDER BY sa.timestamp DESC";
+            
+            $stmt = $this->conn->query($sql);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+            return $data;
+        } catch (PDOException $e) {
+            error_log("Error fetching all recalls: " . $e->getMessage());
+            return [];
+        }
+    }
 
     public function getExpiringBatches($days_threshold = 7) {
         try {
@@ -231,7 +274,7 @@ class DashboardManager extends AbstractManager {
         // 2. Calculate Net Revenue
         $netRevenue = $grossRevenue - $totalReturns;
 
-        // 3. Get Recall Summary (Total Value of Recalled Products)
+        // 3. Get Recall Summary (Total Value of Recalled Products - Using Date Range for Report consistency)
         $recallSummary = $this->getRecallSummaryByDateRange($date_start, $date_end);
         $totalRecalledValue = $recallSummary['value'] ?? 0.00;
 
@@ -241,7 +284,6 @@ class DashboardManager extends AbstractManager {
         $message .= "Net Revenue: P" . number_format($netRevenue, 2) . "\n";
         $message .= "Total Recalled: P" . number_format($totalRecalledValue, 2) . "\n";
         
-        // Truncate if too long (though this format should be short enough)
         if (strlen($message) > 400) {
              $message = substr($message, 0, 400) . "...";
         }

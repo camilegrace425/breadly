@@ -142,23 +142,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const qtyInput = adjustProductModal.querySelector('#adjust_adjustment_qty');
         const typeSelect = adjustProductModal.querySelector('#adjust_type');
         const qtyHelper = adjustProductModal.querySelector('#adjust_qty_helper');
+        const form = adjustProductModal.querySelector('form');
 
         const updateHelperText = () => {
-            const qty = parseInt(qtyInput.value, 10);
+            const qty = parseFloat(qtyInput.value);
             const type = typeSelect.value;
 
-            if (!qty || isNaN(qty)) {
-                qtyHelper.textContent = 'Enter a whole number.';
+            if (isNaN(qty)) {
+                qtyHelper.textContent = 'Enter a valid number.';
                 qtyHelper.className = 'text-xs text-gray-500 mt-1';
                 return;
             }
 
+            // Strict Validation Logic for Helper Text
             if (type === 'Production' && qty < 0) {
-                qtyHelper.textContent = 'Production quantity should be positive.';
-                qtyHelper.className = 'text-xs text-red-500 mt-1';
+                qtyHelper.textContent = 'Error: Production quantity cannot be negative.';
+                qtyHelper.className = 'text-xs text-red-600 mt-1 font-bold';
             } else if (type === 'Recall' && qty > 0) { 
-                qtyHelper.textContent = 'Recall quantity should be negative (e.g., -5).'; 
-                qtyHelper.className = 'text-xs text-red-500 mt-1';
+                qtyHelper.textContent = 'Error: Recall quantity must be negative.'; 
+                qtyHelper.className = 'text-xs text-red-600 mt-1 font-bold';
             } else {
                 let actionText = '';
                 if (type === 'Production') {
@@ -175,6 +177,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if(qtyInput) qtyInput.addEventListener('input', updateHelperText);
         if(typeSelect) typeSelect.addEventListener('change', updateHelperText);
+
+        // Prevent Form Submission on Invalid Input
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const qty = parseFloat(qtyInput.value);
+                const type = typeSelect.value;
+
+                if (type === 'Production' && qty < 0) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'Production quantity cannot be negative.', 'error');
+                } else if (type === 'Recall' && qty > 0) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'Recall quantity must be negative.', 'error');
+                } else if (qty === 0) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'Quantity cannot be zero.', 'error');
+                }
+            });
+        }
 
         onModalOpen('adjustProductModal', (button) => {
             if (!button) return;

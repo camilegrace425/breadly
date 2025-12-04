@@ -19,6 +19,78 @@ $inventoryManager = new InventoryManager();
 $current_user_id = $_SESSION['user_id'];
 $current_role = $_SESSION["role"];
 
+// --- AJAX HANDLER ---
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    $date_start = $_GET['date_start'] ?? date('Y-m-d');
+    $date_end = $_GET['date_end'] ?? date('Y-m-d');
+
+    // 1. Fetch Sales Summary (Respects Filter)
+    $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
+    $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
+    $totalReturnsValue = $dateRangeSummary['totalReturnsValue'] ?? 0.00;
+    $totalReturnsCount = $dateRangeSummary['totalReturnsCount'] ?? 0;
+    $netRevenue = $grossRevenue - $totalReturnsValue;
+    $totalSales = $dateRangeSummary['totalSales'] ?? 0;
+
+    // 2. Fetch Top Products (Respects Filter)
+    $topProducts = $dashboardManager->getTopSellingProducts($date_start, $date_end, 5);
+
+    // 3. Fetch Trend Data (Respects Filter)
+    $dailySalesRaw = $dashboardManager->getDailySalesTrend($date_start, $date_end);
+    $dailyReturnsRaw = $dashboardManager->getDailyReturnsTrend($date_start, $date_end);
+
+    $trendData = [];
+    $period = new DatePeriod(
+         new DateTime($date_start),
+         new DateInterval('P1D'),
+         (new DateTime($date_end))->modify('+1 day')
+    );
+
+    foreach ($period as $date) {
+        $d = $date->format('Y-m-d');
+        $trendData[$d] = ['date' => $d, 'sales' => 0.00, 'returns' => 0.00];
+    }
+
+    foreach ($dailySalesRaw as $s) {
+        if (isset($trendData[$s['sale_date']])) $trendData[$s['sale_date']]['sales'] = (float)$s['daily_revenue'];
+    }
+    foreach ($dailyReturnsRaw as $r) {
+        if (isset($trendData[$r['return_date']])) $trendData[$r['return_date']]['returns'] = (float)$r['daily_return_value'];
+    }
+    $dailyTrendData = array_values($trendData);
+
+    // 4. Fetch Recall Summary (TODAY ONLY - Ignores Filter)
+    $today = date('Y-m-d');
+    $recallSummary = $dashboardManager->getRecallSummaryByDateRange($today, $today);
+    
+    // Friendly Date Text
+    if ($date_start == $date_end) {
+        $date_range_text = date('M d, Y', strtotime($date_start));
+    } else {
+        $date_range_text = date('M d, Y', strtotime($date_start)) . ' to ' . date('M d, Y', strtotime($date_end));
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode([
+        'summary' => [
+            'netRevenue' => number_format($netRevenue, 2),
+            'grossRevenue' => number_format($grossRevenue, 2),
+            'totalReturnsValue' => number_format($totalReturnsValue, 2),
+            'totalReturnsCount' => $totalReturnsCount,
+            'totalSales' => $totalSales,
+            'recallCount' => $recallSummary['count'],
+            'recallValue' => number_format($recallSummary['value'], 2),
+            'dateRangeText' => $date_range_text
+        ],
+        'charts' => [
+            'topProducts' => $topProducts,
+            'trendData' => $dailyTrendData
+        ]
+    ]);
+    exit();
+}
+// --- END AJAX HANDLER ---
+
 // Handle POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'send_summary_report') {
@@ -58,7 +130,7 @@ $date_start = $_GET['date_start'] ?? date('Y-m-d');
 $date_end = $_GET['date_end'] ?? date('Y-m-d');
 $active_tab = $_GET['active_tab'] ?? 'sales';
 
-// Fetch Sales Summary
+// Fetch Sales Summary (Initial Load)
 $dateRangeSummary = $dashboardManager->getSalesSummaryByDateRange($date_start, $date_end);
 $grossRevenue = $dateRangeSummary['totalRevenue'] ?? 0.00;
 $totalReturnsValue = $dateRangeSummary['totalReturnsValue'] ?? 0.00;
@@ -67,7 +139,7 @@ $netRevenue = $grossRevenue - $totalReturnsValue;
 
 $topProducts = $dashboardManager->getTopSellingProducts($date_start, $date_end, 5);
 
-// Fetch Daily Trend Data (Sales & Returns)
+// Fetch Daily Trend Data (Initial Load)
 $dailySalesRaw = $dashboardManager->getDailySalesTrend($date_start, $date_end);
 $dailyReturnsRaw = $dashboardManager->getDailyReturnsTrend($date_start, $date_end);
 
@@ -96,12 +168,13 @@ $dailyTrendData = array_values($trendData);
 $manager_list = $dashboardManager->getManagers();
 $userSettings = $userManager->getUserSettings($current_user_id);
 
-// --- Fetch Recall Summary & List for the date range ---
-$recallSummary = $dashboardManager->getRecallSummaryByDateRange($date_start, $date_end);
+// --- Fetch Recall Summary & List (TODAY ONLY) ---
+$today = date('Y-m-d');
+$recallSummary = $dashboardManager->getRecallSummaryByDateRange($today, $today);
 $totalRecalledCount = $recallSummary['count'];
 $totalRecalledValue = $recallSummary['value'];
 
-$recallList = $dashboardManager->getRecallsByDateRange($date_start, $date_end);
+$recallList = $dashboardManager->getRecallsByDateRange($today, $today);
 // ---------------------------------------------------------------
 
 $expiringBatches = $dashboardManager->getExpiringBatches(7); 
@@ -293,7 +366,7 @@ $active_nav_link = 'dashboard';
             <div id="pane-sales" class="<?php echo ($active_tab == 'sales') ? '' : 'hidden'; ?>">
                 
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6 animate-slide-in delay-100">
-                    <form method="GET" action="dashboard_panel.php" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end" id="date-filter-form">
+                    <form method="GET" action="dashboard_panel.php" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end" id="dashboard-filter-form">
                         <input type="hidden" name="active_tab" id="active_tab_input" value="<?php echo htmlspecialchars($active_tab); ?>">
                         
                         <div class="md:col-span-4">
@@ -304,11 +377,8 @@ $active_nav_link = 'dashboard';
                             <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">End Date</label>
                             <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn focus:border-breadly-btn outline-none">
                         </div>
-                        <div class="md:col-span-2">
-                            <button type="submit" class="w-full py-2.5 bg-breadly-btn text-white font-medium rounded-lg hover:bg-breadly-btn-hover transition-colors shadow-sm">Filter</button>
-                        </div>
-                        <div class="md:col-span-2">
-                            <a href="dashboard_panel.php" class="flex items-center justify-center w-full py-2.5 border border-gray-300 text-gray-600 font-medium rounded-lg hover:bg-gray-50 transition-colors">Reset</a>
+                        <div class="md:col-span-4">
+                             <button type="button" id="btn-today" class="w-full py-2.5 bg-breadly-btn text-white font-medium rounded-lg hover:bg-breadly-btn-hover transition-colors shadow-sm">Today</button>
                         </div>
                     </form>
                 </div>
@@ -317,32 +387,32 @@ $active_nav_link = 'dashboard';
                     
                     <div class="bg-breadly-card-1 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-200">
                         <div>
-                            <h2 class="text-3xl font-bold text-green-700">₱<?php echo number_format($netRevenue, 2); ?></h2>
+                            <h2 id="summary-net-revenue" class="text-3xl font-bold text-green-700">₱<?php echo number_format($netRevenue, 2); ?></h2>
                             <p class="text-sm text-breadly-dark font-medium mt-1">Net Sales Revenue</p>
                         </div>
                         <div class="text-xs text-gray-600 mt-3 pt-2 border-t border-orange-200/50">
                             <div class="flex justify-between items-center mb-1">
                                 <span>Gross:</span>
-                                <span class="font-medium">₱<?php echo number_format($grossRevenue, 2); ?></span>
+                                <span id="summary-gross-revenue" class="font-medium">₱<?php echo number_format($grossRevenue, 2); ?></span>
                             </div>
                             <div class="flex justify-between items-center text-red-600">
                                 <span>Returns:</span>
-                                <span class="font-medium">-₱<?php echo number_format($totalReturnsValue, 2); ?></span>
+                                <span id="summary-less-returns" class="font-medium">-₱<?php echo number_format($totalReturnsValue, 2); ?></span>
                             </div>
                         </div>
                     </div>
 
                     <div class="bg-breadly-card-2 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-300">
                         <div>
-                            <h2 class="text-3xl font-bold text-breadly-dark"><?php echo $dateRangeSummary['totalSales']; ?></h2>
+                            <h2 id="summary-total-sold" class="text-3xl font-bold text-breadly-dark"><?php echo $dateRangeSummary['totalSales']; ?></h2>
                             <p class="text-sm text-breadly-dark font-medium mt-1">Total Products Sold</p>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2"><?php echo $date_range_text; ?></p>
+                        <p id="summary-date-label-1" class="text-xs text-gray-500 mt-2"><?php echo $date_range_text; ?></p>
                     </div>
 
                     <div class="bg-breadly-card-4 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-400">
                         <div>
-                            <h2 class="text-3xl font-bold <?php echo ($totalReturnsCount > 0) ? 'text-red-600' : 'text-green-700'; ?>">
+                            <h2 id="summary-returns-count" class="text-3xl font-bold <?php echo ($totalReturnsCount > 0) ? 'text-red-600' : 'text-green-700'; ?>">
                                 <?php echo $totalReturnsCount; ?>
                             </h2>
                             <p class="text-sm text-breadly-dark font-medium mt-1">Total Returns</p>
@@ -352,12 +422,12 @@ $active_nav_link = 'dashboard';
 
                     <div class="bg-breadly-card-2 p-6 rounded-xl shadow-sm flex flex-col justify-between h-auto min-h-[8rem] border border-orange-100 animate-slide-in delay-500">
                         <div>
-                            <h2 class="text-3xl font-bold <?php echo ($totalReturnsValue > 0) ? 'text-red-600' : 'text-green-700'; ?>">
+                            <h2 id="summary-returns-value" class="text-3xl font-bold <?php echo ($totalReturnsValue > 0) ? 'text-red-600' : 'text-green-700'; ?>">
                                 ₱<?php echo number_format($totalReturnsValue, 2); ?>
                             </h2>
                             <p class="text-sm text-breadly-dark font-medium mt-1">Return Amount</p>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2"><?php echo $date_range_text; ?></p>
+                        <p id="summary-date-label-2" class="text-xs text-gray-500 mt-2"><?php echo $date_range_text; ?></p>
                     </div>
                 </div>
 
@@ -387,7 +457,7 @@ $active_nav_link = 'dashboard';
                 
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6 animate-slide-in delay-100">
                     <h2 class="text-lg font-bold text-breadly-dark flex items-center gap-2">
-                        <i class='bx bxs-data'></i> Inventory Tracking (Daily Snapshot)
+                        <i class='bx bxs-data'></i> Inventory Tracking (Snapshot)
                     </h2>
                 </div>
 
@@ -427,14 +497,14 @@ $active_nav_link = 'dashboard';
                             <i class='bx bxs-x-circle text-6xl text-breadly-dark'></i>
                         </div>
                         <div>
-                            <h2 class="text-4xl font-bold <?php echo ($totalRecalledCount > 0) ? 'text-red-600' : 'text-green-700'; ?>">
+                            <h2 id="summary-recalled-count" class="text-4xl font-bold <?php echo ($totalRecalledCount > 0) ? 'text-red-600' : 'text-green-700'; ?>">
                                 <?php echo $totalRecalledCount; ?>
                             </h2>
-                            <p class="text-breadly-dark font-semibold mt-1">Products Recalled (Qty)</p>
+                            <p class="text-breadly-dark font-semibold mt-1">Products Recalled (Today)</p>
                         </div>
                         <div class="text-xs text-gray-600">
                             Value: 
-                            <strong class="font-medium <?php echo ($totalRecalledValue > 0) ? 'text-red-700' : 'text-green-700'; ?>">
+                            <strong id="summary-recalled-value" class="font-medium <?php echo ($totalRecalledValue > 0) ? 'text-red-700' : 'text-green-700'; ?>">
                                 ₱<?php echo number_format($totalRecalledValue, 2); ?>
                             </strong>
                         </div>
@@ -721,7 +791,7 @@ $active_nav_link = 'dashboard';
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('recallModal')"></div>
         <div class="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col modal-animate-in">
             <div class="p-4 border-b border-red-100 bg-red-50 flex justify-between items-center">
-                <h5 class="font-bold text-lg text-red-800 flex items-center gap-2"><i class='bx bxs-x-circle'></i> Product Recalls</h5>
+                <h5 class="font-bold text-lg text-red-800 flex items-center gap-2"><i class='bx bxs-x-circle'></i> Product Recalls (Today)</h5>
             </div>
             <div class="p-4 bg-gray-50 flex justify-end border-b border-gray-100">
                 <div class="relative sort-dropdown-container">
@@ -751,7 +821,7 @@ $active_nav_link = 'dashboard';
                             <tr>
                                 <td colspan="4" class="px-6 py-12 text-center text-gray-400">
                                     <i class='bx bx-check-circle text-4xl text-green-500 mb-2'></i>
-                                    <p class="text-gray-500">No product recalls for this period.</p>
+                                    <p class="text-gray-500">No product recalls found for today.</p>
                                 </td>
                             </tr>
                         <?php else: ?>

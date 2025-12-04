@@ -156,9 +156,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             case "adjust_product":
                 $user_id_to_pass = $current_user_id ?? null;
-                $status = $bakeryManager->adjustProductStock($_POST["product_id"], $user_id_to_pass, $_POST["adjustment_qty"], "[{$_POST["adjustment_type"]}] {$_POST["reason_note"]}");
-                if (strpos($status, "Success") !== false) $success_message = $status;
-                else $error_message = $status; 
+                $qty = floatval($_POST["adjustment_qty"]);
+                $type = $_POST["adjustment_type"];
+
+                // Validation: Enforce signs based on type
+                if ($type === 'Production' && $qty < 0) {
+                    $error_message = "Production adjustment cannot be negative.";
+                } elseif ($type === 'Recall' && $qty > 0) {
+                    $error_message = "Recall adjustment must be negative (remove stock).";
+                } elseif ($qty == 0) {
+                     $error_message = "Quantity cannot be zero.";
+                } else {
+                    // Proceed if validation passes
+                    $status = $bakeryManager->adjustProductStock($_POST["product_id"], $user_id_to_pass, $qty, "[{$type}] {$_POST["reason_note"]}");
+                    if (strpos($status, "Success") !== false) $success_message = $status;
+                    else $error_message = $status; 
+                }
                 break;
 
             case "edit_product":
