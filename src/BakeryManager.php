@@ -140,7 +140,7 @@ class BakeryManager extends AbstractManager implements ListableData {
          try {
             $stmt = $this->conn->prepare("CALL SaleProcessReturn(?, ?, ?, ?)");
             $stmt->execute([$sale_id, $user_id, $return_qty, $reason]);
-            return "Success: Return processed. Stock has been updated.";
+            return "Success: Return processed. Product logged as returned.";
         } catch (PDOException $e) {
             error_log("Error processing sale return: " . $e->getMessage());
             return 'Error: ' . $e->getMessage();

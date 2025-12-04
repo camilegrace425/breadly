@@ -79,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $_SESSION['reset_started_at'] = time(); 
                     $_SESSION['reset_identifier'] = $identifier;
                     $_SESSION['reset_method'] = 'phone';
+                    $_SESSION['sms_sent_success'] = true;
                     header('Location: reset_password.php?method=phone'); 
                     exit();
                 }

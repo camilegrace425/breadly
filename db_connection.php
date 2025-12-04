@@ -1,4 +1,5 @@
 <?php
+// File Location: breadly/db_connection.php
 
 $configPath = __DIR__ . '/config.php';
 

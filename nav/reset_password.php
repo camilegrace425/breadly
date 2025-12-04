@@ -29,6 +29,12 @@ if (isset($_SESSION['email_sent_success'])) {
     unset($_SESSION['email_sent_success']);
 }
 
+$show_sms_success = false;
+if (isset($_SESSION['sms_sent_success'])) {
+    $show_sms_success = true;
+    unset($_SESSION['sms_sent_success']);
+}
+
 $method = $_GET['method'] ?? 'phone';
 $instruction_text = "Enter the 6-digit code sent to your " . ($method === 'email' ? 'email' : 'phone') . ".";
 
@@ -202,6 +208,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             Swal.fire({
                 title: 'Email Sent!',
                 text: 'Please check your inbox for the 6-digit verification code.',
+                icon: 'success',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#af6223'
+            });
+        <?php endif; ?>
+
+        <?php if ($show_sms_success): ?>
+            Swal.fire({
+                title: 'SMS Sent!',
+                text: 'Please check your phone for the 6-digit verification code.',
                 icon: 'success',
                 confirmButtonText: 'OK',
                 confirmButtonColor: '#af6223'

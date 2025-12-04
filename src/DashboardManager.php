@@ -222,52 +222,28 @@ class DashboardManager extends AbstractManager {
         $date_str = ($date_start == $date_end) ? $date_start : "$date_start to $date_end";
         $message = "Sales Report ($date_str):\n";
 
-        $sales_data = [];
-        $overall_total_sales = 0;
-        $overall_total_qty = 0;
-        try {
-            $stmt = $this->conn->prepare("CALL ReportGetSalesSummaryByDate(?, ?)");
-            $stmt->execute([$date_start, $date_end]);
-            $sales_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $stmt->closeCursor();
-        } catch (PDOException $e) {
-            error_log("Report Fetch Error (Sales): " . $e->getMessage());
-            return false;
-        }
-
-        // Use the new helper method here as well for consistency
-        $recall_data = $this->getRecallsByDateRange($date_start, $date_end);
-
-        if (empty($sales_data)) {
-            $message .= "No sales recorded on this day.\n";
-        } else {
-            foreach ($sales_data as $sale) {
-                $qty = $sale['total_qty_sold'];
-                $name = $sale['product_name'];
-                $revenue = number_format($sale['total_revenue'], 2);
-                $message .= "$qty x $name = P$revenue\n";
-                
-                $overall_total_qty += $qty;
-                $overall_total_sales += $sale['total_revenue'];
-            }
-            $message .= "$overall_total_qty breads were sold.\n";
-            $message .= "Total Sales: P" . number_format($overall_total_sales, 2) . "\n";
-        }
-
-        $message .= "\nTotal Recalled:\n";
-        if (empty($recall_data)) {
-            $message .= "No recall events.\n";
-        } else {
-            foreach ($recall_data as $recall) {
-                $qty = abs($recall['adjustment_qty']);
-                $name = $recall['item_name'];
-                $reason = $recall['reason'];
-                $message .= "$qty x $name (Reason: $reason)\n";
-            }
-        }
+        // 1. Get Sales Summary (Gross Revenue and Returns)
+        $salesSummary = $this->getSalesSummaryByDateRange($date_start, $date_end);
         
-        if (strlen($message) > 315) {
-             $message = substr($message, 0, 315) . "...";
+        $grossRevenue = $salesSummary['totalRevenue'] ?? 0.00;
+        $totalReturns = $salesSummary['totalReturnsValue'] ?? 0.00;
+        
+        // 2. Calculate Net Revenue
+        $netRevenue = $grossRevenue - $totalReturns;
+
+        // 3. Get Recall Summary (Total Value of Recalled Products)
+        $recallSummary = $this->getRecallSummaryByDateRange($date_start, $date_end);
+        $totalRecalledValue = $recallSummary['value'] ?? 0.00;
+
+        // 4. Construct Message
+        $message .= "Gross Revenue: P" . number_format($grossRevenue, 2) . "\n";
+        $message .= "Total Returns: P" . number_format($totalReturns, 2) . "\n";
+        $message .= "Net Revenue: P" . number_format($netRevenue, 2) . "\n";
+        $message .= "Total Recalled: P" . number_format($totalRecalledValue, 2) . "\n";
+        
+        // Truncate if too long (though this format should be short enough)
+        if (strlen($message) > 400) {
+             $message = substr($message, 0, 400) . "...";
         }
 
         $formatted_phone = $this->formatPhoneNumberForAPI($phone_number);
