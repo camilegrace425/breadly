@@ -116,21 +116,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 else $error_message = "Error adding ingredient.";
                 break;
 
-            // --- CONSOLIDATED RESTOCK LOGIC START ---
             case "restock_ingredient":
                 $qty = floatval($_POST['adjustment_qty']);
                 if ($qty <= 0) {
                     $error_message = "Quantity must be greater than zero.";
                 } else {
                     $expiry = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
-                    // Assuming 'createBatch' is the correct method for restocking in your system
                     $result = $inventoryManager->createBatch($_POST['ingredient_id'], $current_user_id, $qty, $expiry, $_POST['reason_note']);
                     
                     if ($result['success']) $success_message = $result['message'];
                     else $error_message = $result['message'];
                 }
                 break;
-            // --- CONSOLIDATED RESTOCK LOGIC END ---
 
             case "edit_ingredient":
                 $bakeryManager->ingredientUpdate($_POST["ingredient_id"], $_POST["name"], $_POST["unit"], $_POST["reorder_level"]);
@@ -220,14 +217,10 @@ $discontinued_products = $inventoryManager->getDiscontinuedProducts();
 $adjustment_history = $inventoryManager->getAdjustmentHistory();
 $recall_history = $inventoryManager->getRecallHistoryByDate("1970-01-01", "2099-12-31");
 
-// --- ADDED: Calculate Total Recall Value ---
 $total_recall_value = 0;
 foreach ($recall_history as $log) {
-    // removed_value is calculated in InventoryManager.php as a negative number (or 0) representing loss.
-    // Use abs() to get the positive monetary loss and sum it up.
     $total_recall_value += abs($log['removed_value']);
 }
-// ------------------------------------------
 
 $unit_options = ["kg", "g", "L", "ml", "pcs", "pack", "tray", "can", "bottle"];
 $active_nav_link = 'inventory';
@@ -424,7 +417,8 @@ $active_nav_link = 'inventory';
                                                     data-product-id="<?php echo $product["product_id"]; ?>"
                                                     data-product-name="<?php echo htmlspecialchars($product["name"]); ?>"
                                                     data-product-price="<?php echo $product["price"]; ?>"
-                                                    data-product-status="<?php echo $product["status"]; ?>">
+                                                    data-product-status="<?php echo $product["status"]; ?>"
+                                                    data-product-image="<?php echo $image_path; ?>">
                                                 <i class='bx bx-edit'></i> Edit
                                             </button>
                                             <button onclick="openModal('adjustProductModal', this)" 
@@ -481,24 +475,17 @@ $active_nav_link = 'inventory';
                             <button id="ingredient-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                         </div>
                         
-                        <div class="relative dropdown" id="ingredient-sort-dropdown">
-                            <button id="ingredient-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                                Sort By: <span class="current-sort-text">Name (Ascending)</span><i class='bx bx-chevron-down'></i>
-                            </button>
-                            <div id="ingredient-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="name" data-sort-type="text" data-sort-dir="ASC">Name (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="name" data-sort-type="text" data-sort-dir="DESC">Name (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="DESC">Stock (DESC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="ASC">Stock (ASC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="reorder" data-sort-type="number" data-sort-dir="ASC">Reorder Level (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="reorder" data-sort-type="number" data-sort-dir="DESC">Reorder Level (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="ASC">Status (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="DESC">Status (DESC)</a>
-                            </div>
-                        </div>
+                        <select id="ingredient-sort-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none cursor-pointer">
+                            <option value="" disabled>Sort By...</option>
+                            <option value="name_asc" data-sort-by="name" data-sort-type="text" data-sort-dir="ASC" selected>Name (Ascending)</option>
+                            <option value="name_desc" data-sort-by="name" data-sort-type="text" data-sort-dir="DESC">Name (Descending)</option>
+                            <option value="stock_desc" data-sort-by="stock" data-sort-type="number" data-sort-dir="DESC">Stock (Descending)</option>
+                            <option value="stock_asc" data-sort-by="stock" data-sort-type="number" data-sort-dir="ASC">Stock (Ascending)</option>
+                            <option value="reorder_asc" data-sort-by="reorder" data-sort-type="number" data-sort-dir="ASC">Reorder Level (Ascending)</option>
+                            <option value="reorder_desc" data-sort-by="reorder" data-sort-type="number" data-sort-dir="DESC">Reorder Level (Descending)</option>
+                            <option value="status_asc" data-sort-by="status" data-sort-type="text" data-sort-dir="ASC">Status (Ascending)</option>
+                            <option value="status_desc" data-sort-by="status" data-sort-type="text" data-sort-dir="DESC">Status (Descending)</option>
+                        </select>
                     </div>
 
                     <div class="overflow-x-auto animate-slide-in delay-300">
@@ -593,24 +580,17 @@ $active_nav_link = 'inventory';
                             <button id="discontinued-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                         </div>
                         
-                        <div class="relative dropdown" id="discontinued-sort-dropdown">
-                            <button id="discontinued-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                                Sort By: <span class="current-sort-text">Name (Ascending)</span> <i class='bx bx-chevron-down'></i>
-                            </button>
-                            <div id="discontinued-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="name" data-sort-type="text" data-sort-dir="ASC">Name (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="name" data-sort-type="text" data-sort-dir="DESC">Name (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="price" data-sort-type="number" data-sort-dir="ASC">Price (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="price" data-sort-type="number" data-sort-dir="DESC">Price (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="ASC">Last Stock (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="stock" data-sort-type="number" data-sort-dir="DESC">Last Stock (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="ASC">Status (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="status" data-sort-type="text" data-sort-dir="DESC">Status (DESC)</a>
-                            </div>
-                        </div>
+                        <select id="discontinued-sort-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none cursor-pointer">
+                            <option value="" disabled>Sort By...</option>
+                            <option value="name_asc" data-sort-by="name" data-sort-type="text" data-sort-dir="ASC" selected>Name (Ascending)</option>
+                            <option value="name_desc" data-sort-by="name" data-sort-type="text" data-sort-dir="DESC">Name (Descending)</option>
+                            <option value="price_asc" data-sort-by="price" data-sort-type="number" data-sort-dir="ASC">Price (Ascending)</option>
+                            <option value="price_desc" data-sort-by="price" data-sort-type="number" data-sort-dir="DESC">Price (Descending)</option>
+                            <option value="stock_asc" data-sort-by="stock" data-sort-type="number" data-sort-dir="ASC">Last Stock (Ascending)</option>
+                            <option value="stock_desc" data-sort-by="stock" data-sort-type="number" data-sort-dir="DESC">Last Stock (Descending)</option>
+                            <option value="status_asc" data-sort-by="status" data-sort-type="text" data-sort-dir="ASC">Status (Ascending)</option>
+                            <option value="status_desc" data-sort-by="status" data-sort-type="text" data-sort-dir="DESC">Status (Descending)</option>
+                        </select>
                     </div>
 
                     <div class="overflow-x-auto animate-slide-in delay-300">
@@ -638,7 +618,8 @@ $active_nav_link = 'inventory';
                                                     data-product-id="<?php echo $product["product_id"]; ?>"
                                                     data-product-name="<?php echo htmlspecialchars($product["name"]); ?>"
                                                     data-product-price="<?php echo $product["price"]; ?>"
-                                                    data-product-status="<?php echo $product["status"]; ?>">
+                                                    data-product-status="<?php echo $product["status"]; ?>"
+                                                    data-product-image="<?php echo !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : ''; ?>">
                                                 <i class='bx bx-refresh'></i> Restore
                                             </button>
                                             <button onclick="openModal('deleteProductModal', this)"
@@ -678,24 +659,17 @@ $active_nav_link = 'inventory';
                             <button id="recall-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                         </div>
                         
-                        <div class="relative dropdown" id="recall-sort-dropdown">
-                            <button id="recall-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                                Sort By: <span class="current-sort-text">Date (Descending)</span> <i class='bx bx-chevron-down'></i>
-                            </button>
-                            <div id="recall-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Date (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Date (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Qty (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Qty (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="value" data-sort-type="number" data-sort-dir="ASC">Value (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="value" data-sort-type="number" data-sort-dir="DESC">Value (DESC)</a>
-                            </div>
-                        </div>
+                        <select id="recall-sort-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none cursor-pointer">
+                            <option value="" disabled>Sort By...</option>
+                            <option value="date_asc" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Date (Ascending)</option>
+                            <option value="date_desc" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC" selected>Date (Descending)</option>
+                            <option value="product_asc" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (Ascending)</option>
+                            <option value="product_desc" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (Descending)</option>
+                            <option value="qty_asc" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Qty (Ascending)</option>
+                            <option value="qty_desc" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Qty (Descending)</option>
+                            <option value="value_asc" data-sort-by="value" data-sort-type="number" data-sort-dir="ASC">Value (Ascending)</option>
+                            <option value="value_desc" data-sort-by="value" data-sort-type="number" data-sort-dir="DESC">Value (Descending)</option>
+                        </select>
                     </div>
 
                     <div class="overflow-x-auto animate-slide-in delay-300">
@@ -767,24 +741,17 @@ $active_nav_link = 'inventory';
                             <button id="history-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                         </div>
                         
-                        <div class="relative dropdown" id="history-sort-dropdown">
-                            <button id="history-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                                Sort By: <span class="current-sort-text">Date (Descending)</span> <i class='bx bx-chevron-down'></i>
-                            </button>
-                            <div id="history-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Date (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Date (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="user" data-sort-type="text" data-sort-dir="ASC">User (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="user" data-sort-type="text" data-sort-dir="DESC">User (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="item" data-sort-type="text" data-sort-dir="ASC">Item (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="item" data-sort-type="text" data-sort-dir="DESC">Item (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Quantity (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Quantity (DESC)</a>
-                            </div>
-                        </div>
+                        <select id="history-sort-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none cursor-pointer">
+                            <option value="" disabled>Sort By...</option>
+                            <option value="date_asc" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Date (Ascending)</option>
+                            <option value="date_desc" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC" selected>Date (Descending)</option>
+                            <option value="user_asc" data-sort-by="user" data-sort-type="text" data-sort-dir="ASC">User (Ascending)</option>
+                            <option value="user_desc" data-sort-by="user" data-sort-type="text" data-sort-dir="DESC">User (Descending)</option>
+                            <option value="item_asc" data-sort-by="item" data-sort-type="text" data-sort-dir="ASC">Item (Ascending)</option>
+                            <option value="item_desc" data-sort-by="item" data-sort-type="text" data-sort-dir="DESC">Item (Descending)</option>
+                            <option value="qty_asc" data-sort-by="qty" data-sort-type="number" data-sort-dir="ASC">Quantity (Ascending)</option>
+                            <option value="qty_desc" data-sort-by="qty" data-sort-type="number" data-sort-dir="DESC">Quantity (Descending)</option>
+                        </select>
                     </div>
 
                     <div class="overflow-x-auto animate-slide-in delay-300">

@@ -484,8 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const batchesModal = document.getElementById('batchesModal');
         const ingredientId = batchesModal.dataset.currentIngredientId;
         
-        // Find the main table row. Note: standard table rows might not have ID easily accessible if pagination hides them.
-        // We iterate or search.
+        // Find the main table row
         const editBtn = document.querySelector(`button[data-ingredient-id="${ingredientId}"][onclick*="editIngredientModal"]`);
         if (editBtn) {
             const row = editBtn.closest('tr');
@@ -595,12 +594,13 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (type) {
             case 'number':
                 // 2. Clean common non-numeric characters for general number columns
-                cleaned = cleaned.replace(/P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+|\(|\)/gi, '');
+                // Added ₱ (Peso sign) and P to the regex
+                cleaned = cleaned.replace(/₱|P|kg|g|L|ml|pcs|pack|tray|can|bottle|\+|\(|\)/gi, '');
                 cleaned = cleaned.replace(/,/g, '');
                 const num = parseFloat(cleaned);
                 return isNaN(num) ? 0 : num;
             case 'date':
-                // 3. Date sorting (relies on browser's Date.parse, which can be inconsistent, but common method)
+                // 3. Date sorting
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal;
             default: // 'text'
@@ -698,102 +698,65 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTableRows();
     }
     
-    function sortTableByDropdown(sortLink) {
-        const sortBy = sortLink.dataset.sortBy;
-        const sortType = sortLink.dataset.sortType;
-        const sortDir = sortLink.dataset.sortDir; // Get direction from the clicked link
+    // Updated Sorting Logic for <select> elements
+    function setupSortSelect(selectId) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
 
-        const tableBody = sortLink.closest('.dropdown').closest('.bg-white').querySelector('tbody');
-        if (!tableBody) return;
-        
-        const table = tableBody.closest('table');
-        const headerRow = table.querySelector('thead tr');
-        let colIndex = -1;
-        Array.from(headerRow.querySelectorAll('th')).forEach((th, index) => {
-            if (th.dataset.sortBy === sortBy) {
-                colIndex = index;
-            }
-        });
-        
-        if (colIndex === -1) {
-            console.error(`Sort Error: Could not find column index for data-sort-by="${sortBy}"`);
-            return;
-        }
+        select.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const sortBy = selectedOption.dataset.sortBy;
+            const sortType = selectedOption.dataset.sortType;
+            const sortDir = selectedOption.dataset.sortDir; // 'ASC' or 'DESC'
 
-        // Only sort actual data rows
-        const rows = Array.from(tableBody.querySelectorAll('tr:not([id$="-no-results"]):not(tfoot tr)'));
-        
-        rows.sort((a, b) => {
-            if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
-            const valA = getSortableValue(a.cells[colIndex], sortType); 
-            const valB = getSortableValue(b.cells[colIndex], sortType);
-            
-            let comparison = 0;
-            if (valA > valB) comparison = 1;
-            else if (valA < valB) comparison = -1;
-            
-            // Apply direction based on the clicked link
-            return sortDir === 'DESC' ? (comparison * -1) : comparison;
-        });
+            if (!sortBy) return;
 
-        tableBody.innerHTML = '';
-        rows.forEach(row => tableBody.appendChild(row));
-        
-        const dropdown = sortLink.closest('.dropdown');
-        if (dropdown) {
-            const buttonTextSpan = dropdown.querySelector('.current-sort-text');
-            // Use the text content directly from the link since it now includes the direction (e.g., "Name (ASC)")
-            buttonTextSpan.textContent = sortLink.textContent.trim();
-            
-            const dropdownItems = dropdown.querySelectorAll('.sort-trigger');
-            dropdownItems.forEach(item => item.classList.remove('active'));
-            sortLink.classList.add('active');
-        }
-        
-        // Re-apply pagination after sorting
-        const paginationSelectId = table.closest('.bg-white').querySelector('select[id$="-rows-select"]')?.id;
-        if (paginationSelectId) {
-            const paginationSelect = document.getElementById(paginationSelectId);
-            if (paginationSelect) {
-                paginationSelect.dispatchEvent(new Event('change'));
-            }
-        }
-    }
-    
-    function setupDropdown(dropdownId) {
-        const dropdownEl = document.getElementById(dropdownId);
-        const sortButton = document.getElementById(dropdownId.replace('-dropdown', '-btn'));
-        const sortMenu = document.getElementById(dropdownId.replace('-dropdown', '-menu'));
-        
-        if (dropdownEl && sortButton && sortMenu) {
-            // Toggle menu on button click
-            sortButton.addEventListener('click', (e) => {
-                e.stopPropagation(); 
-                sortMenu.classList.toggle('hidden');
-            });
+            // FIX: Using .shadow-sm (which belongs to the container card) to correctly scope the table search.
+            const container = select.closest('.shadow-sm');
+            if (!container) return;
 
-            // Close menu when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!sortMenu.contains(e.target) && !sortButton.contains(e.target)) {
-                    sortMenu.classList.add('hidden');
+            const tbody = container.querySelector('tbody');
+            const thead = container.querySelector('thead');
+            if (!tbody || !thead) return;
+
+            // Find column index based on data-sort-by in <th>
+            let colIndex = -1;
+            Array.from(thead.querySelectorAll('th')).forEach((th, index) => {
+                if (th.dataset.sortBy === sortBy) {
+                    colIndex = index;
                 }
             });
             
-            // Set up click listener for sort links
-            document.querySelectorAll(`#${dropdownId} .sort-trigger`).forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    sortTableByDropdown(e.target);
-                    sortMenu.classList.add('hidden'); // Close after sorting
-                });
+            if (colIndex === -1) {
+                console.error(`Sort Error: Could not find column index for data-sort-by="${sortBy}"`);
+                return;
+            }
+
+            // Only sort actual data rows
+            const rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"]):not(tfoot tr)'));
+            
+            rows.sort((a, b) => {
+                if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
+                const valA = getSortableValue(a.cells[colIndex], sortType); 
+                const valB = getSortableValue(b.cells[colIndex], sortType);
+                
+                let comparison = 0;
+                if (valA > valB) comparison = 1;
+                else if (valA < valB) comparison = -1;
+                
+                // Apply direction
+                return sortDir === 'DESC' ? (comparison * -1) : comparison;
             });
 
-            // Apply default sort (active link) on load
-            const defaultSortLink = dropdownEl.querySelector('.sort-trigger.active');
-            if (defaultSortLink) {
-                 setTimeout(() => sortTableByDropdown(defaultSortLink), 50);
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Re-apply pagination after sorting (reset to page 1)
+            const paginationSelect = container.querySelector('select[id$="-rows-select"]');
+            if (paginationSelect) {
+                paginationSelect.dispatchEvent(new Event('change'));
             }
-        }
+        });
     }
 
     function initTableFeatures() {
@@ -801,19 +764,19 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 1. Ingredients Table
         addTablePagination('ingredient-rows-select', 'ingredient-table-body');
-        setupDropdown('ingredient-sort-dropdown');
+        setupSortSelect('ingredient-sort-select');
         
         // 2. Discontinued Products Table
         addTablePagination('discontinued-rows-select', 'discontinued-table-body');
-        setupDropdown('discontinued-sort-dropdown');
+        setupSortSelect('discontinued-sort-select');
 
         // 3. Recall Log
         addTablePagination('recall-rows-select', 'recall-table-body');
-        setupDropdown('recall-sort-dropdown');
+        setupSortSelect('recall-sort-select');
 
         // 4. Adjustment History
         addTablePagination('history-rows-select', 'history-table-body');
-        setupDropdown('history-sort-dropdown');
+        setupSortSelect('history-sort-select');
     }
 
     initTableFeatures();

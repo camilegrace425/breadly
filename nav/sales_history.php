@@ -304,21 +304,15 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                             <button id="sales-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                         </div>
                         
-                        <div class="relative dropdown" id="sales-sort-dropdown">
-                            <button id="sales-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                                Sort By: <span class="current-sort-text">Timestamp (Descending)</span> <i class='bx bx-chevron-down'></i>
-                            </button>
-                            <div id="sales-sort-menu" class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Timestamp (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="order_id" data-sort-type="number" data-sort-dir="ASC">Order ID (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="order_id" data-sort-type="number" data-sort-dir="DESC">Order ID (DESC)</a>
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="total_price" data-sort-type="number" data-sort-dir="ASC">Total Amount (ASC)</a>
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 sort-trigger" data-sort-by="total_price" data-sort-type="number" data-sort-dir="DESC">Total Amount (DESC)</a>
-                            </div>
-                        </div>
+                        <select id="sales-sort-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none cursor-pointer">
+                            <option value="" disabled>Sort By...</option>
+                            <option value="date_asc" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (Ascending)</option>
+                            <option value="date_desc" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC" selected>Timestamp (Descending)</option>
+                            <option value="order_asc" data-sort-by="order_id" data-sort-type="number" data-sort-dir="ASC">Order ID (Ascending)</option>
+                            <option value="order_desc" data-sort-by="order_id" data-sort-type="number" data-sort-dir="DESC">Order ID (Descending)</option>
+                            <option value="total_asc" data-sort-by="total_price" data-sort-type="number" data-sort-dir="ASC">Total Amount (Ascending)</option>
+                            <option value="total_desc" data-sort-by="total_price" data-sort-type="number" data-sort-dir="DESC">Total Amount (Descending)</option>
+                        </select>
                     </div>
                     
                     <div class="overflow-x-auto animate-slide-in delay-300">
@@ -474,18 +468,13 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                 <button id="returns-next-btn" class="p-1.5 bg-white border rounded hover:bg-gray-100 disabled:opacity-50"><i class='bx bx-chevron-right'></i></button>
                             </div>
                             
-                            <div class="relative dropdown" id="returns-sort-dropdown">
-                                <button id="returns-sort-btn" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                                    Sort By: <span class="current-sort-text">Timestamp (Descending)</span> <i class='bx bx-chevron-down'></i>
-                                </button>
-                                <div id="returns-sort-menu" class="absolute right-0 mt-1 w-52 bg-white border border-gray-100 rounded-lg shadow-lg hidden z-20 dropdown-menu">
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (ASC)</a>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger active" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC">Timestamp (DESC)</a>
-                                    <div class="border-t border-gray-100 my-1"></div>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (ASC)</a>
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 sort-trigger" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (DESC)</a>
-                                </div>
-                            </div>
+                            <select id="returns-sort-select" class="bg-white border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none cursor-pointer">
+                                <option value="" disabled>Sort By...</option>
+                                <option value="date_asc" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (Ascending)</option>
+                                <option value="date_desc" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC" selected>Timestamp (Descending)</option>
+                                <option value="product_asc" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (Ascending)</option>
+                                <option value="product_desc" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (Descending)</option>
+                            </select>
                         </div>
                     </div>
                     
