@@ -369,16 +369,26 @@ $userSettings = $userManager->getUserSettings($current_user_id);
 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                                        Password <span id="password-hint" class="hidden text-red-500 font-normal normal-case text-[10px] ml-1">(Leave blank to keep)</span>
+                                        Password 
+                                        <span id="password-hint" class="hidden text-red-500 font-normal normal-case text-[10px] ml-1">(Leave blank to keep)</span>
+                                        <span id="password-error" class="text-red-500 text-[10px] font-normal normal-case hidden ml-2 animate-pulse">Min 6 chars, letters & numbers</span>
                                     </label>
-                                    <input type="password" name="password" id="password" placeholder="Strong password" required
-                                           class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
+                                    <div class="relative">
+                                        <input type="password" name="password" id="password" placeholder="Strong password" required
+                                               class="w-full p-2.5 pr-10 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none transition-colors">
+                                        <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none">
+                                            <i class='bx bx-show text-xl' id="password-toggle-icon"></i>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Phone Number <span class="text-red-500">*</span></label>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                                        Phone Number <span class="text-red-500">*</span> 
+                                        <span id="phone-error" class="text-red-500 text-[10px] font-normal normal-case hidden ml-2 animate-pulse">Must be 11 digits</span>
+                                    </label>
                                     <input type="text" name="phone" id="phone" placeholder="0917..." maxlength="11" required
-                                           class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none">
+                                           class="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-breadly-btn outline-none transition-colors">
                                 </div>
 
                                 <div>
@@ -441,172 +451,6 @@ $userSettings = $userManager->getUserSettings($current_user_id);
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        // --- UI Helper Functions ---
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mobileSidebar');
-            const overlay = document.getElementById('mobileSidebarOverlay');
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
-            }
-        }
-
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            const backdrop = document.getElementById('modalBackdrop');
-            if (modal) {
-                modal.classList.remove('hidden');
-                if(backdrop) backdrop.classList.remove('hidden');
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            const backdrop = document.getElementById('modalBackdrop');
-            if (modal) modal.classList.add('hidden');
-            if(backdrop) backdrop.classList.add('hidden');
-        }
-        
-        function closeAllModals() {
-            document.querySelectorAll('.fixed.z-50').forEach(el => el.classList.add('hidden'));
-            const backdrop = document.getElementById('modalBackdrop');
-            if(backdrop) backdrop.classList.add('hidden');
-        }
-
-        // --- AJAX LOGIC ---
-
-        function refreshTable() {
-            fetch('account_management.php?ajax_action=fetch_users')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('user-table-body').innerHTML = data.html;
-                        document.getElementById('user-count').innerText = data.count + ' Users';
-                    }
-                })
-                .catch(err => console.error('Error refreshing table:', err));
-        }
-
-        function editUser(id) {
-            fetch(`account_management.php?ajax_action=get_user&id=${id}`)
-                .then(res => res.json())
-                .then(resp => {
-                    if (resp.success) {
-                        const user = resp.data;
-                        document.getElementById('user_id').value = user.user_id;
-                        document.getElementById('username').value = user.username;
-                        document.getElementById('role').value = user.role;
-                        document.getElementById('phone').value = user.phone_number;
-                        document.getElementById('email').value = user.email || '';
-                        
-                        // Update UI for Edit Mode
-                        document.getElementById('form-title').innerText = 'Edit Account';
-                        document.getElementById('form-btn').innerText = 'Update User';
-                        document.getElementById('form-btn').classList.replace('bg-blue-600', 'bg-orange-500');
-                        document.getElementById('form-btn').classList.replace('hover:bg-blue-700', 'hover:bg-orange-600');
-                        
-                        document.getElementById('form-header').classList.replace('bg-blue-50', 'bg-orange-50');
-                        document.getElementById('form-title').classList.replace('text-blue-800', 'text-orange-800');
-                        document.getElementById('form-icon').classList.replace('text-blue-600', 'text-orange-600');
-                        document.getElementById('form-icon').classList.replace('bx-user-plus', 'bx-edit');
-
-                        document.getElementById('password').required = false;
-                        document.getElementById('password').placeholder = 'New password (optional)';
-                        document.getElementById('password-hint').classList.remove('hidden');
-                        
-                        document.getElementById('cancel-btn-container').classList.remove('hidden');
-                    } else {
-                        Swal.fire('Error', resp.message, 'error');
-                    }
-                })
-                .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
-        }
-
-        function resetForm() {
-            document.getElementById('user-form').reset();
-            document.getElementById('user_id').value = '0';
-            
-            // Reset UI to Create Mode
-            document.getElementById('form-title').innerText = 'Create Account';
-            document.getElementById('form-btn').innerText = 'Create User';
-            document.getElementById('form-btn').classList.replace('bg-orange-500', 'bg-blue-600');
-            document.getElementById('form-btn').classList.replace('hover:bg-orange-600', 'hover:bg-blue-700');
-
-            document.getElementById('form-header').classList.replace('bg-orange-50', 'bg-blue-50');
-            document.getElementById('form-title').classList.replace('text-orange-800', 'text-blue-800');
-            document.getElementById('form-icon').classList.replace('text-orange-600', 'text-blue-600');
-            document.getElementById('form-icon').classList.replace('bx-edit', 'bx-user-plus');
-
-            document.getElementById('password').required = true;
-            document.getElementById('password').placeholder = 'Strong password';
-            document.getElementById('password-hint').classList.add('hidden');
-            
-            document.getElementById('cancel-btn-container').classList.add('hidden');
-        }
-
-        function handleSaveUser(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            formData.append('ajax_action', 'save_user');
-
-            fetch('account_management.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(resp => {
-                if (resp.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success',
-                        text: resp.message,
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    resetForm();
-                    refreshTable();
-                } else {
-                    Swal.fire('Error', resp.message, 'error');
-                }
-            })
-            .catch(err => Swal.fire('Error', 'Request failed', 'error'));
-        }
-
-        function deleteUser(id) {
-            Swal.fire({
-                title: 'Delete User?',
-                text: "You won't be able to revert this!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const formData = new FormData();
-                    formData.append('ajax_action', 'delete_user');
-                    formData.append('id', id);
-
-                    fetch('account_management.php', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(res => res.json())
-                    .then(resp => {
-                        if (resp.success) {
-                            Swal.fire('Deleted!', resp.message, 'success');
-                            refreshTable();
-                        } else {
-                            Swal.fire('Error', resp.message, 'error');
-                        }
-                    })
-                    .catch(err => Swal.fire('Error', 'Request failed', 'error'));
-                }
-            });
-        }
-    </script>
+    <script src="../js/script_account_management.js"></script>
 </body>
 </html>

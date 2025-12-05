@@ -166,43 +166,96 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 } elseif ($qty == 0) {
                      $error_message = "Quantity cannot be zero.";
                 } else {
+                    // --- PRODUCTION LOGIC (PHP HANDLED) ---
                     if ($type === 'Production') {
                         $products_list = $bakeryManager->getAllProductsSimple();
                         $batch_size = 1;
                         foreach ($products_list as $p) {
                             if ($p['product_id'] == $product_id) {
-                                $batch_size = $p['batch_size'] > 0 ? $p['batch_size'] : 1;
+                                $batch_size = ($p['batch_size'] > 0) ? $p['batch_size'] : 1;
                                 break;
                             }
                         }
 
                         $recipe = $bakeryManager->getRecipeForProduct($product_id);
                         $all_ingredients = $inventoryManager->getIngredientsInventory();
+                        
+                        // 1. Map Stock by Name and Define Conversions
                         $stock_map = [];
                         foreach ($all_ingredients as $ing) {
-                            $stock_map[$ing['ingredient_id']] = [
-                                'qty' => $ing['stock_qty'],
+                            $key = strtolower(trim($ing['name'])); 
+                            $stock_map[$key] = [
+                                'id' => $ing['ingredient_id'],
+                                'qty' => floatval($ing['stock_qty']),
                                 'unit' => $ing['unit']
                             ];
                         }
 
-                        $insufficient_items = [];
-                        foreach ($recipe as $item) {
-                            $ing_id = $item['ingredient_id'];
-                            $needed = ($item['qty_needed'] / $batch_size) * $qty;
-                            $current = $stock_map[$ing_id]['qty'] ?? 0;
+                        // Conversion factors to Base Units (g, ml, pcs)
+                        $conversions = [
+                            'kg' => 1000,   'g' => 1,
+                            'L' => 1000,    'ml' => 1,
+                            'tray' => 30,   'pcs' => 1, 
+                            'pack' => 1,    'can' => 1,     'bottle' => 1
+                        ];
 
-                            if ($current < $needed) {
-                                $insufficient_items[] = $item['name'] . " (Need: " . number_format($needed, 2) . " " . $item['unit'] . ", Have: " . number_format($current, 2) . ")";
+                        $insufficient_items = [];
+                        $ingredients_to_deduct = [];
+
+                        foreach ($recipe as $item) {
+                            $key = strtolower(trim($item['name']));
+                            
+                            // Units and Factors
+                            $recipe_unit = $item['unit'];
+                            // If ingredient exists in stock, use its unit; otherwise assume recipe unit
+                            $stock_unit = $stock_map[$key]['unit'] ?? $recipe_unit;
+                            
+                            $recipe_factor = $conversions[$recipe_unit] ?? 1;
+                            $stock_factor = $conversions[$stock_unit] ?? 1;
+
+                            // Calculate NEEDED amount in BASE units
+                            $needed_base = ($item['qty_needed'] * $recipe_factor / $batch_size) * $qty;
+
+                            // Calculate CURRENT STOCK in BASE units
+                            $current_stock_qty = $stock_map[$key]['qty'] ?? 0;
+                            $current_base = $current_stock_qty * $stock_factor;
+
+                            // Compare
+                            if ($current_base < ($needed_base - 0.0001)) {
+                                // Convert needed base amount back to STOCK unit for display
+                                $needed_display = $needed_base / $stock_factor;
+                                $insufficient_items[] = $item['name'] . " (Need: " . number_format($needed_display, 2) . " " . $stock_unit . ", Have: " . number_format($current_stock_qty, 2) . ")";
+                            } else {
+                                // Prepare data for deduction (Convert needed base back to Stock Unit)
+                                $deduct_amount = $needed_base / $stock_factor;
+                                if (isset($stock_map[$key]['id'])) {
+                                    $ingredients_to_deduct[] = [
+                                        'id' => $stock_map[$key]['id'],
+                                        'qty' => $deduct_amount
+                                    ];
+                                }
                             }
                         }
 
                         if (!empty($insufficient_items)) {
                             $error_message = "Insufficient ingredients for production:<br><ul class='list-disc pl-5 text-left text-xs mt-2'><li>" . implode('</li><li>', $insufficient_items) . "</li></ul>";
+                        } else {
+                            // VALIDATION PASSED - EXECUTE MANUAL DEDUCTION
+                            foreach ($ingredients_to_deduct as $ing) {
+                                // Pass NEGATIVE quantity to remove stock
+                                $inventoryManager->adjustIngredientStock($ing['id'], $user_id_to_pass, -abs($ing['qty']), "[Used] Production of " . $product_id);
+                            }
+                            
+                            // Update Product Stock manually
+                            $status = $bakeryManager->updateProductStockDirectly($product_id, $qty, $user_id_to_pass, "[{$type}] {$_POST["reason_note"]}");
+                            
+                            if (strpos($status, "Success") !== false) $success_message = $status;
+                            else $error_message = $status;
                         }
-                    }
-
-                    if (empty($error_message)) {
+                    } 
+                    // --- RECALL / CORRECTION LOGIC (Standard SP) ---
+                    else {
+                        // For Recall/Manual Correction, use the standard procedure (it handles basic +/- fine)
                         $status = $bakeryManager->adjustProductStock($product_id, $user_id_to_pass, $qty, "[{$type}] {$_POST["reason_note"]}");
                         if (strpos($status, "Success") !== false) $success_message = $status;
                         else $error_message = $status; 

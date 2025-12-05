@@ -105,6 +105,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                                 <table class="w-full text-sm">
                                     <thead class="bg-orange-100 text-breadly-dark text-xs uppercase font-semibold">
                                         <tr>
+                                            <th class="px-4 py-2 text-left">Sale ID</th>
                                             <th class="px-4 py-2 text-left">Product</th>
                                             <th class="px-4 py-2 text-center">Qty</th>
                                             <th class="px-4 py-2 text-right">Subtotal</th>
@@ -118,6 +119,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                                             $qty_available = $item["qty_sold"] - $item["qty_returned"];
                                         ?>
                                         <tr class="hover:bg-orange-50">
+                                            <td class="px-4 py-2 text-gray-600 text-xs">#<?php echo $item["sale_id"]; ?></td>
                                             <td class="px-4 py-2 font-medium text-gray-800"><?php echo htmlspecialchars($item["product_name"]); ?></td>
                                             <td class="px-4 py-2 text-center">
                                                 <?php echo $item["qty_sold"]; ?>
@@ -154,13 +156,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         }
     } elseif ($active_tab === 'returns') {
         if (empty($filtered_return_history)) {
-            echo '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-400">No returns found for the selected date range.</td></tr>';
+            echo '<tr><td colspan="8" class="px-6 py-8 text-center text-gray-400">No returns found for the selected date range.</td></tr>';
         } else {
             foreach ($filtered_return_history as $log) {
                 ?>
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($log["timestamp"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
-                    <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $log["sale_id"]; ?>"><?php echo $log["sale_id"]; ?></td>
+                    <td class="px-6 py-3 font-bold text-gray-700" data-sort-value="<?php echo $log["order_id"]; ?>">#<?php echo $log["order_id"]; ?></td>
+                    <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $log["sale_id"]; ?>">#<?php echo $log["sale_id"]; ?></td>
                     <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($log["product_name"] ?? "Deleted"); ?></td>
                     <td class="px-6 py-3 font-bold text-green-600" data-sort-value="<?php echo $log["qty_returned"]; ?>">+<?php echo $log["qty_returned"]; ?></td>
                     <td class="px-6 py-3 text-blue-600" data-sort-value="<?php echo $log["return_value"]; ?>">(₱<?php echo number_format($log["return_value"], 2); ?>)</td>
@@ -279,6 +282,9 @@ foreach ($all_return_history as $log) {
 }
 
 $net_revenue = $total_sales_revenue - $total_return_value;
+
+// Check if user is manager or assistant manager for report generation
+$can_generate_report = in_array($_SESSION['role'], ['manager', 'assistant_manager']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -407,6 +413,17 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                 <button onclick="toggleSidebar()" class="lg:hidden text-breadly-dark text-2xl"><i class='bx bx-menu'></i></button>
                 <h1 class="text-2xl font-bold text-breadly-dark">Sales & Transactions</h1>
             </div>
+            
+            <?php if ($can_generate_report): ?>
+            <div class="flex gap-2">
+                <button onclick="openModal('exportCsvModal')" class="flex items-center gap-2 bg-green-600 border border-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm text-sm font-medium">
+                    <i class='bx bxs-file-csv text-lg'></i> Export CSV
+                </button>
+                <button onclick="openReportPreview()" class="flex items-center gap-2 bg-white border border-orange-200 text-breadly-btn px-4 py-2 rounded-lg hover:bg-orange-50 transition-colors shadow-sm text-sm font-medium">
+                    <i class='bx bxs-file-pdf text-lg'></i> Generate Report
+                </button>
+            </div>
+            <?php endif; ?>
         </div>
 
         <?php if ($message): ?>
@@ -522,6 +539,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                                         <table class="w-full text-sm">
                                                             <thead class="bg-orange-100 text-breadly-dark text-xs uppercase font-semibold">
                                                                 <tr>
+                                                                    <th class="px-4 py-2 text-left">Sale ID</th>
                                                                     <th class="px-4 py-2 text-left">Product</th>
                                                                     <th class="px-4 py-2 text-center">Qty</th>
                                                                     <th class="px-4 py-2 text-right">Subtotal</th>
@@ -535,6 +553,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                                                     $qty_available = $item["qty_sold"] - $item["qty_returned"];
                                                                 ?>
                                                                 <tr class="hover:bg-orange-50">
+                                                                    <td class="px-4 py-2 text-gray-600 text-xs">#<?php echo $item["sale_id"]; ?></td>
                                                                     <td class="px-4 py-2 font-medium text-gray-800"><?php echo htmlspecialchars($item["product_name"]); ?></td>
                                                                     <td class="px-4 py-2 text-center">
                                                                         <?php echo $item["qty_sold"]; ?>
@@ -634,6 +653,10 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                                 <option value="" disabled>Sort By...</option>
                                 <option value="date_asc" data-sort-by="date" data-sort-type="date" data-sort-dir="ASC">Timestamp (Ascending)</option>
                                 <option value="date_desc" data-sort-by="date" data-sort-type="date" data-sort-dir="DESC" selected>Timestamp (Descending)</option>
+                                <option value="order_asc" data-sort-by="order_id" data-sort-type="number" data-sort-dir="ASC">Order ID (Ascending)</option>
+                                <option value="order_desc" data-sort-by="order_id" data-sort-type="number" data-sort-dir="DESC">Order ID (Descending)</option>
+                                <option value="sale_asc" data-sort-by="sale_id" data-sort-type="number" data-sort-dir="ASC">Sale ID (Ascending)</option>
+                                <option value="sale_desc" data-sort-by="sale_id" data-sort-type="number" data-sort-dir="DESC">Sale ID (Descending)</option>
                                 <option value="product_asc" data-sort-by="product" data-sort-type="text" data-sort-dir="ASC">Product (Ascending)</option>
                                 <option value="product_desc" data-sort-by="product" data-sort-type="text" data-sort-dir="DESC">Product (Descending)</option>
                             </select>
@@ -645,6 +668,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                             <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
                                 <tr>
                                     <th class="px-6 py-3" data-sort-by="date" data-sort-type="date">Timestamp</th>
+                                    <th class="px-6 py-3" data-sort-by="order_id" data-sort-type="number">Order ID</th>
                                     <th class="px-6 py-3" data-sort-by="sale_id" data-sort-type="number">Sale ID</th>
                                     <th class="px-6 py-3" data-sort-by="product" data-sort-type="text">Product</th>
                                     <th class="px-6 py-3" data-sort-by="qty" data-sort-type="number">Quantity</th>
@@ -655,12 +679,13 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                             </thead>
                             <tbody class="divide-y divide-gray-100" id="returns-table-body">
                                 <?php if (empty($filtered_return_history)): ?>
-                                    <tr><td colspan="7" class="px-6 py-8 text-center text-gray-400">No returns found for the selected date range.</td></tr>
+                                    <tr><td colspan="8" class="px-6 py-8 text-center text-gray-400">No returns found for the selected date range.</td></tr>
                                 <?php else: ?>
                                     <?php foreach ($filtered_return_history as $log): ?>
                                     <tr class="hover:bg-gray-50 transition-colors">
                                         <td class="px-6 py-3 text-sm" data-sort-value="<?php echo strtotime($log["timestamp"]); ?>"><?php echo htmlspecialchars(date("M d, Y h:i A", strtotime($log["timestamp"]))); ?></td>
-                                        <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $log["sale_id"]; ?>"><?php echo $log["sale_id"]; ?></td>
+                                        <td class="px-6 py-3 font-bold text-gray-700" data-sort-value="<?php echo $log["order_id"]; ?>">#<?php echo $log["order_id"]; ?></td>
+                                        <td class="px-6 py-3 text-gray-600" data-sort-value="<?php echo $log["sale_id"]; ?>">#<?php echo $log["sale_id"]; ?></td>
                                         <td class="px-6 py-3 font-medium text-gray-800"><?php echo htmlspecialchars($log["product_name"] ?? "Deleted"); ?></td>
                                         <td class="px-6 py-3 font-bold text-green-600" data-sort-value="<?php echo $log["qty_returned"]; ?>">+<?php echo $log["qty_returned"]; ?></td>
                                         <td class="px-6 py-3 text-blue-600" data-sort-value="<?php echo $log["return_value"]; ?>">(₱<?php echo number_format($log["return_value"], 2); ?>)</td>
@@ -704,7 +729,7 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-                    <input type="text" name="reason" id="return_reason" required placeholder="e.g. Refund, Wrong item" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input maxlength="15" type="text" name="reason" id="return_reason" required placeholder="e.g. Refund, Wrong item" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 
                 <div class="flex justify-end gap-2">
@@ -714,6 +739,108 @@ $net_revenue = $total_sales_revenue - $total_return_value;
             </form>
         </div>
     </div>
+
+    <div id="exportCsvModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('exportCsvModal')"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate-in">
+            <div class="bg-green-600 p-4 flex justify-between items-center text-white">
+                <h5 class="font-bold flex items-center gap-2"><i class='bx bxs-file-csv'></i> Export CSV Report</h5>
+                <button onclick="closeModal('exportCsvModal')" class="text-white hover:text-gray-200"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="generate_csv_report.php" method="POST" target="_blank" id="csvReportForm" class="p-6">
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Select Reports:</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input type="checkbox" name="report_types[]" value="sales" checked class="rounded text-green-600 focus:ring-green-500">
+                            <span class="text-sm">Sales Transactions</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input type="checkbox" name="report_types[]" value="product_inventory" class="rounded text-green-600 focus:ring-green-500">
+                            <span class="text-sm">Product Inventory</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input type="checkbox" name="report_types[]" value="ingredient_inventory" class="rounded text-green-600 focus:ring-green-500">
+                            <span class="text-sm">Ingredient Inventory</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input type="checkbox" name="report_types[]" value="returns" class="rounded text-green-600 focus:ring-green-500">
+                            <span class="text-sm">Returns & Recalls</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Start Date</label>
+                        <input type="date" name="date_start" value="<?php echo htmlspecialchars($date_start); ?>" required class="w-full p-2 bg-gray-50 border rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">End Date</label>
+                        <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" required class="w-full p-2 bg-gray-50 border rounded-lg text-sm">
+                    </div>
+                </div>
+                <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <label class="block text-xs font-bold text-gray-600 mb-2">Action:</label>
+                    <div class="flex gap-4 mb-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="csv_action" value="download" checked onclick="toggleEmailField(false, 'csv')" class="text-green-600">
+                            <span class="text-sm">Download</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="csv_action" value="email" onclick="toggleEmailField(true, 'csv')" class="text-green-600">
+                            <span class="text-sm">Email</span>
+                        </label>
+                    </div>
+                    <div id="csvEmailContainer" class="hidden">
+                        <input type="email" name="recipient_email" placeholder="Enter email address" class="w-full p-2 border rounded bg-white text-sm">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('exportCsvModal')" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg shadow transition-colors">Export</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <?php if ($can_generate_report): ?>
+    <div id="pdfPreviewModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] m-4 overflow-hidden relative z-50 flex flex-col modal-animate-in">
+            <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50">
+                <div class="flex items-center gap-4">
+                    <h5 class="font-bold text-gray-800 flex items-center gap-2"><i class='bx bxs-file-pdf text-xl text-red-500'></i> Report Preview</h5>
+                    
+                    <div class="flex items-center gap-2 border-l border-gray-300 pl-4">
+                        <input type="date" id="modal_date_start" onchange="updatePreview()" class="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-breadly-btn outline-none">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" id="modal_date_end" onchange="updatePreview()" class="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-breadly-btn outline-none">
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button onclick="downloadReport()" class="flex items-center gap-1 px-3 py-1.5 bg-breadly-btn text-white rounded hover:bg-breadly-btn-hover transition text-sm">
+                        <i class='bx bx-download'></i> Download
+                    </button>
+                    
+                    <div class="flex items-center gap-1 border-l border-gray-300 pl-2 ml-2">
+                        <input type="email" id="preview_email_input" placeholder="Email..." class="px-2 py-1.5 border border-gray-300 rounded text-sm w-40 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <button onclick="emailReport()" id="send_email_btn" class="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm">
+                            <i class='bx bx-send'></i>
+                        </button>
+                    </div>
+
+                    <button onclick="closeModal('pdfPreviewModal')" class="text-gray-400 hover:text-gray-600 ml-2"><i class='bx bx-x text-2xl'></i></button>
+                </div>
+            </div>
+            <div class="flex-1 bg-gray-100 p-2 relative">
+                <iframe id="pdfPreviewFrame" src="" class="w-full h-full border-0 rounded-lg bg-white shadow-sm"></iframe>
+                <div id="pdfLoader" class="absolute inset-0 flex items-center justify-center bg-gray-100 z-10 hidden">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-breadly-btn"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php $js_version = file_exists("../js/script_sales_history.js") ? filemtime("../js/script_sales_history.js") : "2"; ?>
@@ -746,6 +873,11 @@ $net_revenue = $total_sales_revenue - $total_return_value;
             const backdrop = document.getElementById('modalBackdrop');
             if (modal) modal.classList.add('hidden');
             if(backdrop) backdrop.classList.add('hidden');
+            
+            // Clear iframe src when closing preview to stop memory leaks or stale data
+            if(modalId === 'pdfPreviewModal') {
+                document.getElementById('pdfPreviewFrame').src = 'about:blank';
+            }
         }
         
         function closeAllModals() {
@@ -803,6 +935,108 @@ $net_revenue = $total_sales_revenue - $total_return_value;
                 } else {
                     detailsRow.classList.add('hidden');
                     icon.classList.remove('rotate-90');
+                }
+            }
+        }
+
+        // --- NEW REPORT GENERATION LOGIC ---
+        function getModalDates() {
+            const start = document.getElementById('modal_date_start').value;
+            const end = document.getElementById('modal_date_end').value;
+            return { start, end };
+        }
+
+        function openReportPreview() {
+            // Set default dates to TODAY regardless of main filter
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('modal_date_start').value = today;
+            document.getElementById('modal_date_end').value = today;
+            
+            updatePreview();
+            openModal('pdfPreviewModal');
+        }
+
+        function updatePreview() {
+            const { start, end } = getModalDates();
+            const previewUrl = `generate_pdf_report.php?date_start=${start}&date_end=${end}&report_action=preview`;
+            
+            // Show loader while iframe loads
+            const loader = document.getElementById('pdfLoader');
+            const frame = document.getElementById('pdfPreviewFrame');
+            
+            if(loader) loader.classList.remove('hidden');
+            
+            frame.onload = function() {
+                if(loader) loader.classList.add('hidden');
+            };
+            frame.src = previewUrl;
+        }
+
+        function downloadReport() {
+            const { start, end } = getModalDates();
+            // Trigger download in main window
+            window.location.href = `generate_pdf_report.php?date_start=${start}&date_end=${end}&report_action=download`;
+        }
+
+        function emailReport() {
+            const email = document.getElementById('preview_email_input').value.trim();
+            if (!email) {
+                Swal.fire('Error', 'Please enter an email address.', 'warning');
+                return;
+            }
+
+            const { start, end } = getModalDates();
+            const btn = document.getElementById('send_email_btn');
+            const originalContent = btn.innerHTML;
+            
+            // Disable button & show spinner
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bx bx-loader-alt animate-spin"></i>';
+
+            // Send via AJAX
+            fetch(`generate_pdf_report.php?date_start=${start}&date_end=${end}&report_action=email&recipient_email=${encodeURIComponent(email)}&ajax=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Sent!', data.message, 'success');
+                        document.getElementById('preview_email_input').value = ''; // Clear input
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire('Error', 'Failed to send email. Check console.', 'error');
+                })
+                .finally(() => {
+                    // Restore button
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                });
+        }
+
+        function toggleEmailField(show, type) {
+            let containerId, formId;
+            if (type === 'pdf') {
+                containerId = 'pdfEmailContainer';
+                formId = 'pdfReportForm';
+            } else {
+                containerId = 'csvEmailContainer';
+                formId = 'csvReportForm';
+            }
+            const container = document.getElementById(containerId);
+            const emailInput = container ? container.querySelector('input') : null;
+            const form = document.getElementById(formId);
+            
+            if (container && emailInput && form) {
+                if (show) {
+                    container.classList.remove('hidden');
+                    emailInput.required = true;
+                    form.removeAttribute('target');
+                } else {
+                    container.classList.add('hidden');
+                    emailInput.required = false;
+                    form.setAttribute('target', '_blank');
                 }
             }
         }

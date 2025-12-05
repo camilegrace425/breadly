@@ -78,6 +78,19 @@ class UserManager extends AbstractManager implements ListableData {
     }
 
     public function createUser($username, $password, $role, $email, $phone) {
+        // Validate Username: Alphanumeric only, but not purely numeric
+        if (!preg_match('/^[a-zA-Z0-9]+$/', $username)) {
+            return "Error: Username must contain only letters and numbers (no spaces or symbols).";
+        }
+        if (ctype_digit((string)$username)) {
+            return "Error: Username cannot be purely numeric.";
+        }
+        
+        // Validate Phone: Must be exactly 11 digits
+        if (strlen($phone) !== 11 || !ctype_digit($phone)) {
+            return "Error: Phone number must be exactly 11 digits.";
+        }
+
         if (empty($email)) $email = null;
 
         try {
@@ -104,6 +117,19 @@ class UserManager extends AbstractManager implements ListableData {
     }
 
     public function updateUser($user_id, $username, $password, $role, $email, $phone) {
+        // Validate Username: Alphanumeric only, but not purely numeric
+        if (!preg_match('/^[a-zA-Z0-9]+$/', $username)) {
+            return "Error: Username must contain only letters and numbers (no spaces or symbols).";
+        }
+        if (ctype_digit((string)$username)) {
+            return "Error: Username cannot be purely numeric.";
+        }
+        
+        // Validate Phone: Must be exactly 11 digits
+        if (strlen($phone) !== 11 || !ctype_digit($phone)) {
+            return "Error: Phone number must be exactly 11 digits.";
+        }
+
         if (empty($email)) $email = null;
 
         try {

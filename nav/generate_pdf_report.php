@@ -16,17 +16,18 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['manager', 'as
     die('Access denied.');
 }
 
-$date_start = $_POST['date_start'] ?? date('Y-m-d');
-$date_end = $_POST['date_end'] ?? date('Y-m-d');
-$action_type = $_POST['report_action'] ?? 'download'; 
-$recipient_email = $_POST['recipient_email'] ?? ''; 
+$date_start = $_REQUEST['date_start'] ?? date('Y-m-d');
+$date_end = $_REQUEST['date_end'] ?? date('Y-m-d');
+$action_type = $_REQUEST['report_action'] ?? 'download'; 
+$recipient_email = $_REQUEST['recipient_email'] ?? ''; 
+$is_ajax = isset($_REQUEST['ajax']) && $_REQUEST['ajax'] === '1';
 
 // Date Range Formatting
 $date_range_text = date('M d, Y', strtotime($date_start));
 if ($date_start != $date_end) {
     $date_range_text .= ' to ' . date('M d, Y', strtotime($date_end));
 }
-if (empty($_POST['date_start']) && empty($_POST['date_end'])) {
+if (empty($_REQUEST['date_start']) && empty($_REQUEST['date_end'])) {
     if ($date_start == date('Y-m-d', strtotime('-29 days')) && $date_end == date('Y-m-d')) {
         $date_range_text = 'Last 30 Days';
     }
@@ -188,7 +189,96 @@ $pdf = new PDF();
 $pdf->AliasNbPages();
 $pdf->AddPage();
 
-// Executive Summary
+// ------------------------------------------------------------------
+// 1. Detailed Sales Report
+// ------------------------------------------------------------------
+$pdf->SectionTitle('Detailed Sales Report');
+$salesHeader = ['Product', 'Qty Sold', 'Total Revenue'];
+$salesColumnWidths = [100, 40, 50];
+$salesAligns = ['L', 'C', 'R'];
+$salesTableData = [];
+$total_qty = 0;
+$total_revenue = 0;
+
+foreach ($salesData as $row) {
+    $salesTableData[] = [
+        $row['product_name'],
+        $row['total_qty_sold'],
+        'P ' . number_format($row['total_revenue'], 2)
+    ];
+    $total_qty += $row['total_qty_sold'];
+    $total_revenue += $row['total_revenue'];
+}
+
+$pdf->FancyTable($salesHeader, $salesTableData, $salesColumnWidths, $salesAligns);
+
+$totalsCells = ['Overall Total', $total_qty, 'P ' . number_format($total_revenue, 2)];
+$totalsAligns = ['R', 'C', 'R'];
+$pdf->TableTotals($totalsCells, $salesColumnWidths, $totalsAligns);
+$pdf->Ln(10);
+
+// ------------------------------------------------------------------
+// 2. Detailed Returns Report
+// ------------------------------------------------------------------
+$pdf->SectionTitle('Detailed Returns Report');
+$returnsHeader = ['Date', 'Product', 'Qty', 'Value', 'Reason', 'Cashier'];
+$returnsColumnWidths = [35, 50, 15, 25, 40, 25];
+$returnsAligns = ['L', 'L', 'C', 'R', 'L', 'L'];
+$returnsTableData = [];
+$total_returned_val = 0;
+
+foreach ($returnsData as $row) {
+    $returnsTableData[] = [
+        date('M d H:i', strtotime($row['timestamp'])),
+        $row['product_name'],
+        $row['qty_returned'],
+        'P ' . number_format($row['return_value'], 2),
+        $row['reason'],
+        $row['username'] ?? 'N/A'
+    ];
+    $total_returned_val += $row['return_value'];
+}
+
+$pdf->FancyTable($returnsHeader, $returnsTableData, $returnsColumnWidths, $returnsAligns);
+
+if (!empty($returnsData)) {
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->Cell(100, 8, 'Total Returns Value', 1, 0, 'R', true);
+    $pdf->Cell(90, 8, 'P ' . number_format($total_returned_val, 2), 1, 1, 'R', true);
+}
+$pdf->Ln(10);
+
+// ------------------------------------------------------------------
+// 3. Detailed Recall Log
+// ------------------------------------------------------------------
+$pdf->SectionTitle('Detailed Recall Log');
+$recallHeader = ['Timestamp', 'Product', 'Qty', 'Cashier', 'Reason'];
+$recallColumnWidths = [40, 50, 15, 30, 55];
+$recallAligns = ['L', 'L', 'C', 'L', 'L'];
+$recallTableData = [];
+
+foreach ($recallData as $row) {
+    $recallTableData[] = [
+        date('M d, Y H:i', strtotime($row['timestamp'])),
+        $row['item_name'],
+        number_format($row['adjustment_qty']),
+        $row['username'] ?? 'N/A',
+        $row['reason']
+    ];
+}
+$pdf->FancyTable($recallHeader, $recallTableData, $recallColumnWidths, $recallAligns);
+$pdf->Ln(10);
+
+// ------------------------------------------------------------------
+// 4. Executive Summary (Moved to Bottom)
+// ------------------------------------------------------------------
+
+// Check if we need a new page for the summary boxes
+// Box height is approx 36mm + title 14mm + spacing ~50mm
+if ($pdf->GetY() > 230) { 
+    $pdf->AddPage();
+}
+
 $pdf->SectionTitle('Executive Summary');
 $pdf->SetFont('Arial', '', 10);
 $pdf->SetFillColor(250, 250, 250);
@@ -218,85 +308,16 @@ $pdf->SummaryBox('Total Recalled Value:', '(P ' . number_format($recalledStockVa
 $pdf->SetX(107);
 $pdf->SummaryBox('Return Transactions:', count($returnsData), [50, 50, 50]);
 
-$pdf->SetY($startY + $boxHeight + 6); 
-
-// Sales Report
-$pdf->SectionTitle('Detailed Sales Report');
-$salesHeader = ['Product', 'Qty Sold', 'Total Revenue'];
-$salesColumnWidths = [100, 40, 50];
-$salesAligns = ['L', 'C', 'R'];
-$salesTableData = [];
-$total_qty = 0;
-$total_revenue = 0;
-
-foreach ($salesData as $row) {
-    $salesTableData[] = [
-        $row['product_name'],
-        $row['total_qty_sold'],
-        'P ' . number_format($row['total_revenue'], 2)
-    ];
-    $total_qty += $row['total_qty_sold'];
-    $total_revenue += $row['total_revenue'];
-}
-
-$pdf->FancyTable($salesHeader, $salesTableData, $salesColumnWidths, $salesAligns);
-
-$totalsCells = ['Overall Total', $total_qty, 'P ' . number_format($total_revenue, 2)];
-$totalsAligns = ['R', 'C', 'R'];
-$pdf->TableTotals($totalsCells, $salesColumnWidths, $totalsAligns);
-$pdf->Ln(10);
-
-// Returns Report
-$pdf->SectionTitle('Detailed Returns Report');
-$returnsHeader = ['Date', 'Product', 'Qty', 'Value', 'Reason', 'Cashier'];
-$returnsColumnWidths = [35, 50, 15, 25, 40, 25];
-$returnsAligns = ['L', 'L', 'C', 'R', 'L', 'L'];
-$returnsTableData = [];
-$total_returned_val = 0;
-
-foreach ($returnsData as $row) {
-    $returnsTableData[] = [
-        date('M d H:i', strtotime($row['timestamp'])),
-        $row['product_name'],
-        $row['qty_returned'],
-        'P ' . number_format($row['return_value'], 2),
-        $row['reason'],
-        $row['username'] ?? 'N/A'
-    ];
-    $total_returned_val += $row['return_value'];
-}
-
-$pdf->FancyTable($returnsHeader, $returnsTableData, $returnsColumnWidths, $returnsAligns);
-
-if (!empty($returnsData)) {
-    $pdf->SetFont('Arial', 'B', 10);
-    $pdf->Cell(100, 8, 'Total Returns Value', 1, 0, 'R', true);
-    $pdf->Cell(90, 8, 'P ' . number_format($total_returned_val, 2), 1, 1, 'R', true);
-}
-$pdf->Ln(10);
-
-// Recall Log
-$pdf->SectionTitle('Detailed Recall Log');
-$recallHeader = ['Timestamp', 'Product', 'Qty', 'Cashier', 'Reason'];
-$recallColumnWidths = [40, 50, 15, 30, 55];
-$recallAligns = ['L', 'L', 'C', 'L', 'L'];
-$recallTableData = [];
-
-foreach ($recallData as $row) {
-    $recallTableData[] = [
-        date('M d, Y H:i', strtotime($row['timestamp'])),
-        $row['item_name'],
-        number_format($row['adjustment_qty']),
-        $row['username'] ?? 'N/A',
-        $row['reason']
-    ];
-}
-$pdf->FancyTable($recallHeader, $recallTableData, $recallColumnWidths, $recallAligns);
-
+// ------------------------------------------------------------------
 // Output Handling
+// ------------------------------------------------------------------
 $filename = 'Breadly_Report_' . $date_start . '_to_' . $date_end . '.pdf';
 
-if ($action_type === 'email' && !empty($recipient_email)) {
+if ($action_type === 'preview') {
+    // PREVIEW: Output inline to browser
+    $pdf->Output('I', $filename);
+} elseif ($action_type === 'email' && !empty($recipient_email)) {
+    // EMAIL: Generate string and send
     $pdfString = $pdf->Output('S');
     
     $mail = new PHPMailer(true);
@@ -320,6 +341,12 @@ if ($action_type === 'email' && !empty($recipient_email)) {
 
         $mail->send();
         
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => "Report sent to $recipient_email"]);
+            exit;
+        }
+
         echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Email Sent</title>';
         echo '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>';
         echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">'; 
@@ -342,6 +369,12 @@ if ($action_type === 'email' && !empty($recipient_email)) {
         echo '</body></html>';
 
     } catch (Exception $e) {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => "Mailer Error: " . $mail->ErrorInfo]);
+            exit;
+        }
+
         echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Error</title><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script></head><body>';
         echo "<script>
             Swal.fire({
@@ -355,6 +388,7 @@ if ($action_type === 'email' && !empty($recipient_email)) {
     }
 
 } else {
+    // DOWNLOAD (Default)
     $pdf->Output('D', $filename);
 }
 exit;

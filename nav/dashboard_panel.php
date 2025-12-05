@@ -332,12 +332,6 @@ $active_nav_link = 'dashboard';
                 <button onclick="openModal('sendReportModal')" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium">
                     <i class='bx bx-send'></i> <span class="hidden sm:inline">SMS Report</span>
                 </button>
-                <button onclick="openModal('exportCsvModal')" class="px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2 text-sm font-medium">
-                    <i class='bx bxs-file-csv'></i> <span class="hidden sm:inline">Export CSV</span>
-                </button>
-                <button onclick="openModal('generatePdfModal')" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium">
-                    <i class='bx bxs-file-pdf'></i> <span class="hidden sm:inline">Download PDF</span>
-                </button>
             </div>
         </div>
 
@@ -530,68 +524,6 @@ $active_nav_link = 'dashboard';
         </div>
     </main>
 
-    <div id="exportCsvModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('exportCsvModal')"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate-in">
-            <div class="bg-green-600 p-4 flex justify-between items-center text-white">
-                <h5 class="font-bold flex items-center gap-2"><i class='bx bxs-file-csv'></i> Export CSV Report</h5>
-            </div>
-            <form action="generate_csv_report.php" method="POST" target="_blank" id="csvReportForm" class="p-6">
-                <div class="mb-4">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Select Reports:</label>
-                    <div class="space-y-2">
-                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                            <input type="checkbox" name="report_types[]" value="sales" checked class="rounded text-green-600 focus:ring-green-500">
-                            <span class="text-sm">Sales Transactions</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                            <input type="checkbox" name="report_types[]" value="product_inventory" class="rounded text-green-600 focus:ring-green-500">
-                            <span class="text-sm">Product Inventory</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                            <input type="checkbox" name="report_types[]" value="ingredient_inventory" class="rounded text-green-600 focus:ring-green-500">
-                            <span class="text-sm">Ingredient Inventory</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                            <input type="checkbox" name="report_types[]" value="returns" class="rounded text-green-600 focus:ring-green-500">
-                            <span class="text-sm">Returns & Recalls</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Start Date</label>
-                        <input type="date" name="date_start" value="<?php echo htmlspecialchars($date_start); ?>" required class="w-full p-2 bg-gray-50 border rounded-lg text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">End Date</label>
-                        <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" required class="w-full p-2 bg-gray-50 border rounded-lg text-sm">
-                    </div>
-                </div>
-                <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <label class="block text-xs font-bold text-gray-600 mb-2">Action:</label>
-                    <div class="flex gap-4 mb-2">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="csv_action" value="download" checked onclick="toggleEmailField(false, 'csv')" class="text-green-600">
-                            <span class="text-sm">Download</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="csv_action" value="email" onclick="toggleEmailField(true, 'csv')" class="text-green-600">
-                            <span class="text-sm">Email</span>
-                        </label>
-                    </div>
-                    <div id="csvEmailContainer" class="hidden">
-                        <input type="email" name="recipient_email" placeholder="Enter email address" class="w-full p-2 border rounded bg-white text-sm">
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('exportCsvModal')" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg shadow transition-colors">Export</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="sendReportModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('sendReportModal')"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden modal-animate-in">
@@ -624,45 +556,6 @@ $active_nav_link = 'dashboard';
                 <div class="flex justify-end gap-2">
                     <button type="button" onclick="closeModal('sendReportModal')" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
                     <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-breadly-btn hover:bg-breadly-btn-hover rounded-lg shadow transition-colors">Send Report</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="generatePdfModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('generatePdfModal')"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden modal-animate-in">
-            <div class="bg-blue-600 p-4 flex justify-between items-center text-white">
-                <h5 class="font-bold flex items-center gap-2"><i class='bx bxs-file-pdf'></i> Generate PDF</h5>
-            </div>
-            <form action="generate_pdf_report.php" method="POST" target="_blank" id="pdfReportForm" class="p-6">
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-gray-500 mb-1">Start Date</label>
-                    <input type="date" name="date_start" value="<?php echo htmlspecialchars($date_start); ?>" required class="w-full p-2 bg-gray-50 border rounded-lg text-sm">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-gray-500 mb-1">End Date</label>
-                    <input type="date" name="date_end" value="<?php echo htmlspecialchars($date_end); ?>" required class="w-full p-2 bg-gray-50 border rounded-lg text-sm">
-                </div>
-                <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <label class="block text-xs font-bold text-gray-600 mb-2">Action:</label>
-                    <div class="flex gap-4 mb-2">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="report_action" value="download" checked onclick="toggleEmailField(false, 'pdf')" class="text-blue-600">
-                            <span class="text-sm">Download</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="report_action" value="email" onclick="toggleEmailField(true, 'pdf')" class="text-blue-600">
-                            <span class="text-sm">Email</span>
-                        </label>
-                    </div>
-                    <div id="pdfEmailContainer" class="hidden">
-                        <input type="email" name="recipient_email" placeholder="Enter email address" class="w-full p-2 border rounded bg-white text-sm">
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('generatePdfModal')" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow transition-colors">Generate</button>
                 </div>
             </form>
         </div>

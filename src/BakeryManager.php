@@ -197,5 +197,26 @@ class BakeryManager extends AbstractManager implements ListableData {
         $stmt = $this->conn->prepare("CALL ProductUpdateBatchSize(?, ?)");
         return $stmt->execute([$product_id, $batch_size]);
     }
+
+    public function updateProductStockDirectly($product_id, $qty, $user_id, $reason) {
+        try {
+            $this->conn->beginTransaction();
+            
+            // 1. Update the product stock count
+            $stmt = $this->conn->prepare("UPDATE products SET stock_qty = stock_qty + ? WHERE product_id = ?");
+            $stmt->execute([$qty, $product_id]);
+            
+            // 2. Log the adjustment
+            $stmtLog = $this->conn->prepare("INSERT INTO stock_adjustments (item_id, item_type, user_id, adjustment_qty, reason) VALUES (?, 'product', ?, ?, ?)");
+            $stmtLog->execute([$product_id, $user_id, $qty, $reason]);
+            
+            $this->conn->commit();
+            return "Success: Stock updated.";
+        } catch (Exception $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            error_log("Error in updateProductStockDirectly: " . $e->getMessage());
+            return "Error: " . $e->getMessage();
+        }
+    }
 }
 ?>
