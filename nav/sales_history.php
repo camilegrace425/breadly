@@ -415,12 +415,12 @@ $can_generate_report = in_array($_SESSION['role'], ['manager', 'assistant_manage
             </div>
             
             <?php if ($can_generate_report): ?>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <button onclick="openModal('exportCsvModal')" class="flex items-center gap-2 bg-green-600 border border-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm text-sm font-medium">
-                    <i class='bx bxs-file-csv text-lg'></i> Export CSV
+                    <i class='bx bxs-file-csv text-lg'></i> <span>Export CSV</span>
                 </button>
                 <button onclick="openReportPreview()" class="flex items-center gap-2 bg-white border border-orange-200 text-breadly-btn px-4 py-2 rounded-lg hover:bg-orange-50 transition-colors shadow-sm text-sm font-medium">
-                    <i class='bx bxs-file-pdf text-lg'></i> Generate Report
+                    <i class='bx bxs-file-pdf text-lg'></i> <span>Generate Report</span>
                 </button>
             </div>
             <?php endif; ?>
@@ -705,44 +705,9 @@ $can_generate_report = in_array($_SESSION['role'], ['manager', 'assistant_manage
 
     <div id="modalBackdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity" onclick="closeAllModals()"></div>
 
-    <div id="returnSaleModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4 overflow-hidden relative z-50 modal-animate-in">
-            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                <h5 class="font-bold text-gray-800">Process Return</h5>
-                <button onclick="closeModal('returnSaleModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
-            </div>
-            <form action="sales_history.php?date_start=<?php echo htmlspecialchars($date_start); ?>&date_end=<?php echo htmlspecialchars($date_end); ?>" method="POST" class="p-6">
-                <input type="hidden" name="action" value="process_return">
-                <input type="hidden" name="sale_id" id="return_sale_id">
-                <input type="hidden" name="max_qty" id="return_max_qty">
-                
-                <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
-                    <p><strong>Product:</strong> <span id="return_product_name" class="text-blue-800"></span></p>
-                    <p><strong>Date:</strong> <span id="return_sale_date" class="text-blue-800"></span></p>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity to Return</label>
-                    <input type="number" name="return_qty" id="return_qty" min="1" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                    <p class="text-xs text-gray-500 mt-1">Max <span id="return_qty_sold_text"></span> items available.</p>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-                    <input maxlength="15" type="text" name="reason" id="return_reason" required placeholder="e.g. Refund, Wrong item" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                
-                <div class="flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('returnSaleModal')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Confirm</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="exportCsvModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('exportCsvModal')"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate-in">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-animate-in mx-4">
             <div class="bg-green-600 p-4 flex justify-between items-center text-white">
                 <h5 class="font-bold flex items-center gap-2"><i class='bx bxs-file-csv'></i> Export CSV Report</h5>
                 <button onclick="closeModal('exportCsvModal')" class="text-white hover:text-gray-200"><i class='bx bx-x text-2xl'></i></button>
@@ -803,37 +768,82 @@ $can_generate_report = in_array($_SESSION['role'], ['manager', 'assistant_manage
         </div>
     </div>
 
-    <?php if ($can_generate_report): ?>
-    <div id="pdfPreviewModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] m-4 overflow-hidden relative z-50 flex flex-col modal-animate-in">
-            <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50">
-                <div class="flex items-center gap-4">
-                    <h5 class="font-bold text-gray-800 flex items-center gap-2"><i class='bx bxs-file-pdf text-xl text-red-500'></i> Report Preview</h5>
-                    
-                    <div class="flex items-center gap-2 border-l border-gray-300 pl-4">
-                        <input type="date" id="modal_date_start" onchange="updatePreview()" class="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-breadly-btn outline-none">
-                        <span class="text-gray-400">-</span>
-                        <input type="date" id="modal_date_end" onchange="updatePreview()" class="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-breadly-btn outline-none">
-                    </div>
+    <div id="returnSaleModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4 overflow-hidden relative z-50 modal-animate-in">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h5 class="font-bold text-gray-800">Process Return</h5>
+                <button onclick="closeModal('returnSaleModal')" class="text-gray-400 hover:text-gray-600"><i class='bx bx-x text-2xl'></i></button>
+            </div>
+            <form action="sales_history.php?date_start=<?php echo htmlspecialchars($date_start); ?>&date_end=<?php echo htmlspecialchars($date_end); ?>" method="POST" class="p-6">
+                <input type="hidden" name="action" value="process_return">
+                <input type="hidden" name="sale_id" id="return_sale_id">
+                <input type="hidden" name="max_qty" id="return_max_qty">
+                
+                <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+                    <p><strong>Product:</strong> <span id="return_product_name" class="text-blue-800"></span></p>
+                    <p><strong>Date:</strong> <span id="return_sale_date" class="text-blue-800"></span></p>
                 </div>
                 
-                <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <button onclick="downloadReport()" class="flex items-center gap-1 px-3 py-1.5 bg-breadly-btn text-white rounded hover:bg-breadly-btn-hover transition text-sm">
-                        <i class='bx bx-download'></i> Download
-                    </button>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity to Return</label>
+                    <input type="number" name="return_qty" id="return_qty" min="1" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <p class="text-xs text-gray-500 mt-1">Max <span id="return_qty_sold_text"></span> items available.</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                    <input maxlength="15" type="text" name="reason" id="return_reason" required placeholder="e.g. Refund, Wrong item" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('returnSaleModal')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <?php if ($can_generate_report): ?>
+    <div id="pdfPreviewModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-none md:rounded-2xl shadow-2xl w-full h-full md:w-full md:max-w-6xl md:h-[90vh] md:m-4 overflow-hidden relative z-50 flex flex-col modal-animate-in rounded-none md:rounded-2xl">
+            <div class="p-3 md:p-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50">
+                <div class="flex items-center justify-between w-full sm:w-auto gap-4">
+                    <h5 class="font-bold text-gray-800 flex items-center gap-2 text-base md:text-xl">
+                        <i class='bx bxs-file-pdf text-xl text-red-500'></i> 
+                        <span class="hidden md:inline">Report Preview</span>
+                        <span class="md:hidden">Preview</span>
+                    </h5>
                     
-                    <div class="flex items-center gap-1 border-l border-gray-300 pl-2 ml-2">
-                        <input type="email" id="preview_email_input" placeholder="Email..." class="px-2 py-1.5 border border-gray-300 rounded text-sm w-40 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <button onclick="emailReport()" id="send_email_btn" class="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm">
-                            <i class='bx bx-send'></i>
-                        </button>
+                    <button onclick="closeModal('pdfPreviewModal')" class="text-gray-400 hover:text-gray-600 sm:hidden"><i class='bx bx-x text-2xl'></i></button>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                    <div class="flex items-center gap-2 w-full sm:w-auto bg-white p-1 rounded border border-gray-200 sm:border-0 sm:bg-transparent">
+                        <input type="date" id="modal_date_start" onchange="updatePreview()" class="flex-1 min-w-[120px] px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-breadly-btn outline-none">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" id="modal_date_end" onchange="updatePreview()" class="flex-1 min-w-[120px] px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-breadly-btn outline-none">
                     </div>
 
-                    <button onclick="closeModal('pdfPreviewModal')" class="text-gray-400 hover:text-gray-600 ml-2"><i class='bx bx-x text-2xl'></i></button>
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
+                        <button onclick="downloadReport()" class="flex-1 sm:flex-none flex justify-center items-center gap-1 px-3 py-1.5 bg-breadly-btn text-white rounded hover:bg-breadly-btn-hover transition text-sm">
+                            <i class='bx bx-download'></i> Download
+                        </button>
+                        
+                        <div class="flex-1 sm:flex-none flex items-center gap-1 border-l border-gray-300 pl-2 ml-2">
+                            <input type="email" id="preview_email_input" placeholder="Email recipient..." class="w-full sm:w-40 px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                            <button onclick="emailReport()" id="send_email_btn" class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm">
+                                <i class='bx bx-send'></i>
+                            </button>
+                        </div>
+
+                        <button onclick="closeModal('pdfPreviewModal')" class="hidden md:block text-gray-400 hover:text-gray-600 ml-2">
+                            <i class='bx bx-x text-2xl'></i>
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="flex-1 bg-gray-100 p-2 relative">
-                <iframe id="pdfPreviewFrame" src="" class="w-full h-full border-0 rounded-lg bg-white shadow-sm"></iframe>
+            <div class="flex-1 bg-gray-100 p-0 md:p-2 relative">
+                <iframe id="pdfPreviewFrame" src="" class="w-full h-full border-0 md:rounded-lg bg-white shadow-sm"></iframe>
                 <div id="pdfLoader" class="absolute inset-0 flex items-center justify-center bg-gray-100 z-10 hidden">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-breadly-btn"></div>
                 </div>
