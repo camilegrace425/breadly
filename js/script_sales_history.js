@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Reusable Table Pagination Function ---
     function addTablePagination(selectId, tableBodyId) {
         const select = document.getElementById(selectId);
         const tableBody = document.getElementById(tableBodyId);
@@ -12,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!prevBtn || !nextBtn) return;
 
-        // Ensure we have a default current page set on the element dataset
         select.dataset.currentPage = select.dataset.currentPage || '0';
 
         const updateTableRows = () => {
@@ -40,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const limit = parseInt(selectedValue, 10);
             const totalPages = (totalRows === 0) ? 1 : Math.ceil(totalRows / limit);
             
-            // Adjust current page if out of bounds (e.g., after filtering reduced rows)
             if (currentPage >= totalPages) {
                 currentPage = Math.max(0, totalPages - 1);
                 select.dataset.currentPage = currentPage;
@@ -54,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
-                    // Hide details row if parent is hidden
                     if (row.classList.contains('order-row')) {
                         const nextRow = row.nextElementSibling;
                         if (nextRow && nextRow.classList.contains('details-row')) {
@@ -68,14 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
         };
 
-        // --- Event Listener Management ---
-        // Clone nodes to strip old event listeners before adding new ones
         const newPrevBtn = prevBtn.cloneNode(true);
         const newNextBtn = nextBtn.cloneNode(true);
         prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
         nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
         
-        // Re-select fresh buttons
         const freshPrevBtn = document.getElementById(`${baseId}-prev-btn`);
         const freshNextBtn = document.getElementById(`${baseId}-next-btn`);
 
@@ -94,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTableRows();
         });
 
-        // Handle Change on Select Dropdown
         const newSelect = select.cloneNode(true);
         newSelect.dataset.currentPage = select.dataset.currentPage;
         newSelect.value = select.value;
@@ -106,12 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
             freshSelect.dataset.currentPage = '0';
             updateTableRows();
         });
-        
-        // Initial run
         updateTableRows();
     }
     
-    // --- JS Sorting ---
     function getSortableValue(cell, type = 'text') {
         if(!cell) return '';
         const textValue = cell.innerText;
@@ -138,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const select = document.getElementById(selectId);
         if (!select) return;
 
-        // Remove existing listener by cloning
         const newSelect = select.cloneNode(true);
         select.parentNode.replaceChild(newSelect, select);
         const freshSelect = document.getElementById(selectId);
@@ -167,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let isOrderTable = (tbody.id === 'sales-table-body');
 
             if (isOrderTable) {
-                // Sort Orders (maintaining row+detail pairs)
                 let currentPairs = [];
                 let currentOrderRows = Array.from(tbody.querySelectorAll('tr.order-row'));
                 
@@ -193,7 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(pair.details) tbody.appendChild(pair.details);
                 });
             } else {
-                // Sort Standard Rows
                 let rows = Array.from(tbody.querySelectorAll('tr:not([id$="-no-results"])'));
                 rows.sort((a, b) => {
                     if (a.cells.length <= colIndex || b.cells.length <= colIndex) return 0;
@@ -205,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 rows.forEach(row => tbody.appendChild(row));
             }
 
-            // Trigger pagination update (reset to page 1) by dispatching change event on pagination select
             const paginationSelect = container.querySelector('select[id$="-rows-select"]');
             if (paginationSelect) {
                 paginationSelect.dataset.currentPage = '0'; 
@@ -219,11 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const forms = document.querySelectorAll('#pane-sales form, #pane-returns form');
         
         forms.forEach(form => {
-            // Remove old listener if any
             const newForm = form.cloneNode(true);
             form.parentNode.replaceChild(newForm, form);
             
-            // Re-select form for closure scope
             const activeForm = newForm;
 
             activeForm.addEventListener('submit', function(e) {
@@ -232,9 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const params = new URLSearchParams(formData);
                 params.append('ajax', '1');
                 
-                // Note: We don't disable the "Today" button here generically since it's just a trigger
-                // but we can add visual loading state if needed.
-
                 fetch(`sales_history.php?${params.toString()}`)
                     .then(response => response.json())
                     .then(data => {
@@ -244,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             const tbody = document.getElementById('sales-table-body');
                             tbody.innerHTML = data.html;
                             
-                            // Update Totals
                             if (data.totals) {
                                 if(document.getElementById('total-gross-revenue')) 
                                     document.getElementById('total-gross-revenue').innerText = '₱' + data.totals.gross;
@@ -254,7 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                     document.getElementById('total-net-revenue').innerText = '₱' + data.totals.net;
                             }
                             
-                            // Re-init features for new elements
                             addTablePagination('sales-rows-select', 'sales-table-body');
                             setupSortSelect('sales-sort-select');
                             
@@ -269,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     .catch(err => console.error('Error:', err));
             });
 
-            // NEW: Auto-submit on date change
             const dateInputs = activeForm.querySelectorAll('input[type="date"]');
             dateInputs.forEach(input => {
                 input.addEventListener('change', function() {
@@ -278,12 +255,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // NEW: Handle "Today" buttons logic
         const handleToday = (btnId, formSelector) => {
             const btn = document.getElementById(btnId);
             if(!btn) return;
             
-            // Remove old listeners
             const newBtn = btn.cloneNode(true);
             btn.parentNode.replaceChild(newBtn, btn);
 
@@ -298,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(start && end) {
                     start.value = today;
                     end.value = today;
-                    // Trigger submit via the form event
                     form.dispatchEvent(new Event('submit'));
                 }
             });
@@ -307,14 +281,205 @@ document.addEventListener('DOMContentLoaded', () => {
         handleToday('sales-today-btn', '#pane-sales form');
         handleToday('returns-today-btn', '#pane-returns form');
     }
-
-    // --- REMOVED URL UPDATING LOGIC HERE ---
-    // The event listeners for history.replaceState have been removed.
-
-    // Initial Setup
     addTablePagination('sales-rows-select', 'sales-table-body');
     addTablePagination('returns-rows-select', 'returns-table-body');
     setupSortSelect('sales-sort-select');
     setupSortSelect('returns-sort-select');
     attachAjaxFilters();
 });
+
+// --- MOVED GLOBAL FUNCTIONS ---
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('mobileSidebar');
+    const overlay = document.getElementById('mobileSidebarOverlay');
+    if (sidebar.classList.contains('-translate-x-full')) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+    }
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    const backdrop = document.getElementById('modalBackdrop');
+    if (modal) {
+        modal.classList.remove('hidden');
+        if(backdrop) backdrop.classList.remove('hidden');
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    const backdrop = document.getElementById('modalBackdrop');
+    if (modal) modal.classList.add('hidden');
+    if(backdrop) backdrop.classList.add('hidden');
+    
+    // Clear iframe src when closing preview to stop memory leaks or stale data
+    if(modalId === 'pdfPreviewModal') {
+        document.getElementById('pdfPreviewFrame').src = 'about:blank';
+    }
+}
+
+function closeAllModals() {
+    document.querySelectorAll('.fixed.z-50').forEach(el => el.classList.add('hidden'));
+    const backdrop = document.getElementById('modalBackdrop');
+    if(backdrop) backdrop.classList.add('hidden');
+}
+
+// Only for Return Modal (Specific to Sales History Page logic)
+function openReturnModal(button) {
+    // Stop propagation if clicked from a table row that expands
+    if(window.event) window.event.stopPropagation();
+
+    const modal = document.getElementById('returnSaleModal');
+    document.getElementById('return_sale_id').value = button.dataset.saleId;
+    document.getElementById('return_product_name').textContent = button.dataset.productName;
+    document.getElementById('return_sale_date').textContent = button.dataset.saleDate;
+    
+    const qtyAvailable = parseInt(button.dataset.qtyAvailable);
+    const qtyInput = document.getElementById('return_qty');
+    
+    qtyInput.value = qtyAvailable;
+    qtyInput.max = qtyAvailable;
+    document.getElementById('return_max_qty').value = qtyAvailable;
+    document.getElementById('return_qty_sold_text').textContent = qtyAvailable;
+    document.getElementById('return_reason').value = '';
+
+    openModal('returnSaleModal');
+}
+
+function switchTab(tabName) {
+    document.querySelectorAll('[id^="pane-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('pane-' + tabName).classList.remove('hidden');
+    
+    const salesBtn = document.getElementById('tab-sales');
+    const returnsBtn = document.getElementById('tab-returns');
+    
+    salesBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700';
+    returnsBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-transparent text-gray-500 hover:text-gray-700';
+    
+    if (tabName === 'sales') {
+        salesBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-breadly-btn text-breadly-btn';
+    } else {
+        returnsBtn.className = 'pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 border-blue-500 text-blue-600';
+    }
+}
+
+function toggleOrderDetails(orderId) {
+    const detailsRow = document.getElementById('details-' + orderId);
+    const icon = document.getElementById('icon-' + orderId);
+    if (detailsRow) {
+        if (detailsRow.classList.contains('hidden')) {
+            detailsRow.classList.remove('hidden');
+            icon.classList.add('rotate-90');
+        } else {
+            detailsRow.classList.add('hidden');
+            icon.classList.remove('rotate-90');
+        }
+    }
+}
+
+// --- NEW REPORT GENERATION LOGIC ---
+function getModalDates() {
+    const start = document.getElementById('modal_date_start').value;
+    const end = document.getElementById('modal_date_end').value;
+    return { start, end };
+}
+
+function openReportPreview() {
+    // Set default dates to TODAY regardless of main filter
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('modal_date_start').value = today;
+    document.getElementById('modal_date_end').value = today;
+    
+    updatePreview();
+    openModal('pdfPreviewModal');
+}
+
+function updatePreview() {
+    const { start, end } = getModalDates();
+    const previewUrl = `generate_pdf_report.php?date_start=${start}&date_end=${end}&report_action=preview`;
+    
+    // Show loader while iframe loads
+    const loader = document.getElementById('pdfLoader');
+    const frame = document.getElementById('pdfPreviewFrame');
+    
+    if(loader) loader.classList.remove('hidden');
+    
+    frame.onload = function() {
+        if(loader) loader.classList.add('hidden');
+    };
+    frame.src = previewUrl;
+}
+
+function downloadReport() {
+    const { start, end } = getModalDates();
+    // Trigger download in main window
+    window.location.href = `generate_pdf_report.php?date_start=${start}&date_end=${end}&report_action=download`;
+}
+
+function emailReport() {
+    const email = document.getElementById('preview_email_input').value.trim();
+    if (!email) {
+        Swal.fire('Error', 'Please enter an email address.', 'warning');
+        return;
+    }
+
+    const { start, end } = getModalDates();
+    const btn = document.getElementById('send_email_btn');
+    const originalContent = btn.innerHTML;
+    
+    // Disable button & show spinner
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bx bx-loader-alt animate-spin"></i>';
+
+    // Send via AJAX
+    fetch(`generate_pdf_report.php?date_start=${start}&date_end=${end}&report_action=email&recipient_email=${encodeURIComponent(email)}&ajax=1`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('Sent!', data.message, 'success');
+                document.getElementById('preview_email_input').value = ''; // Clear input
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('Error', 'Failed to send email. Check console.', 'error');
+        })
+        .finally(() => {
+            // Restore button
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        });
+}
+
+function toggleEmailField(show, type) {
+    let containerId, formId;
+    if (type === 'pdf') {
+        containerId = 'pdfEmailContainer';
+        formId = 'pdfReportForm';
+    } else {
+        containerId = 'csvEmailContainer';
+        formId = 'csvReportForm';
+    }
+    const container = document.getElementById(containerId);
+    const emailInput = container ? container.querySelector('input') : null;
+    const form = document.getElementById(formId);
+    
+    if (container && emailInput && form) {
+        if (show) {
+            container.classList.remove('hidden');
+            emailInput.required = true;
+            form.removeAttribute('target');
+        } else {
+            container.classList.add('hidden');
+            emailInput.required = false;
+            form.setAttribute('target', '_blank');
+        }
+    }
+}

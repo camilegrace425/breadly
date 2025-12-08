@@ -1,5 +1,3 @@
-// File Location: breadly/js/script_account_management.js
-
 // --- UI Helper Functions ---
 function toggleSidebar() {
     const sidebar = document.getElementById('mobileSidebar');
@@ -18,7 +16,7 @@ function openModal(modalId) {
     const backdrop = document.getElementById('modalBackdrop');
     if (modal) {
         modal.classList.remove('hidden');
-        if(backdrop) backdrop.classList.remove('hidden');
+        if (backdrop) backdrop.classList.remove('hidden');
     }
 }
 
@@ -26,13 +24,13 @@ function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     const backdrop = document.getElementById('modalBackdrop');
     if (modal) modal.classList.add('hidden');
-    if(backdrop) backdrop.classList.add('hidden');
+    if (backdrop) backdrop.classList.add('hidden');
 }
 
 function closeAllModals() {
     document.querySelectorAll('.fixed.z-50').forEach(el => el.classList.add('hidden'));
     const backdrop = document.getElementById('modalBackdrop');
-    if(backdrop) backdrop.classList.add('hidden');
+    if (backdrop) backdrop.classList.add('hidden');
 }
 
 function togglePassword() {
@@ -76,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordInput.addEventListener('input', function() {
             const pw = this.value;
             const isValid = pw.length >= 6 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw);
-            
+
             // Only show error if user has started typing and criteria not met
             if (pw.length > 0 && !isValid) {
                 passwordError.classList.remove('hidden');
@@ -116,16 +114,16 @@ function editUser(id) {
                 document.getElementById('role').value = user.role;
                 document.getElementById('phone').value = user.phone_number;
                 document.getElementById('email').value = user.email || '';
-                
+
                 // Manually trigger input event to reset validation state if needed
                 document.getElementById('phone').dispatchEvent(new Event('input'));
-                
+
                 // Update UI for Edit Mode
                 document.getElementById('form-title').innerText = 'Edit Account';
                 document.getElementById('form-btn').innerText = 'Update User';
                 document.getElementById('form-btn').classList.replace('bg-blue-600', 'bg-orange-500');
                 document.getElementById('form-btn').classList.replace('hover:bg-blue-700', 'hover:bg-orange-600');
-                
+
                 document.getElementById('form-header').classList.replace('bg-blue-50', 'bg-orange-50');
                 document.getElementById('form-title').classList.replace('text-blue-800', 'text-orange-800');
                 document.getElementById('form-icon').classList.replace('text-blue-600', 'text-orange-600');
@@ -134,7 +132,7 @@ function editUser(id) {
                 document.getElementById('password').required = false;
                 document.getElementById('password').placeholder = 'New password (optional)';
                 document.getElementById('password-hint').classList.remove('hidden');
-                
+
                 document.getElementById('cancel-btn-container').classList.remove('hidden');
             } else {
                 Swal.fire('Error', resp.message, 'error');
@@ -146,7 +144,7 @@ function editUser(id) {
 function resetForm() {
     document.getElementById('user-form').reset();
     document.getElementById('user_id').value = '0';
-    
+
     // Reset validation UI
     document.getElementById('phone-error').classList.add('hidden');
     const phoneInput = document.getElementById('phone');
@@ -157,11 +155,11 @@ function resetForm() {
     const passwordInput = document.getElementById('password');
     passwordInput.classList.remove('border-red-300', 'focus:ring-red-200');
     passwordInput.classList.add('border-gray-300', 'focus:ring-breadly-btn');
-    
+
     // Reset visibility
     passwordInput.type = 'password';
     const pwIcon = document.getElementById('password-toggle-icon');
-    if(pwIcon) pwIcon.classList.replace('bx-hide', 'bx-show');
+    if (pwIcon) pwIcon.classList.replace('bx-hide', 'bx-show');
 
     // Reset UI to Create Mode
     document.getElementById('form-title').innerText = 'Create Account';
@@ -177,13 +175,13 @@ function resetForm() {
     document.getElementById('password').required = true;
     document.getElementById('password').placeholder = 'Strong password';
     document.getElementById('password-hint').classList.add('hidden');
-    
+
     document.getElementById('cancel-btn-container').classList.add('hidden');
 }
 
 function handleSaveUser(e) {
     e.preventDefault();
-    
+
     // --- VALIDATION START ---
     const username = document.getElementById('username').value;
     const phone = document.getElementById('phone').value;
@@ -204,23 +202,23 @@ function handleSaveUser(e) {
 
     // 2. Phone validation (Strict 11 digits)
     if (phone.length !== 11) {
-            Swal.fire('Error', 'Phone number must be exactly 11 digits.', 'error');
-            document.getElementById('phone-error').classList.remove('hidden');
-            return;
+        Swal.fire('Error', 'Phone number must be exactly 11 digits.', 'error');
+        document.getElementById('phone-error').classList.remove('hidden');
+        return;
     }
 
     // 3. Password validation (If creating OR if password field is filled)
     if (userId === '0' || password.length > 0) {
-            if (password.length < 6) {
+        if (password.length < 6) {
             Swal.fire('Error', 'Password must be at least 6 characters long.', 'error');
             document.getElementById('password-error').classList.remove('hidden');
             return;
-            }
-            if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-                Swal.fire('Error', 'Password must contain both letters and numbers.', 'error');
-                document.getElementById('password-error').classList.remove('hidden');
-                return;
-            }
+        }
+        if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+            Swal.fire('Error', 'Password must contain both letters and numbers.', 'error');
+            document.getElementById('password-error').classList.remove('hidden');
+            return;
+        }
     }
     // --- VALIDATION END ---
 
@@ -228,26 +226,26 @@ function handleSaveUser(e) {
     formData.append('ajax_action', 'save_user');
 
     fetch('account_management.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(resp => {
-        if (resp.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: resp.message,
-                timer: 1500,
-                showConfirmButton: false
-            });
-            resetForm();
-            refreshTable();
-        } else {
-            Swal.fire('Error', resp.message, 'error');
-        }
-    })
-    .catch(err => Swal.fire('Error', 'Request failed', 'error'));
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(resp => {
+            if (resp.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: resp.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                resetForm();
+                refreshTable();
+            } else {
+                Swal.fire('Error', resp.message, 'error');
+            }
+        })
+        .catch(err => Swal.fire('Error', 'Request failed', 'error'));
 }
 
 function deleteUser(id) {
@@ -265,19 +263,19 @@ function deleteUser(id) {
             formData.append('id', id);
 
             fetch('account_management.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(resp => {
-                if (resp.success) {
-                    Swal.fire('Deleted!', resp.message, 'success');
-                    refreshTable();
-                } else {
-                    Swal.fire('Error', resp.message, 'error');
-                }
-            })
-            .catch(err => Swal.fire('Error', 'Request failed', 'error'));
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(resp => {
+                    if (resp.success) {
+                        Swal.fire('Deleted!', resp.message, 'success');
+                        refreshTable();
+                    } else {
+                        Swal.fire('Error', resp.message, 'error');
+                    }
+                })
+                .catch(err => Swal.fire('Error', 'Request failed', 'error'));
         }
     });
 }

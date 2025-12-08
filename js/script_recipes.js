@@ -37,27 +37,23 @@ window.openDeleteModal = function(recipeId, ingredientName) {
     openModal('deleteRecipeItemModal');
 }
 
-// --- AJAX Loading Logic ---
 window.loadRecipeView = function(productId, clickedElement) {
     window.currentProductId = productId;
     const detailsContainer = document.getElementById('recipe-details-container');
     const productName = clickedElement ? clickedElement.dataset.productName : 'Recipe';
 
-    // UI: Update active class in list
     document.querySelectorAll('.product-card').forEach(c => {
         c.classList.remove('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
         c.classList.add('border-gray-100', 'bg-white', 'hover:border-orange-200');
     });
     
-    // Find card even if clickedElement isn't passed (e.g. programmatic reload)
     const card = clickedElement || document.querySelector(`.product-card[data-id="${productId}"]`);
     if(card) {
         card.classList.remove('border-gray-100', 'bg-white', 'hover:border-orange-200');
         card.classList.add('border-breadly-btn', 'bg-orange-50', 'ring-1', 'ring-breadly-btn');
     }
 
-    // --- MOBILE LOGIC ---
-    if (window.innerWidth < 1024) { // Check for mobile breakpoint
+    if (window.innerWidth < 1024) {
         const modalLabel = document.getElementById('recipeModalLabel');
         const modalBody = document.getElementById('recipeModalBody');
         
@@ -71,7 +67,6 @@ window.loadRecipeView = function(productId, clickedElement) {
         }
         openModal('recipeModal');
         
-        // Fetch logic for Modal
         fetch(`recipes.php?product_id=${productId}&ajax_render=true`)
             .then(response => response.text())
             .then(html => {
@@ -82,7 +77,6 @@ window.loadRecipeView = function(productId, clickedElement) {
             });
             
     } else {
-        // --- DESKTOP LOGIC ---
         detailsContainer.innerHTML = `
             <div class="h-full flex items-center justify-center text-gray-400 animate-pulse">
                 <div class="text-center">
@@ -99,7 +93,6 @@ window.loadRecipeView = function(productId, clickedElement) {
             })
             .then(html => {
                 detailsContainer.innerHTML = html;
-                // No URL pushState here to prevent address bar clutter
             })
             .catch(err => {
                 console.error(err);
@@ -112,7 +105,6 @@ window.loadRecipeView = function(productId, clickedElement) {
     }
 }
 
-// --- Form Handling ---
 window.handleAddIngredient = function(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -200,10 +192,8 @@ window.handleDeleteIngredient = function(e) {
     .catch(err => Swal.fire('Error', 'Connection failed', 'error'));
 }
 
-// --- Search Filter & Popstate Logic ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Search Logic
     const searchInput = document.getElementById('recipe-product-search');
     if(searchInput) {
         searchInput.addEventListener('input', function(e) {
@@ -232,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Handle browser back/forward buttons if URL changes happen (legacy support)
     window.addEventListener('popstate', function(event) {
         location.reload();
     });

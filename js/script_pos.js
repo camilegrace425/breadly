@@ -1,14 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
-    let cart = []; // Stores cart items
-    let discountPercent = 0; // Global state for discount
+    let cart = [];
+    let discountPercent = 0;
 
-    // DOM References
     const orderItemsContainer = document.getElementById('order-items-container');
     const totalPriceEl = document.getElementById('total-price');
     const payButton = document.getElementById('pay-button');
     const clearButton = document.getElementById('clear-button');
     
-    // Wrapper/Grid Container references
     const productListWrapper = document.getElementById('product-list');
     const productListContainer = productListWrapper ? productListWrapper.querySelector('.grid') || productListWrapper : null;
 
@@ -17,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortTypeSelect = document.getElementById('sort-type');   
     const noResultsMessage = document.getElementById('no-results-message');
 
-    // --- Discount DOM References ---
     const discountModalEl = document.getElementById('discountModal');
     const discountInput = document.getElementById('discount-input');
     const applyDiscountBtn = document.getElementById('apply-discount-btn-modal'); 
@@ -29,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountAmountEl = document.getElementById('discount-amount');
     const discountLineText = document.querySelector('#discount-line span:first-child') || document.getElementById('discount-line');
 
-    // --- Helper: Toggle Modal ---
     function safeToggleModal(modalId) {
         if (typeof window.toggleModal === 'function') {
             window.toggleModal(modalId);
@@ -37,14 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById(modalId);
             if (modal) {
                 modal.classList.toggle('hidden');
-                // Basic Aria toggle if helper not found
                 const isHidden = modal.classList.contains('hidden');
                 modal.setAttribute('aria-hidden', isHidden ? 'true' : 'false');
             }
         }
     }
 
-     // Called when a product card is clicked.
     window.addToCart = function(cardElement) {
         const productId = parseInt(cardElement.dataset.id);
         const name = cardElement.dataset.name;
@@ -79,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // UPDATED: Made global
     window.setQuantity = function(productId, newQuantity) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
@@ -105,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
     }
 
-    // UPDATED: Made global
     window.updateQuantity = function(productId, change) {
         const item = cart.find(item => item.id === productId);
         if (!item) return;
@@ -123,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Helper to generate HTML string for a single item
     function generateCartItemHTML(item) {
         const itemTotal = item.price * item.quantity;
         return `
@@ -156,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // Helper to attach event listeners to a newly created node
     function attachListenersToNode(node) {
         const id = parseInt(node.dataset.id);
         node.querySelector('.btn-dec').addEventListener('click', () => window.updateQuantity(id, -1));
@@ -168,19 +158,15 @@ document.addEventListener('DOMContentLoaded', () => {
         input.addEventListener('click', (e) => e.target.select());
     }
 
-    // --- MAIN RENDER FUNCTION (Replaces Full Re-render with Sync) ---
     function renderCart() {
-        // 1. Calculate Totals
         let subTotal = 0;
         cart.forEach(item => { subTotal += item.price * item.quantity; });
         let discountAmount = subTotal * (discountPercent / 100);
         let finalTotal = subTotal - discountAmount;
 
-        // 2. Sync DOM Items
         const existingNodes = Array.from(orderItemsContainer.querySelectorAll('.cart-item-row'));
         const cartIds = cart.map(i => i.id);
 
-        // Remove items not in cart (Slide Out)
         existingNodes.forEach(node => {
             const id = parseInt(node.dataset.id);
             if (!cartIds.includes(id)) {
@@ -190,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         node.remove();
                         checkEmptyState();
                     });
-                    // Fallback timeout
                     setTimeout(() => {
                         if(node.parentNode) {
                             node.remove();
@@ -201,12 +186,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Add or Update items (Slide In)
         cart.forEach(item => {
             let node = orderItemsContainer.querySelector(`.cart-item-row[data-id="${item.id}"]`);
             
             if (node) {
-                // Update existing
                 const qtyInput = node.querySelector('.cart-quantity-input');
                 if (qtyInput && qtyInput.value != item.quantity) qtyInput.value = item.quantity;
                 
@@ -216,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const qtyText = node.querySelector('.item-qty-text');
                 if (qtyText) qtyText.innerHTML = `<span class="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.quantity}</span> x P${item.price.toFixed(2)}`;
             } else {
-                // Create New
                 const emptyState = orderItemsContainer.querySelector('.empty-cart-message');
                 if (emptyState) emptyState.remove();
 
@@ -229,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 3. Update Desktop Totals
         if (subtotalLine) subtotalLine.classList.remove('hidden');
         if (subtotalLine) subtotalLine.style.display = 'flex';
         
@@ -242,7 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (totalPriceEl) totalPriceEl.textContent = `P${finalTotal.toFixed(2)}`;
 
-        // 4. Enable/Disable Pay Button
         if (cart.length === 0) {
             payButton.disabled = true;
             payButton.classList.add('opacity-50', 'cursor-not-allowed');
@@ -251,14 +231,12 @@ document.addEventListener('DOMContentLoaded', () => {
             payButton.classList.remove('opacity-50', 'cursor-not-allowed');
         }
 
-        // 5. Update Mobile UI
         updateMobileUI(subTotal, finalTotal, discountAmount);
         checkEmptyState();
     }
 
     function checkEmptyState() {
         if (cart.length === 0) {
-             // Only append if no rows exist (to handle animation timing)
              const hasRows = orderItemsContainer.querySelectorAll('.cart-item-row:not(.cart-item-exit)').length > 0;
              const hasExitRows = orderItemsContainer.querySelectorAll('.cart-item-exit').length > 0;
              
@@ -308,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(mobileTotalFull) mobileTotalFull.textContent = `P${finalTotal.toFixed(2)}`;
     }
 
-    // Handles the 'Complete Sale' button click.
     if(payButton) {
         payButton.addEventListener('click', confirmSale);
     }
@@ -321,8 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
             text: `Total amount is ${totalPriceEl.textContent}. Proceed?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#15803d', // Tailwind green-700
-            cancelButtonColor: '#6b7280',  // Tailwind gray-500
+            confirmButtonColor: '#15803d',
+            cancelButtonColor: '#6b7280',
             confirmButtonText: 'Yes, complete it!'
         }).then((result) => {
             if (result.isConfirmed) {
@@ -331,7 +308,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Sends the cart data to the server
     function processSale() {
         Swal.fire({
             title: 'Processing...',
@@ -384,7 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Attach click handlers to product cards
     document.querySelectorAll('.product-card').forEach(card => {
         card.addEventListener('click', () => window.addToCart(card));
     });
@@ -394,9 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchType = searchTypeSelect.value; 
         let itemsFound = 0;
 
-        if (!productListContainer) return; // Guard clause
+        if (!productListContainer) return;
 
-        // Updated Selector to match Tailwind layout
         productListContainer.querySelectorAll('.col-product[data-product-name]').forEach(col => {
             let dataToSearch = '';
             
@@ -477,7 +451,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sortProducts();
 
-    // --- Modal Logic (No Bootstrap) ---
     if (applyDiscountBtn) {
         applyDiscountBtn.addEventListener('click', () => {
             let percent = parseFloat(discountInput.value);

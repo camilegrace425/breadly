@@ -8,7 +8,7 @@ window.dashboardCharts = {
 function toggleSidebar() {
     const sidebar = document.getElementById('mobileSidebar');
     const overlay = document.getElementById('mobileSidebarOverlay');
-    
+
     if (sidebar.classList.contains('-translate-x-full')) {
         sidebar.classList.remove('-translate-x-full');
         overlay.classList.remove('hidden');
@@ -31,34 +31,34 @@ function closeModal(modalId) {
 function switchTab(tabName) {
     const paneSales = document.getElementById('pane-sales');
     const paneInventory = document.getElementById('pane-inventory');
-    
-    if(paneSales) paneSales.classList.add('hidden');
-    if(paneInventory) paneInventory.classList.add('hidden');
-    
+
+    if (paneSales) paneSales.classList.add('hidden');
+    if (paneInventory) paneInventory.classList.add('hidden');
+
     const targetPane = document.getElementById('pane-' + tabName);
-    if(targetPane) targetPane.classList.remove('hidden');
-    
+    if (targetPane) targetPane.classList.remove('hidden');
+
     const salesBtn = document.getElementById('tab-sales');
     const invBtn = document.getElementById('tab-inventory');
-    
+
     const activeClasses = ['border-breadly-btn', 'text-breadly-btn'];
     const inactiveClasses = ['border-transparent', 'text-gray-500', 'hover:text-gray-700'];
-    
+
     if (tabName === 'sales') {
-        if(salesBtn) {
+        if (salesBtn) {
             salesBtn.classList.add(...activeClasses);
             salesBtn.classList.remove(...inactiveClasses);
         }
-        if(invBtn) {
+        if (invBtn) {
             invBtn.classList.remove(...activeClasses);
             invBtn.classList.add(...inactiveClasses);
         }
     } else {
-        if(invBtn) {
+        if (invBtn) {
             invBtn.classList.add(...activeClasses);
             invBtn.classList.remove(...inactiveClasses);
         }
-        if(salesBtn) {
+        if (salesBtn) {
             salesBtn.classList.remove(...activeClasses);
             salesBtn.classList.add(...inactiveClasses);
         }
@@ -91,7 +91,7 @@ function toggleEmailField(show, type) {
     const container = document.getElementById(containerId);
     const emailInput = container ? container.querySelector('input') : null;
     const form = document.getElementById(formId);
-    
+
     if (container && emailInput && form) {
         if (show) {
             container.classList.remove('hidden');
@@ -110,7 +110,7 @@ function toggleSortDropdown(button) {
     if (!dropdown) return;
 
     const isHidden = dropdown.classList.contains('hidden');
-    
+
     document.querySelectorAll('.sort-dropdown-menu').forEach(menu => {
         menu.classList.add('hidden');
     });
@@ -120,7 +120,7 @@ function toggleSortDropdown(button) {
     } else {
         dropdown.classList.add('hidden');
     }
-    
+
     if (window.event) {
         window.event.stopPropagation();
     }
@@ -134,7 +134,7 @@ function attachDashboardListeners() {
     // Remove old listeners by cloning
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
-    
+
     const activeForm = newForm;
 
     // Handle Form Submit
@@ -162,7 +162,7 @@ function attachDashboardListeners() {
             const today = new Date().toISOString().split('T')[0];
             const startInput = activeForm.querySelector('input[name="date_start"]');
             const endInput = activeForm.querySelector('input[name="date_end"]');
-            
+
             if (startInput && endInput) {
                 startInput.value = today;
                 endInput.value = today;
@@ -184,16 +184,16 @@ function fetchDashboardData(formData) {
                 updateText('summary-net-revenue', '₱' + data.summary.netRevenue);
                 updateText('summary-gross-revenue', '₱' + data.summary.grossRevenue);
                 updateText('summary-less-returns', '-₱' + data.summary.totalReturnsValue);
-                
+
                 updateText('summary-total-sold', data.summary.totalSales);
                 updateText('summary-date-label-1', data.summary.dateRangeText);
-                
+
                 const returnsCountEl = document.getElementById('summary-returns-count');
                 if (returnsCountEl) {
                     returnsCountEl.innerText = data.summary.totalReturnsCount;
                     returnsCountEl.className = `text-3xl font-bold ${data.summary.totalReturnsCount > 0 ? 'text-red-600' : 'text-green-700'}`;
                 }
-                
+
                 const returnsValEl = document.getElementById('summary-returns-value');
                 if (returnsValEl) {
                     returnsValEl.innerText = '₱' + data.summary.totalReturnsValue;
@@ -207,7 +207,7 @@ function fetchDashboardData(formData) {
                     recallCountEl.innerText = data.summary.recallCount;
                     recallCountEl.className = `text-4xl font-bold ${data.summary.recallCount > 0 ? 'text-red-600' : 'text-green-700'}`;
                 }
-                
+
                 const recallValEl = document.getElementById('summary-recalled-value');
                 if (recallValEl) {
                     recallValEl.innerText = '₱' + data.summary.recallValue;
@@ -255,8 +255,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let topProductsData = [];
         try {
             topProductsData = JSON.parse(topProductsCtx.dataset.products);
-        } catch(e) { console.error(e); }
-        
+        } catch (e) {
+            console.error(e);
+        }
+
         const productLabels = Array.isArray(topProductsData) ? topProductsData.map(product => product.name) : [];
         const productSalesData = Array.isArray(topProductsData) ? topProductsData.map(product => product.total_units_sold) : [];
 
@@ -280,13 +282,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     delay: (context) => {
                         let delay = 0;
                         if (context.type === 'data' && context.mode === 'default' && !context.dropped) {
-                            delay = context.dataIndex * 100; 
+                            delay = context.dataIndex * 100;
                         }
                         return delay;
                     }
                 },
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
             }
         });
     }
@@ -296,25 +306,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trendCtx) {
         let trendData = [];
         try {
-             trendData = JSON.parse(trendCtx.dataset.trend);
+            trendData = JSON.parse(trendCtx.dataset.trend);
         } catch (e) {
-             console.error("Error parsing trend data", e);
+            console.error("Error parsing trend data", e);
         }
-        
+
         const trendLabels = Array.isArray(trendData) ? trendData.map(item => item.date) : [];
         const trendSales = Array.isArray(trendData) ? trendData.map(item => item.sales) : [];
         const trendReturns = Array.isArray(trendData) ? trendData.map(item => item.returns) : [];
 
         // REMOVED CHECK: if (trendLabels.length > 0)
         window.dashboardCharts.trend = new Chart(trendCtx, {
-            type: 'line', 
+            type: 'line',
             data: {
                 labels: trendLabels,
-                datasets: [
-                    {
+                datasets: [{
                         label: 'Total Revenue (₱)',
                         data: trendSales,
-                        borderColor: '#0d6efd', 
+                        borderColor: '#0d6efd',
                         backgroundColor: 'rgba(13, 110, 253, 0.1)',
                         borderWidth: 2,
                         tension: 0.3,
@@ -344,30 +353,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     x: {
                         type: 'number',
                         easing: 'linear',
-                        duration: 300, 
-                        from: NaN, 
+                        duration: 300,
+                        from: NaN,
                         delay: function(ctx) {
                             if (ctx.type !== 'data' || ctx.xStarted) return 0;
                             ctx.xStarted = true;
-                            return ctx.index * 30; 
+                            return ctx.index * 30;
                         }
                     },
                     y: {
                         type: 'number',
                         easing: 'linear',
-                        duration: 300, 
+                        duration: 300,
                         from: function(ctx) {
                             return ctx.index === 0 ? ctx.chart.scales.y.getPixelForValue(0) : ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1].getProps(['y'], true).y;
                         },
                         delay: function(ctx) {
                             if (ctx.type !== 'data' || ctx.yStarted) return 0;
                             ctx.yStarted = true;
-                            return ctx.index * 30; 
+                            return ctx.index * 30;
                         }
                     }
                 },
                 plugins: {
-                    legend: { display: true, position: 'top' },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -376,7 +388,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     label = label.split('(')[0].trim() + ': ';
                                 }
                                 if (context.parsed.y !== null) {
-                                    label += new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(context.parsed.y);
+                                    label += new Intl.NumberFormat('en-PH', {
+                                        style: 'currency',
+                                        currency: 'PHP'
+                                    }).format(context.parsed.y);
                                 }
                                 return label;
                             }
@@ -387,7 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            callback: function(value) { return '₱' + value; }
+                            callback: function(value) {
+                                return '₱' + value;
+                            }
                         }
                     }
                 }
@@ -399,13 +416,13 @@ document.addEventListener('DOMContentLoaded', () => {
     enableModalSorting('stockListModal');
     enableModalSorting('ingredientStockModal');
     enableModalSorting('recallModal');
-    
+
     const filterCheckbox = document.getElementById('filterLowStock');
     if (filterCheckbox) {
         filterCheckbox.addEventListener('change', function() {
             const showLowOnly = this.checked;
             const rows = document.querySelectorAll('#ingredientStockModal tbody tr');
-            
+
             rows.forEach(row => {
                 if (showLowOnly) {
                     const isLow = row.getAttribute('data-is-low') === '1';
@@ -415,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         row.classList.remove('hidden');
                     }
                 } else {
-                     row.classList.remove('hidden');
+                    row.classList.remove('hidden');
                 }
             });
         });
@@ -431,26 +448,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Attach AJAX Logic ---
     attachDashboardListeners();
-    
+
     // 3. Modal Sorting Logic
     function enableModalSorting(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
             const sortTriggers = modal.querySelectorAll('.sort-trigger');
             const sortText = modal.querySelector('.current-sort-text');
-            const tableBody = modal.querySelector('tbody.sortable-tbody'); 
+            const tableBody = modal.querySelector('tbody.sortable-tbody');
 
             if (tableBody) {
                 sortTriggers.forEach(trigger => {
                     trigger.addEventListener('click', (e) => {
                         e.preventDefault();
-                        
-                        const sortBy = trigger.dataset.sortBy; 
-                        const sortDir = trigger.dataset.sortDir; 
-                        const sortType = trigger.dataset.sortType; 
+
+                        const sortBy = trigger.dataset.sortBy;
+                        const sortDir = trigger.dataset.sortDir;
+                        const sortType = trigger.dataset.sortType;
 
                         const rows = Array.from(tableBody.querySelectorAll('tr'));
-                        
+
                         rows.sort((a, b) => {
                             let valA = a.dataset[sortBy];
                             let valB = b.dataset[sortBy];
@@ -464,13 +481,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (valA > valB) return sortDir === 'asc' ? 1 : -1;
                             return 0;
                         });
-                        
+
                         rows.forEach(row => tableBody.appendChild(row));
 
                         if (sortText) sortText.textContent = trigger.textContent;
                         sortTriggers.forEach(t => t.classList.remove('active'));
                         trigger.classList.add('active');
-                        
+
                         const dropdownMenu = trigger.closest('.sort-dropdown-menu');
                         if (dropdownMenu) {
                             dropdownMenu.classList.add('hidden');

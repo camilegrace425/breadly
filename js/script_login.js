@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (adminToggleBtn) adminToggleBtn.classList.remove('active');
         if (switchBtn) switchBtn.textContent = 'Manager Login?';
     }
-
-    // Password Toggle Logic
+    
     document.querySelectorAll('.password-toggle').forEach(toggle => {
         toggle.addEventListener('click', () => {
             const inputContainer = toggle.closest('.input-box'); 
@@ -36,8 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-
-    // Desktop Switch Button Logic
+    
     if (switchBtn) {
         switchBtn.addEventListener('click', () => {
             if (body.classList.contains('cashier-mode')) {
@@ -47,8 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
-    // Mobile Toggle Logic
     if (adminToggleBtn) {
         adminToggleBtn.addEventListener('click', showAdminForm);
     }

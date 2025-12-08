@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Reusable Table Pagination Function ---
+    
     function addTablePagination(selectId, tableBodyId) {
         const select = document.getElementById(selectId);
         const tableBody = document.getElementById(tableBodyId);
@@ -13,29 +13,19 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!prevBtn || !nextBtn) return;
 
-        let currentPage = 0; // 0-indexed page
+        let currentPage = 0; 
 
         const updateTableRows = () => {
             const selectedValue = select.value;
-            
-            // Get actual data rows (exclude message rows or hidden search results)
-            // We filter out rows that might be "No results" messages if they don't have data-label attributes
-            // or strictly rely on them not having an ID ending in -no-results
             const all_rows = Array.from(tableBody.querySelectorAll('tr'));
-            
-            // Filter rows that are actual data entries
             const visibleRows = all_rows.filter(row => {
-                // Skip rows that are just "No history found" messages (usually have colspan)
                 if (row.cells.length === 1 && row.cells[0].hasAttribute('colspan')) return false;
                 if (row.id && row.id.endsWith('-no-results')) return false;
-                
-                // Skip rows hidden by search filter (if any)
                 if (row.style.display === 'none' && row.dataset.paginatedHidden !== 'true') return false;
-                
                 return true;
             });
 
-            // First, ensure filtered rows are flagged as visible before slicing
+            
             visibleRows.forEach(row => {
                 row.style.display = '';
                 row.dataset.paginatedHidden = 'false';
@@ -44,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (selectedValue === 'all') {
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
-                // Apply classes for disabled state if needed
+                
                 prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 return;
@@ -54,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalRows = visibleRows.length;
             const totalPages = Math.ceil(totalRows / limit);
 
-            // Adjust current page if out of bounds
+            
             if (currentPage >= totalPages && totalPages > 0) {
                 currentPage = totalPages - 1;
             }
@@ -72,11 +62,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Update Button States
+            
             prevBtn.disabled = currentPage === 0;
             nextBtn.disabled = (currentPage >= totalPages - 1) || (totalRows === 0);
             
-            // Visual feedback for Tailwind buttons
+            
             if (prevBtn.disabled) prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
             else prevBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             
@@ -103,10 +93,10 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTableRows();
         });
         
-        updateTableRows(); // Call once on initial load
+        updateTableRows(); 
     }
     
-    // --- JS Sorting Function ---
+    
     function getSortableValue(value, type = 'text') {
         if (value === null || value === undefined) return '';
         let cleaned = value.trim();
@@ -118,11 +108,11 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'date':
                 let dateVal = Date.parse(cleaned);
                 return isNaN(dateVal) ? 0 : dateVal;
-            default: // 'text'
+            default: 
                 const lowerVal = cleaned.toLowerCase();
                 
-                // Custom Sort Priorities
-                if (lowerVal.includes('failure')) return '0_failure'; // Failures first
+                
+                if (lowerVal.includes('failure')) return '0_failure'; 
                 if (lowerVal.includes('success')) return '1_success';
                 
                 if (lowerVal.includes('manager')) return 'a_manager';
@@ -137,11 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- JS Sorting Initializer ---
+    
     function sortTableByDropdown(sortLink) {
         const { sortBy, sortDir, sortType } = sortLink.dataset;
         
-        // Find the table wrapper card
+        
         const card = sortLink.closest('#login-history-card') || document.getElementById('login-history-card');
         if (!card) return;
         
@@ -151,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tbody = table.querySelector('tbody');
         if (!tbody) return;
         
-        // Find column index by matching header data-sort-by
+        
         const th = table.querySelector(`thead th[data-sort-by="${sortBy}"]`);
         if (!th) {
             console.error(`Sort Error: No table header found with data-sort-by="${sortBy}"`);
@@ -160,13 +150,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const colIndex = Array.from(th.parentNode.children).indexOf(th);
         
-        // Get rows that are actual data (skip empty messages)
+        
         const rows = Array.from(tbody.querySelectorAll('tr')).filter(row => {
             return !(row.cells.length === 1 && row.cells[0].hasAttribute('colspan'));
         });
 
         rows.sort((a, b) => {
-            // Get cell content, handle missing cells safely
+            
             const cellA = a.cells[colIndex] ? a.cells[colIndex].innerText : '';
             const cellB = b.cells[colIndex] ? b.cells[colIndex].innerText : '';
             
@@ -178,20 +168,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return 0;
         });
 
-        // Re-append rows
+        
         tbody.append(...rows);
         
-        // Trigger pagination update if pagination exists
+        
         const paginationSelect = card.querySelector('select[id$="-rows-select"]');
         if (paginationSelect) {
             paginationSelect.dispatchEvent(new Event('change'));
         }
 
-        // Update Dropdown UI
+        
         const buttonTextSpan = card.querySelector('.current-sort-text');
         if (buttonTextSpan) buttonTextSpan.innerText = sortLink.innerText;
         
-        // Update active state in dropdown
+        
         const dropdownItems = card.querySelectorAll('.sort-trigger');
         dropdownItems.forEach(item => {
             item.classList.remove('active', 'bg-orange-50', 'text-orange-700');
@@ -202,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sortLink.classList.remove('text-gray-700');
     }
 
-    // Attach listeners to sort triggers
+    
     const sortTriggers = document.querySelectorAll('#login-history-card .sort-trigger');
     sortTriggers.forEach(link => {
         link.addEventListener('click', (e) => {
@@ -211,13 +201,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Initial sort
+    
     const defaultSortLink = document.querySelector('#login-history-card .sort-trigger.active');
     if (defaultSortLink) {
         sortTableByDropdown(defaultSortLink);
     }
 
-    // Initialize pagination
+    
     addTablePagination('login-rows-select', 'login-table-body');
 
 });

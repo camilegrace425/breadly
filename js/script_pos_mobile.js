@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileSummaryCount = document.getElementById('mobile-cart-count');
     const mobileSummaryTotal = document.getElementById('mobile-cart-total');
 
-    // Logic to re-attach listeners after content sync
     function attachMobileListeners() {
         if (!mobileCart) return;
 
@@ -55,13 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const observer = new MutationObserver(() => {
-        // Sync Cart Items and re-attach listeners
         if (mobileCart && desktopCart) {
             mobileCart.innerHTML = desktopCart.innerHTML;
             attachMobileListeners();
         }
         
-        // Sync Summary Lines
         if (mobileSubtotalLine && desktopSubtotalLine) mobileSubtotalLine.style.display = desktopSubtotalLine.style.display;
         if (mobileSubtotalPrice && desktopSubtotalPrice) mobileSubtotalPrice.textContent = desktopSubtotalPrice.textContent;
         
@@ -69,11 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mobileDiscountAmount && desktopDiscountAmount) mobileDiscountAmount.textContent = desktopDiscountAmount.textContent;
         if (mobileDiscountText && desktopDiscountText) mobileDiscountText.innerHTML = desktopDiscountText.innerHTML;
 
-        // Sync Totals & Buttons
         if (mobileTotal && desktopTotal) mobileTotal.textContent = desktopTotal.textContent;
         if (mobilePayBtn && desktopPayBtn) mobilePayBtn.disabled = desktopPayBtn.disabled;
         
-        // Sync Mobile Summary Bar
         if (mobileSummaryTotal && desktopTotal) mobileSummaryTotal.textContent = desktopTotal.textContent;
         if (mobileSummaryCount && desktopCart) {
             const itemCount = desktopCart.querySelectorAll('.flex.justify-between').length;
@@ -81,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Start Observing changes in the desktop cart and totals
     if (desktopCart) observer.observe(desktopCart, { childList: true, subtree: true });
     if (desktopTotal) observer.observe(desktopTotal, { characterData: true, childList: true, subtree: true });
     if (desktopSubtotalPrice) observer.observe(desktopSubtotalPrice, { characterData: true, childList: true, subtree: true });
@@ -89,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (desktopDiscountText) observer.observe(desktopDiscountText, { characterData: true, childList: true, subtree: true });
     if (desktopPayBtn) observer.observe(desktopPayBtn, { attributes: true, attributeFilter: ['disabled'] });
 
-    // Sync button clicks from mobile to desktop
     if (mobilePayBtn && desktopPayBtn) {
         mobilePayBtn.addEventListener('click', () => {
             desktopPayBtn.click(); 

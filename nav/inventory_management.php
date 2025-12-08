@@ -191,7 +191,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             ];
                         }
 
-                        // Conversion factors to Base Units (g, ml, pcs)
                         $conversions = [
                             'kg' => 1000,   'g' => 1,
                             'L' => 1000,    'ml' => 1,
